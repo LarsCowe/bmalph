@@ -1,0 +1,47 @@
+{
+  "name": "bmalph",
+  "version": "0.1.0",
+  "description": "Unified AI Development Framework - BMAD phases with Ralph execution loop for Claude Code",
+  "type": "module",
+  "bin": {
+    "bmalph": "./bin/bmalph.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src tests",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "development",
+    "framework",
+    "agents"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "scaffold/"
+  ],
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "inquirer": "^13.2.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.10",
+    "eslint": "^9.39.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.1",
+    "vitest": "^4.0.18"
+  }
+}

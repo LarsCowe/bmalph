@@ -1,0 +1,14 @@
+[
+  {
+    "id": "task-id",
+    "title": "Task title",
+    "status": "pending",
+    "priority": 1,
+    "description": "Detailed description of what needs to be done",
+    "acceptanceCriteria": [
+      "Criterion 1",
+      "Criterion 2"
+    ],
+    "dependencies": []
+  }
+]
