@@ -25,12 +25,13 @@ export async function scaffoldProject(projectDir: string): Promise<void> {
     await mkdir(join(projectDir, dir), { recursive: true });
   }
 
-  // Copy scaffold files
+  // Copy scaffold files (recursive handles nested step directories in prompts/)
   await cp(join(scaffoldDir, "agents"), join(projectDir, "bmalph/agents"), { recursive: true });
   await cp(join(scaffoldDir, "prompts"), join(projectDir, "bmalph/prompts"), { recursive: true });
   await cp(join(scaffoldDir, "templates"), join(projectDir, "bmalph/templates"), {
     recursive: true,
   });
+  await cp(join(scaffoldDir, "lib"), join(projectDir, "bmalph/lib"), { recursive: true });
   await cp(join(scaffoldDir, "bmalph.sh"), join(projectDir, "bmalph/bmalph.sh"));
 
   // Copy skills
@@ -51,6 +52,30 @@ export async function scaffoldProject(projectDir: string): Promise<void> {
       { recursive: true }
     );
   }
+
+  // Update .gitignore with .refs/ entry
+  await updateGitignore(projectDir);
+}
+
+async function updateGitignore(projectDir: string): Promise<void> {
+  const gitignorePath = join(projectDir, ".gitignore");
+  let existing = "";
+
+  try {
+    existing = await readFile(gitignorePath, "utf-8");
+  } catch {
+    // File doesn't exist, start fresh
+  }
+
+  if (existing.includes(".refs/")) {
+    return; // Already present
+  }
+
+  const entry = existing.length > 0 && !existing.endsWith("\n")
+    ? "\n.refs/\n"
+    : ".refs/\n";
+
+  await writeFile(gitignorePath, existing + entry);
 }
 
 export async function mergeClaudeMd(projectDir: string): Promise<void> {

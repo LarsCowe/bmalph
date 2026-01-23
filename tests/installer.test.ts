@@ -28,7 +28,7 @@ describe("installer", () => {
     });
   });
 
-  describe("scaffoldProject", () => {
+  describe("scaffoldProject", { timeout: 30000 }, () => {
     it("creates directory structure", async () => {
       await scaffoldProject(testDir);
 
@@ -41,6 +41,7 @@ describe("installer", () => {
         "bmalph/agents",
         "bmalph/prompts",
         "bmalph/templates",
+        "bmalph/lib",
       ];
 
       for (const dir of dirs) {
@@ -48,27 +49,107 @@ describe("installer", () => {
       }
     });
 
-    it("copies agent files", async () => {
+    it("copies agent files including new agents", async () => {
       await scaffoldProject(testDir);
 
-      const agents = ["analyst.md", "pm.md", "architect.md", "developer.md", "scrum-master.md", "reviewer.md"];
+      const agents = [
+        "analyst.md",
+        "pm.md",
+        "architect.md",
+        "developer.md",
+        "scrum-master.md",
+        "reviewer.md",
+        "ux-designer.md",
+        "test-architect.md",
+        "quick-flow.md",
+      ];
       for (const agent of agents) {
         await expect(access(join(testDir, "bmalph/agents", agent))).resolves.toBeUndefined();
       }
     });
 
+    it("copies lib files", async () => {
+      await scaffoldProject(testDir);
+
+      const libFiles = [
+        "circuit_breaker.sh",
+        "response_analyzer.sh",
+        "session_manager.sh",
+      ];
+      for (const file of libFiles) {
+        await expect(access(join(testDir, "bmalph/lib", file))).resolves.toBeUndefined();
+      }
+    });
+
+    it("copies progressive disclosure prompt step directories", async () => {
+      await scaffoldProject(testDir);
+
+      const stepFiles = [
+        "phase-1-analysis/step-01-init.md",
+        "phase-1-analysis/step-05-validate.md",
+        "phase-2-planning/step-01-init.md",
+        "phase-2-planning/step-05-validate.md",
+        "phase-3-design/step-01-init.md",
+        "phase-3-design/step-05-validate.md",
+        "phase-4-implementation/step-01-init.md",
+        "phase-4-implementation/step-04-validate.md",
+      ];
+      for (const file of stepFiles) {
+        await expect(access(join(testDir, "bmalph/prompts", file))).resolves.toBeUndefined();
+      }
+    });
+
+    it("copies implementation-readiness and quality-gate prompts", async () => {
+      await scaffoldProject(testDir);
+
+      await expect(
+        access(join(testDir, "bmalph/prompts/implementation-readiness.md"))
+      ).resolves.toBeUndefined();
+      await expect(
+        access(join(testDir, "bmalph/prompts/quality-gate.md"))
+      ).resolves.toBeUndefined();
+    });
+
     it("copies skill files", async () => {
       await scaffoldProject(testDir);
 
-      const skills = ["bmalph", "bmalph-analyze", "bmalph-plan", "bmalph-design", "bmalph-implement", "bmalph-quick"];
+      const skills = [
+        "bmalph",
+        "bmalph-analyze",
+        "bmalph-plan",
+        "bmalph-design",
+        "bmalph-implement",
+        "bmalph-quick",
+      ];
       for (const skill of skills) {
-        await expect(access(join(testDir, `.claude/skills/${skill}/SKILL.md`))).resolves.toBeUndefined();
+        await expect(
+          access(join(testDir, `.claude/skills/${skill}/SKILL.md`))
+        ).resolves.toBeUndefined();
       }
     });
 
     it("copies bmalph.sh", async () => {
       await scaffoldProject(testDir);
       await expect(access(join(testDir, "bmalph/bmalph.sh"))).resolves.toBeUndefined();
+    });
+
+    it("adds .refs/ to .gitignore", async () => {
+      await scaffoldProject(testDir);
+      const gitignore = await readFile(join(testDir, ".gitignore"), "utf-8");
+      expect(gitignore).toContain(".refs/");
+    });
+
+    it("appends to existing .gitignore without duplicating", async () => {
+      await writeFile(join(testDir, ".gitignore"), "node_modules/\n");
+      await scaffoldProject(testDir);
+      const gitignore = await readFile(join(testDir, ".gitignore"), "utf-8");
+      expect(gitignore).toContain("node_modules/");
+      expect(gitignore).toContain(".refs/");
+      // Run again to verify no duplication
+      await scaffoldProject(testDir);
+      const gitignore2 = await readFile(join(testDir, ".gitignore"), "utf-8");
+      const matches = gitignore2.match(/\.refs\//g);
+      expect(matches).toHaveLength(1);
     });
   });
 

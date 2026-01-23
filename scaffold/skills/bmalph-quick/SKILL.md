@@ -1,40 +1,77 @@
 # BMALPH - Quick Flow
 
 ## Description
-Streamlined flow for Level 0-1 projects. Combines brief analysis with direct implementation.
+Streamlined flow for Level 0-2 projects. Adopt the Quick Flow (Barry) persona. Combines spec creation with direct implementation using minimal ceremony.
 
 ## Trigger
-`/bmalph-quick`
+- `/bmalph-quick` - Create mode (default)
+- `/bmalph-quick validate` - Validate existing quick-flow artifacts
+- `/bmalph-quick edit` - Edit existing artifacts/code with compliance enforcement
 
-## Behavior
+## Modes
 
-For trivial (level 0) or simple (level 1) projects, skip the full 4-phase process:
+### Create Mode (default)
+Fast-track from spec to implementation.
 
-### Level 0 (Trivial)
-Single-shot execution:
-1. Understand the request
-2. Implement directly
-3. Done - no loop needed
+When invoked:
+1. Read `bmalph/agents/quick-flow.md` and adopt that persona
+2. Read `bmalph/config.json` for project details
+3. Determine project level:
 
-### Level 1 (Simple)
-Quick flow (1-5 iterations):
-1. **Brief Spec** (1 iteration): Document what needs to be built in 1-2 paragraphs
-2. **Implement** (1-4 iterations): Build it with TDD
+**Level 0 (Trivial):**
+- Single-shot execution
+- Understand the request, implement directly, done
 
-### Process
-1. Read `bmalph/config.json` for project details
-2. If level > 1, redirect to `/bmalph` for the full flow
-3. For level 0: Execute the task directly
-4. For level 1:
-   a. Write a brief spec to `bmalph/artifacts/analysis/brief-spec.md`
-   b. Confirm with user
-   c. Implement with TDD
-   d. Update progress
+**Level 1 (Simple):**
+- Write a brief tech spec to `bmalph/artifacts/analysis/tech-spec.md`
+- Implement with TDD (1-5 iterations)
 
-### Outputs
-- `bmalph/artifacts/analysis/brief-spec.md` (level 1 only)
+**Level 2 (Standard - Quick path):**
+- Write a more detailed tech spec with stories
+- Implement stories sequentially with TDD
+- Self-review at the end
+
+**Process:**
+1. Assess complexity and confirm level with user
+2. If level > 2, redirect to `/bmalph` for the full flow
+3. Write tech spec (level 1-2)
+4. Implement with TDD
+5. Self-review code quality
+6. Update progress
+
+### Validate Mode
+Review existing quick-flow implementation.
+
+When invoked with `validate`:
+1. Read `bmalph/agents/quick-flow.md` and adopt reviewer perspective
+2. Read tech spec and implementation
+3. Evaluate:
+   - Tech spec is complete enough for the scope
+   - All tests pass
+   - Code is clean and maintainable
+   - No security issues
+   - Works end-to-end as specified
+4. Produce brief validation summary
+5. Write to `bmalph/artifacts/analysis/validation-report.md`
+
+### Edit Mode
+Modify existing quick-flow artifacts or code.
+
+When invoked with `edit`:
+1. Read `bmalph/agents/quick-flow.md` and adopt that persona
+2. Read existing spec and implementation
+3. Ask user what changes are needed
+4. Apply changes maintaining:
+   - Test coverage (update tests for changed behavior)
+   - Spec-to-code alignment
+   - Code quality standards
+5. Run tests after edits
+6. Report changes
+
+## Outputs
+- `bmalph/artifacts/analysis/tech-spec.md` (level 1-2)
 - Implementation code
 - `bmalph/state/progress.txt`
 
-### Completion
+## Completion
 Mark project as complete when done.

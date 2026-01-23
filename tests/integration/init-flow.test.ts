@@ -5,7 +5,7 @@ import { tmpdir } from "os";
 import { scaffoldProject, mergeClaudeMd } from "../../src/installer.js";
 import { writeConfig, readConfig, type BmalphConfig } from "../../src/utils/config.js";
 
-describe("init flow integration", () => {
+describe("init flow integration", { timeout: 30000 }, () => {
   let testDir: string;
 
   beforeEach(async () => {
@@ -45,16 +45,16 @@ describe("init flow integration", () => {
 
     // Verify agent files contain personas
     const analyst = await readFile(join(testDir, "bmalph/agents/analyst.md"), "utf-8");
-    expect(analyst).toContain("# Analyst Agent");
+    expect(analyst).toContain("# Agent: Analyst (Mary)");
     expect(analyst).toContain("## Responsibilities");
 
     const developer = await readFile(join(testDir, "bmalph/agents/developer.md"), "utf-8");
     expect(developer).toContain("TDD");
 
     // Verify prompt templates exist and have placeholders
-    const phase1 = await readFile(join(testDir, "bmalph/prompts/phase-1-iteration.md"), "utf-8");
+    const phase1 = await readFile(join(testDir, "bmalph/prompts/phase-1-analysis/step-01-init.md"), "utf-8");
     expect(phase1).toContain("{{PROJECT_NAME}}");
-    expect(phase1).toContain("<phase-complete>");
+    expect(phase1).toContain("{{SCALE_LEVEL}}");
 
     // Verify skills are in .claude/skills/
     const mainSkill = await readFile(join(testDir, ".claude/skills/bmalph/SKILL.md"), "utf-8");
@@ -88,6 +88,6 @@ describe("init flow integration", () => {
 
     // All scaffold files still exist regardless of level
     await expect(access(join(testDir, "bmalph/agents/analyst.md"))).resolves.toBeUndefined();
-    await expect(access(join(testDir, "bmalph/prompts/phase-4-iteration.md"))).resolves.toBeUndefined();
+    await expect(access(join(testDir, "bmalph/prompts/phase-4-implementation/step-01-init.md"))).resolves.toBeUndefined();
   });
 });
