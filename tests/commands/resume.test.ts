@@ -32,6 +32,15 @@ vi.mock("../../src/utils/state.js", () => ({
     };
     return labels[phase] ?? "Unknown";
   }),
+  getPhaseInfo: vi.fn((phase: number) => {
+    const info: Record<number, { name: string; agent: string; goal: string; outputs: string[] }> = {
+      1: { name: "Analysis", agent: "Mary (Analyst)", goal: "Gather requirements, constraints, and risks", outputs: ["requirements.md", "constraints.md", "research.md", "risks.md"] },
+      2: { name: "Planning", agent: "Larry (PM)", goal: "Create PRD, user stories, and MVP scope", outputs: ["prd.md", "stories.md", "mvp-scope.md"] },
+      3: { name: "Design", agent: "Mo (Architect)", goal: "Define architecture, data model, and conventions", outputs: ["architecture.md", "data-model.md", "conventions.md"] },
+      4: { name: "Implementation", agent: "Ralph (Developer)", goal: "TDD build, code review, and validation", outputs: ["code", "tests", "documentation"] },
+    };
+    return info[phase] ?? { name: "Unknown", agent: "Unknown", goal: "Unknown", outputs: [] };
+  }),
 }));
 
 describe("resume command", () => {
@@ -125,5 +134,32 @@ describe("resume command", () => {
       [expect.stringContaining("bmalph.sh"), "2"],
       expect.objectContaining({ stdio: "inherit" })
     );
+  });
+
+  it("shows phase info before spawning", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    const { readPhaseState } = await import("../../src/utils/state.js");
+    const { spawn } = await import("child_process");
+
+    vi.mocked(isInitialized).mockResolvedValue(true);
+    vi.mocked(readPhaseState).mockResolvedValue({
+      currentPhase: 3,
+      iteration: 1,
+      status: "running",
+      startedAt: "2025-01-01T00:00:00.000Z",
+      lastUpdated: "2025-01-01T01:00:00.000Z",
+    });
+
+    const fakeChild = new EventEmitter();
+    vi.mocked(spawn).mockReturnValue(fakeChild as never);
+
+    const { resumeCommand } = await import("../../src/commands/resume.js");
+    await resumeCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Phase 3");
+    expect(output).toContain("Design");
+    expect(output).toContain("Mo (Architect)");
+    expect(output).toContain("architecture");
   });
 });

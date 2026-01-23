@@ -4,6 +4,7 @@ import { startCommand } from "./commands/start.js";
 import { resumeCommand } from "./commands/resume.js";
 import { statusCommand } from "./commands/status.js";
 import { resetCommand } from "./commands/reset.js";
+import { guideCommand } from "./commands/guide.js";
 
 const program = new Command();
 
@@ -41,5 +42,10 @@ program
   .description("Reset state (keeps artifacts)")
   .option("--hard", "Also remove artifacts")
   .action(resetCommand);
+
+program
+  .command("guide")
+  .description("Show the full workflow overview")
+  .action(guideCommand);
 
 program.parse();

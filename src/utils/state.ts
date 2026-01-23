@@ -67,3 +67,40 @@ export function getPhaseLabel(phase: number): string {
   };
   return labels[phase] ?? "Unknown";
 }
+
+export interface PhaseInfo {
+  name: string;
+  agent: string;
+  goal: string;
+  outputs: string[];
+}
+
+export function getPhaseInfo(phase: number): PhaseInfo {
+  const info: Record<number, PhaseInfo> = {
+    1: {
+      name: "Analysis",
+      agent: "Mary (Analyst)",
+      goal: "Gather requirements, constraints, and risks",
+      outputs: ["requirements.md", "constraints.md", "research.md", "risks.md"],
+    },
+    2: {
+      name: "Planning",
+      agent: "Larry (PM)",
+      goal: "Create PRD, user stories, and MVP scope",
+      outputs: ["prd.md", "stories.md", "mvp-scope.md"],
+    },
+    3: {
+      name: "Design",
+      agent: "Mo (Architect)",
+      goal: "Define architecture, data model, and conventions",
+      outputs: ["architecture.md", "data-model.md", "conventions.md"],
+    },
+    4: {
+      name: "Implementation",
+      agent: "Ralph (Developer)",
+      goal: "TDD build, code review, and validation",
+      outputs: ["code", "tests", "documentation"],
+    },
+  };
+  return info[phase] ?? { name: "Unknown", agent: "Unknown", goal: "Unknown", outputs: [] };
+}

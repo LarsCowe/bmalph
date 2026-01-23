@@ -81,6 +81,33 @@ describe("init command", () => {
     expect(mergeClaudeMd).toHaveBeenCalled();
   });
 
+  it("displays workflow roadmap with all phases", async () => {
+    const { isInitialized, scaffoldProject, mergeClaudeMd } = await import(
+      "../../src/installer.js"
+    );
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(scaffoldProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my-proj", description: "A project", level: "2" });
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Phase 1");
+    expect(output).toContain("Analysis");
+    expect(output).toContain("Phase 2");
+    expect(output).toContain("Planning");
+    expect(output).toContain("Phase 3");
+    expect(output).toContain("Design");
+    expect(output).toContain("Phase 4");
+    expect(output).toContain("Implementation");
+    expect(output).toContain("bmalph start");
+    expect(output).toContain("bmalph start -p 4");
+  });
+
   it("prompts user when options missing", async () => {
     const { isInitialized, scaffoldProject, mergeClaudeMd } = await import(
       "../../src/installer.js"

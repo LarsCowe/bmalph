@@ -27,6 +27,15 @@ vi.mock("../../src/utils/config.js", () => ({
 
 vi.mock("../../src/utils/state.js", () => ({
   writePhaseState: vi.fn(),
+  getPhaseInfo: vi.fn((phase: number) => {
+    const info: Record<number, { name: string; agent: string; goal: string; outputs: string[] }> = {
+      1: { name: "Analysis", agent: "Mary (Analyst)", goal: "Gather requirements, constraints, and risks", outputs: ["requirements.md", "constraints.md", "research.md", "risks.md"] },
+      2: { name: "Planning", agent: "Larry (PM)", goal: "Create PRD, user stories, and MVP scope", outputs: ["prd.md", "stories.md", "mvp-scope.md"] },
+      3: { name: "Design", agent: "Mo (Architect)", goal: "Define architecture, data model, and conventions", outputs: ["architecture.md", "data-model.md", "conventions.md"] },
+      4: { name: "Implementation", agent: "Ralph (Developer)", goal: "TDD build, code review, and validation", outputs: ["code", "tests", "documentation"] },
+    };
+    return info[phase] ?? { name: "Unknown", agent: "Unknown", goal: "Unknown", outputs: [] };
+  }),
 }));
 
 describe("start command", () => {
@@ -172,5 +181,33 @@ describe("start command", () => {
       [expect.stringContaining("bmalph.sh"), "3"],
       expect.objectContaining({ stdio: "inherit" })
     );
+  });
+
+  it("shows phase info before spawning", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    const { readConfig } = await import("../../src/utils/config.js");
+    const { writePhaseState } = await import("../../src/utils/state.js");
+    const { spawn } = await import("child_process");
+
+    vi.mocked(isInitialized).mockResolvedValue(true);
+    vi.mocked(readConfig).mockResolvedValue({
+      name: "test",
+      description: "",
+      level: 2,
+      createdAt: "2025-01-01T00:00:00.000Z",
+    });
+    vi.mocked(writePhaseState).mockResolvedValue(undefined);
+
+    const fakeChild = new EventEmitter();
+    vi.mocked(spawn).mockReturnValue(fakeChild as never);
+
+    const { startCommand } = await import("../../src/commands/start.js");
+    await startCommand({ phase: "2" });
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Phase 2");
+    expect(output).toContain("Planning");
+    expect(output).toContain("Larry (PM)");
+    expect(output).toContain("PRD");
   });
 });

@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { join } from "path";
 import chalk from "chalk";
 import { readConfig } from "../utils/config.js";
-import { writePhaseState, type PhaseState } from "../utils/state.js";
+import { writePhaseState, getPhaseInfo, type PhaseState } from "../utils/state.js";
 import { isInitialized } from "../installer.js";
 
 interface StartOptions {
@@ -40,8 +40,12 @@ export async function startCommand(options: StartOptions): Promise<void> {
 
   await writePhaseState(projectDir, state);
 
-  console.log(chalk.blue(`Starting bmalph loop at phase ${startPhase}...`));
-  console.log(chalk.dim("Press Ctrl+C to interrupt.\n"));
+  const phaseInfo = getPhaseInfo(startPhase);
+  console.log(chalk.blue(`\nStarting Phase ${startPhase} — ${phaseInfo.name}`));
+  console.log(`  Agent: ${chalk.bold(phaseInfo.agent)}`);
+  console.log(`  Goal: ${phaseInfo.goal}`);
+  console.log(`  Outputs: ${phaseInfo.outputs.join(", ")}`);
+  console.log(chalk.dim("\nPress Ctrl+C to interrupt.\n"));
 
   const scriptPath = join(projectDir, "bmalph/bmalph.sh");
 

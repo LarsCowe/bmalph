@@ -84,7 +84,13 @@ export async function initCommand(options: InitOptions): Promise<void> {
   console.log(chalk.green("\nbmalph initialized successfully!"));
   console.log(`\n  Project: ${chalk.bold(config.name)}`);
   console.log(`  Level: ${chalk.bold(String(config.level))}`);
+  console.log(`\nWorkflow:`);
+  console.log(`\n  Phase 1 — Analysis        Gather requirements, research, constraints`);
+  console.log(`  Phase 2 — Planning        PRD, user stories, MVP scope`);
+  console.log(`  Phase 3 — Design          Architecture, data model, conventions`);
+  console.log(`  Phase 4 — Implementation  TDD build via Ralph loop`);
   console.log(`\nNext steps:`);
-  console.log(`  ${chalk.cyan("bmalph start")}  - Start the execution loop`);
-  console.log(`  ${chalk.cyan("/bmalph")}       - Use interactively in Claude Code`);
+  console.log(`  ${chalk.cyan("bmalph start")}         Start from Phase 1 (Analysis)`);
+  console.log(`  ${chalk.cyan("bmalph start -p 4")}    Skip to implementation (if you already have a plan)`);
+  console.log(`  ${chalk.cyan("/bmalph")}              Use interactively in Claude Code`);
 }

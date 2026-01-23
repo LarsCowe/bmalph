@@ -5,6 +5,7 @@ import {
   readPhaseTasks,
   writePhaseTasks,
   getPhaseLabel,
+  getPhaseInfo,
   type PhaseState,
   type PhaseTask,
 } from "../../src/utils/state.js";
@@ -79,6 +80,46 @@ describe("state", () => {
 
     it("returns Unknown for invalid phase", () => {
       expect(getPhaseLabel(5)).toBe("Unknown");
+    });
+  });
+
+  describe("getPhaseInfo", () => {
+    it("returns correct info for phase 1", () => {
+      const info = getPhaseInfo(1);
+      expect(info.name).toBe("Analysis");
+      expect(info.agent).toBe("Mary (Analyst)");
+      expect(info.goal).toContain("requirements");
+      expect(info.outputs).toContain("requirements.md");
+    });
+
+    it("returns correct info for phase 2", () => {
+      const info = getPhaseInfo(2);
+      expect(info.name).toBe("Planning");
+      expect(info.agent).toBe("Larry (PM)");
+      expect(info.goal).toContain("PRD");
+      expect(info.outputs).toContain("prd.md");
+    });
+
+    it("returns correct info for phase 3", () => {
+      const info = getPhaseInfo(3);
+      expect(info.name).toBe("Design");
+      expect(info.agent).toBe("Mo (Architect)");
+      expect(info.goal).toContain("architecture");
+      expect(info.outputs).toContain("architecture.md");
+    });
+
+    it("returns correct info for phase 4", () => {
+      const info = getPhaseInfo(4);
+      expect(info.name).toBe("Implementation");
+      expect(info.agent).toBe("Ralph (Developer)");
+      expect(info.goal).toContain("TDD");
+      expect(info.outputs).toContain("code");
+    });
+
+    it("returns unknown info for invalid phase", () => {
+      const info = getPhaseInfo(99);
+      expect(info.name).toBe("Unknown");
+      expect(info.agent).toBe("Unknown");
     });
   });
 });

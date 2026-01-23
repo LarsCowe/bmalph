@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { join } from "path";
 import chalk from "chalk";
-import { readPhaseState, getPhaseLabel } from "../utils/state.js";
+import { readPhaseState, getPhaseInfo } from "../utils/state.js";
 import { isInitialized } from "../installer.js";
 
 export async function resumeCommand(): Promise<void> {
@@ -23,11 +23,12 @@ export async function resumeCommand(): Promise<void> {
     return;
   }
 
-  console.log(
-    chalk.blue(
-      `Resuming from Phase ${state.currentPhase} (${getPhaseLabel(state.currentPhase)}), iteration ${state.iteration}...`
-    )
-  );
+  const phaseInfo = getPhaseInfo(state.currentPhase);
+  console.log(chalk.blue(`\nResuming Phase ${state.currentPhase} — ${phaseInfo.name} (iteration ${state.iteration})`));
+  console.log(`  Agent: ${chalk.bold(phaseInfo.agent)}`);
+  console.log(`  Goal: ${phaseInfo.goal}`);
+  console.log(`  Outputs: ${phaseInfo.outputs.join(", ")}`);
+  console.log(chalk.dim("\nPress Ctrl+C to interrupt.\n"));
 
   const scriptPath = join(projectDir, "bmalph/bmalph.sh");
 
