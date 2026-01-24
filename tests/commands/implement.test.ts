@@ -78,7 +78,7 @@ describe("implement command", () => {
     await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\necho ok");
 
     const { runTransition } = await import("../../src/transition.js");
-    vi.mocked(runTransition).mockResolvedValue({ storiesCount: 5 });
+    vi.mocked(runTransition).mockResolvedValue({ storiesCount: 5, warnings: [] });
 
     const { implementCommand } = await import("../../src/commands/implement.js");
     await implementCommand();
