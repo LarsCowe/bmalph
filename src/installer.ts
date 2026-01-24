@@ -1,9 +1,16 @@
 import { cp, mkdir, readFile, writeFile, access } from "fs/promises";
+import { readFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+export function getPackageVersion(): string {
+  const pkgPath = join(__dirname, "..", "package.json");
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+  return pkg.version;
+}
 
 export function getBmadDir(): string {
   return join(__dirname, "..", "bmad");
@@ -52,7 +59,13 @@ modules:
   );
 
   // Copy Ralph loop and lib → .ralph/
-  await cp(join(ralphDir, "ralph_loop.sh"), join(projectDir, ".ralph/ralph_loop.sh"));
+  // Add version marker to ralph_loop.sh
+  const loopContent = await readFile(join(ralphDir, "ralph_loop.sh"), "utf-8");
+  const markerLine = `# bmalph-version: ${getPackageVersion()}`;
+  const markedContent = loopContent.includes("# bmalph-version:")
+    ? loopContent.replace(/# bmalph-version: .+/, markerLine)
+    : loopContent.replace(/^(#!.+\n)/, `$1${markerLine}\n`);
+  await writeFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
 
   // Install slash command → .claude/commands/bmalph.md

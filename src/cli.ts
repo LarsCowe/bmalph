@@ -4,13 +4,14 @@ import { implementCommand } from "./commands/implement.js";
 import { resetCommand } from "./commands/reset.js";
 import { upgradeCommand } from "./commands/upgrade.js";
 import { statusCommand } from "./commands/status.js";
+import { doctorCommand } from "./commands/doctor.js";
 
 const program = new Command();
 
 program
   .name("bmalph")
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
-  .version("0.7.0");
+  .version("0.8.0");
 
 program
   .command("init")
@@ -40,5 +41,10 @@ program
   .command("status")
   .description("Show current project phase and Ralph status")
   .action(statusCommand);
+
+program
+  .command("doctor")
+  .description("Check project health and report issues")
+  .action(doctorCommand);
 
 program.parse();
