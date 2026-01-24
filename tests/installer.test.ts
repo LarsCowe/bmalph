@@ -45,11 +45,20 @@ describe("installer", () => {
       await expect(access(join(testDir, "_bmad/bmm/agents"))).resolves.toBeUndefined();
     });
 
-    it("generates _bmad/config.yaml", async () => {
+    it("generates _bmad/config.yaml with all required BMAD variables", async () => {
       await installProject(testDir);
       const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
       expect(config).toContain("platform: claude-code");
-      expect(config).toContain("output_dir: _bmad-output");
+      expect(config).toContain("output_folder: _bmad-output");
+      expect(config).toContain("project_name:");
+      expect(config).toContain("user_name: BMad");
+      expect(config).toContain("communication_language: English");
+      expect(config).toContain("document_output_language: English");
+      expect(config).toContain("user_skill_level: intermediate");
+      expect(config).toContain("planning_artifacts: _bmad-output/planning-artifacts");
+      expect(config).toContain("implementation_artifacts: _bmad-output/implementation-artifacts");
+      expect(config).toContain("project_knowledge: docs");
+      expect(config).not.toContain("output_dir:");
     });
 
     it("copies Ralph loop and lib to .ralph/", async () => {
@@ -241,12 +250,31 @@ describe("installer", () => {
       expect(content).toMatch(/# bmalph-version: \d+\.\d+\.\d+/);
     });
 
-    it("config.yaml has valid structure", async () => {
+    it("config.yaml has valid structure with output_folder", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
       expect(content).toContain("platform:");
-      expect(content).toContain("output_dir:");
+      expect(content).toContain("output_folder:");
       expect(content).toContain("modules:");
+      expect(content).not.toContain("output_dir:");
+    });
+
+    it("config.yaml derives project_name from directory name", async () => {
+      await installProject(testDir);
+      const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
+      const dirName = testDir.split(/[/\\]/).pop();
+      expect(config).toContain(`project_name: ${dirName}`);
+    });
+
+    it("config.yaml derives project_name from bmalph/config.json when present", async () => {
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await writeFile(
+        join(testDir, "bmalph/config.json"),
+        JSON.stringify({ name: "my-cool-project", level: 3 }),
+      );
+      await copyBundledAssets(testDir);
+      const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
+      expect(config).toContain("project_name: my-cool-project");
     });
 
     it("slash command delegates to BMAD master agent", async () => {
