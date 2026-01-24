@@ -102,6 +102,32 @@ describe("init command", () => {
     expect(output).toContain("/bmalph");
   });
 
+  it("includes level prompt when level option not provided", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import(
+      "../../src/installer.js"
+    );
+    const { writeConfig } = await import("../../src/utils/config.js");
+    const inquirer = await import("inquirer");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+    vi.mocked(inquirer.default.prompt).mockResolvedValue({
+      name: "test",
+      description: "test",
+      level: 2,
+    });
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({});
+
+    const promptArgs = vi.mocked(inquirer.default.prompt).mock.calls[0][0] as Array<{ name: string; type: string }>;
+    const levelQuestion = promptArgs.find((q) => q.name === "level");
+    expect(levelQuestion).toBeDefined();
+    expect(levelQuestion!.type).toBe("list");
+  });
+
   it("prompts user when options missing", async () => {
     const { isInitialized, installProject, mergeClaudeMd } = await import(
       "../../src/installer.js"
