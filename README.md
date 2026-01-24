@@ -6,7 +6,7 @@ BMAD-METHOD planning + Ralph autonomous implementation, glued by a CLI.
 
 - Node.js 20+
 - Bash (WSL or Git Bash on Windows)
-- Claude Code CLI (`claude` in PATH) — needed for Ralph loop
+- Claude Code (`claude` in PATH) — needed for Ralph loop
 
 ## Installation
 
