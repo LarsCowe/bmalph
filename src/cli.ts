@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name("bmalph")
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
-  .version("0.4.1");
+  .version("0.4.2");
 
 program
   .command("init")
