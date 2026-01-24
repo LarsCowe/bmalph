@@ -584,6 +584,47 @@ So that I can access the app.
       expect(prompt).toContain("test-project");
     });
 
+    it("preserves rich PROMPT.md template with placeholder replacement", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      // Pre-populate .ralph/PROMPT.md with a template containing the placeholder
+      await writeFile(
+        join(testDir, ".ralph/PROMPT.md"),
+        "# Ralph Instructions\n\nYou are working on a [YOUR PROJECT NAME] project.\n\n## Rich Content\nThis is preserved.",
+      );
+
+      await runTransition(testDir);
+
+      const prompt = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(prompt).toContain("test-project");
+      expect(prompt).not.toContain("[YOUR PROJECT NAME]");
+      expect(prompt).toContain("Rich Content");
+      expect(prompt).toContain("This is preserved.");
+    });
+
+    it("uses generatePrompt fallback when PROMPT.md has no placeholder", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      // Pre-populate with a customized PROMPT.md (no placeholder)
+      await writeFile(
+        join(testDir, ".ralph/PROMPT.md"),
+        "# Custom Ralph\nNo placeholder here.",
+      );
+
+      await runTransition(testDir);
+
+      const prompt = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      // Should fall back to generatePrompt which contains these markers
+      expect(prompt).toContain("RALPH_STATUS");
+      expect(prompt).toContain("test-project");
+    });
+
     it("copies brainstorming sessions to .ralph/specs/brainstorming/", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await mkdir(join(testDir, "_bmad-output/brainstorming"), { recursive: true });

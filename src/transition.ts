@@ -343,7 +343,18 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     // Use default name
   }
 
-  const prompt = generatePrompt(projectName);
+  // Try to preserve rich PROMPT.md template if it has the placeholder
+  let prompt: string;
+  try {
+    const existingPrompt = await readFile(join(projectDir, ".ralph/PROMPT.md"), "utf-8");
+    if (existingPrompt.includes("[YOUR PROJECT NAME]")) {
+      prompt = existingPrompt.replace(/\[YOUR PROJECT NAME\]/g, projectName);
+    } else {
+      prompt = generatePrompt(projectName);
+    }
+  } catch {
+    prompt = generatePrompt(projectName);
+  }
   await writeFile(join(projectDir, ".ralph/PROMPT.md"), prompt);
 
   // Validate artifacts and collect warnings
