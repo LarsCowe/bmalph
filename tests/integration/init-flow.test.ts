@@ -80,12 +80,21 @@ describe("init flow integration", { timeout: 30000 }, () => {
     expect(readBack!.level).toBe(4);
   });
 
-  it("mergeClaudeMd includes workflow commands", async () => {
+  it("mergeClaudeMd references /bmalph slash command", async () => {
     await installProject(testDir);
     await mergeClaudeMd(testDir);
 
     const claudeMd = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
-    expect(claudeMd).toContain("bmalph plan");
+    expect(claudeMd).toContain("/bmalph");
     expect(claudeMd).toContain("bmalph implement");
+    expect(claudeMd).not.toContain("bmalph plan");
+    expect(claudeMd).not.toContain("bmalph status");
+  });
+
+  it("installs slash command to .claude/commands/", async () => {
+    await installProject(testDir);
+    await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
+    const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
+    expect(content).toContain("current-phase.json");
   });
 });

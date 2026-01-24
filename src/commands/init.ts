@@ -85,16 +85,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
   console.log(`\n  Project: ${chalk.bold(config.name)}`);
   console.log(`  Level: ${chalk.bold(String(config.level))}`);
   console.log(`\nInstalled:`);
-  console.log(`  _bmad/    BMAD agents and workflows`);
-  console.log(`  .ralph/   Ralph loop and templates`);
-  console.log(`  bmalph/   State management`);
-  console.log(`\nWorkflow:`);
-  console.log(`  Phase 1 — Analysis       ${chalk.dim("BP, MR, DR, TR, CB, VB")}`);
-  console.log(`  Phase 2 — Planning       ${chalk.dim("CP, VP, CU, VU")}`);
-  console.log(`  Phase 3 — Solutioning    ${chalk.dim("CA, VA, CE, VE, TD, IR")}`);
-  console.log(`  Phase 4 — Implementation ${chalk.dim("Ralph autonomous loop")}`);
-  console.log(`\nNext steps:`);
-  console.log(`  ${chalk.cyan("bmalph plan --phase 1")}    Start with Analysis`);
-  console.log(`  ${chalk.cyan("bmalph plan --phase 3")}    Skip to Solutioning (if you have a PRD)`);
-  console.log(`  ${chalk.cyan("bmalph implement")}         Start Ralph loop (if planning is done)`);
+  console.log(`  _bmad/             BMAD agents and workflows`);
+  console.log(`  .ralph/            Ralph loop and templates`);
+  console.log(`  .claude/commands/  Slash command (/bmalph)`);
+  console.log(`  bmalph/            State management`);
+  console.log(`\nNext step:`);
+  console.log(`  Use ${chalk.cyan("/bmalph")} in Claude Code to see your current phase and commands.`);
 }

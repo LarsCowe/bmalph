@@ -98,11 +98,8 @@ describe("init command", () => {
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("_bmad/");
     expect(output).toContain(".ralph/");
-    expect(output).toContain("Analysis");
-    expect(output).toContain("Solutioning");
-    expect(output).toContain("Implementation");
-    expect(output).toContain("bmalph plan");
-    expect(output).toContain("bmalph implement");
+    expect(output).toContain(".claude/commands/");
+    expect(output).toContain("/bmalph");
   });
 
   it("prompts user when options missing", async () => {

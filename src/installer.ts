@@ -13,6 +13,10 @@ export function getRalphDir(): string {
   return join(__dirname, "..", "ralph");
 }
 
+export function getSlashCommandsDir(): string {
+  return join(__dirname, "..", "slash-commands");
+}
+
 export async function installProject(projectDir: string): Promise<void> {
   const bmadDir = getBmadDir();
   const ralphDir = getRalphDir();
@@ -51,6 +55,14 @@ modules:
   await cp(join(ralphDir, "ralph_loop.sh"), join(projectDir, ".ralph/ralph_loop.sh"));
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
 
+  // Install slash command → .claude/commands/bmalph.md
+  const slashCommandsDir = getSlashCommandsDir();
+  await mkdir(join(projectDir, ".claude/commands"), { recursive: true });
+  await cp(
+    join(slashCommandsDir, "bmalph.md"),
+    join(projectDir, ".claude/commands/bmalph.md"),
+  );
+
   // Update .gitignore
   await updateGitignore(projectDir);
 }
@@ -83,27 +95,16 @@ export async function mergeClaudeMd(projectDir: string): Promise<void> {
   const snippet = `
 ## BMAD-METHOD Integration
 
-This project uses BMAD-METHOD for structured AI development planning.
+Use \`/bmalph\` to see your current phase and available commands.
+Use \`/bmalph\` again when ready to advance to the next phase.
 
-### Loading BMAD Master Agent
+### One-time setup
 
-Load the BMAD master agent to access all workflows:
-\`\`\`
-Read and follow the instructions in _bmad/core/agents/bmad-master.agent.yaml
-\`\`\`
+Run \`bmalph init\` to initialize the project.
 
-### Available Workflows
+### Transition to implementation
 
-- Phase 1 (Analysis): BP, MR, DR, TR, CB, VB
-- Phase 2 (Planning): CP, VP, CU, VU
-- Phase 3 (Solutioning): CA, VA, CE, VE, TD, IR
-- Phase 4 (Implementation): Handled by Ralph autonomous loop
-
-### Quick Commands
-
-- \`bmalph plan --phase 1\` — Set active phase and see available commands
-- \`bmalph implement\` — Transition to Ralph implementation loop
-- \`bmalph status\` — Show current progress
+Run \`bmalph implement\` to convert planning artifacts to Ralph format and start the implementation loop.
 `;
 
   let existing = "";

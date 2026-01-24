@@ -92,6 +92,33 @@ describe("installer", () => {
     });
   });
 
+  describe("installSlashCommand", () => {
+    it("copies slash command to .claude/commands/bmalph.md", async () => {
+      await installProject(testDir);
+      await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
+    });
+
+    it("creates .claude/commands/ directory", async () => {
+      await installProject(testDir);
+      await expect(access(join(testDir, ".claude/commands"))).resolves.toBeUndefined();
+    });
+
+    it("slash command contains phase state reading instructions", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
+      expect(content).toContain("current-phase.json");
+    });
+
+    it("slash command contains phase advancement logic", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
+      expect(content).toContain("Phase 1");
+      expect(content).toContain("Phase 2");
+      expect(content).toContain("Phase 3");
+      expect(content).toContain("Phase 4");
+    });
+  });
+
   describe("mergeClaudeMd", () => {
     it("creates CLAUDE.md if it does not exist", async () => {
       await mergeClaudeMd(testDir);
@@ -115,12 +142,24 @@ describe("installer", () => {
       expect(matches).toHaveLength(1);
     });
 
-    it("includes workflow commands", async () => {
+    it("references /bmalph slash command", async () => {
       await mergeClaudeMd(testDir);
       const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
-      expect(content).toContain("bmalph plan");
+      expect(content).toContain("/bmalph");
+    });
+
+    it("does not reference deprecated plan --phase command", async () => {
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+      expect(content).not.toContain("--phase");
+      expect(content).not.toContain("bmalph plan");
+      expect(content).not.toContain("bmalph status");
+    });
+
+    it("references bmalph implement for transition", async () => {
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
       expect(content).toContain("bmalph implement");
-      expect(content).toContain("bmalph status");
     });
   });
 });
