@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm, writeFile, readFile } from "fs/promises";
+import { mkdir, rm, writeFile, readFile, access } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
@@ -573,7 +573,7 @@ So that I can access the app.
       expect(fixPlan).toContain("  > AC: Given an already registered email, When user submits registration form, Then an error message is shown");
     });
 
-    it("copies artifacts to .ralph/specs/", async () => {
+    it("copies planning-artifacts to .ralph/specs/planning-artifacts/", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# PRD content");
       await writeFile(
@@ -583,8 +583,42 @@ So that I can access the app.
 
       await runTransition(testDir);
 
-      const prd = await readFile(join(testDir, ".ralph/specs/prd.md"), "utf-8");
+      const prd = await readFile(join(testDir, ".ralph/specs/planning-artifacts/prd.md"), "utf-8");
       expect(prd).toContain("PRD content");
+    });
+
+    it("copies implementation-artifacts to .ralph/specs/implementation-artifacts/", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "_bmad-output/implementation-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      await writeFile(join(testDir, "_bmad-output/implementation-artifacts/sprint-plan.md"), "# Sprint 1");
+      await writeFile(join(testDir, "_bmad-output/implementation-artifacts/story-1.1.md"), "# Story Detail");
+
+      await runTransition(testDir);
+
+      const sprint = await readFile(join(testDir, ".ralph/specs/implementation-artifacts/sprint-plan.md"), "utf-8");
+      expect(sprint).toContain("Sprint 1");
+      const story = await readFile(join(testDir, ".ralph/specs/implementation-artifacts/story-1.1.md"), "utf-8");
+      expect(story).toContain("Story Detail");
+    });
+
+    it("works when only planning-artifacts exists (no implementation-artifacts)", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# PRD");
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+
+      await runTransition(testDir);
+
+      const prd = await readFile(join(testDir, ".ralph/specs/planning-artifacts/prd.md"), "utf-8");
+      expect(prd).toContain("PRD");
+      // implementation-artifacts should not exist
+      await expect(access(join(testDir, ".ralph/specs/implementation-artifacts"))).rejects.toThrow();
     });
 
     it("generates PROMPT.md with project name", async () => {

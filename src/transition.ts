@@ -208,11 +208,15 @@ For each story in @fix_plan.md:
 
 ## Current Objectives
 1. Read .ralph/PROJECT_CONTEXT.md for project goals, constraints, and scope
-2. Study .ralph/specs/* to learn about the project specifications
-3. Review .ralph/@fix_plan.md for current priorities
-4. Implement the highest priority story using TDD
-5. Run tests after each implementation
-6. Update @fix_plan.md with your progress
+2. Study .ralph/specs/ for BMAD planning output:
+   - planning-artifacts/: PRD, architecture, epics/stories, test design, UX
+   - implementation-artifacts/: sprint plans, detailed stories (if present)
+   - brainstorming/: brainstorming sessions (if present)
+3. Check docs/ for project knowledge and research documents (if present)
+4. Review .ralph/@fix_plan.md for current priorities
+5. Implement the highest priority story using TDD
+6. Run tests after each implementation
+7. Update @fix_plan.md with your progress
 
 ## Key Principles
 - ONE story per loop - focus completely on it
@@ -529,24 +533,18 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     await writeFile(fixPlanPath, fixPlan);
   }
 
-  // Copy specs (PRD, architecture, stories)
-  await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
-  for (const file of files) {
-    await cp(
-      join(artifactsDir, file),
-      join(projectDir, ".ralph/specs", file),
-      { recursive: true },
-    );
-  }
-
-  // Copy brainstorming sessions if they exist
-  const brainstormingDir = join(projectDir, "_bmad-output/brainstorming");
+  // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
+  const bmadOutputDir = join(projectDir, "_bmad-output");
   try {
-    await access(brainstormingDir);
-    await cp(brainstormingDir, join(projectDir, ".ralph/specs/brainstorming"), { recursive: true });
-    debug("Copied brainstorming sessions to .ralph/specs/brainstorming/");
+    await access(bmadOutputDir);
+    await cp(bmadOutputDir, join(projectDir, ".ralph/specs"), { recursive: true });
+    debug("Copied _bmad-output/ to .ralph/specs/");
   } catch {
-    debug("No brainstorming directory found, skipping");
+    // Fall back to just artifactsDir if _bmad-output root doesn't exist
+    await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
+    for (const file of files) {
+      await cp(join(artifactsDir, file), join(projectDir, ".ralph/specs", file), { recursive: true });
+    }
   }
 
   // Generate PROJECT_CONTEXT.md from planning artifacts

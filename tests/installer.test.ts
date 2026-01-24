@@ -355,6 +355,24 @@ describe("installer", () => {
       expect(content.length).toBeGreaterThan(0);
     });
 
+    it("PROMPT.md references planning-artifacts/ structure", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toContain("planning-artifacts/");
+    });
+
+    it("PROMPT.md references implementation-artifacts/", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toContain("implementation-artifacts/");
+    });
+
+    it("PROMPT.md references docs/ for project knowledge", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toContain("docs/");
+    });
+
     it("@AGENT.md template exists and has content", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
