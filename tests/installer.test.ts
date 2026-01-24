@@ -129,12 +129,19 @@ describe("installer", () => {
     it("copies all slash commands from slash-commands/ directory", async () => {
       await installProject(testDir);
       const files = await readdir(join(testDir, ".claude/commands"));
-      expect(files.length).toBeGreaterThanOrEqual(56);
+      expect(files.length).toBeGreaterThanOrEqual(54);
       expect(files).toContain("bmalph.md");
       expect(files).toContain("analyst.md");
       expect(files).toContain("architect.md");
       expect(files).toContain("create-prd.md");
       expect(files).toContain("sprint-planning.md");
+    });
+
+    it("does not include Phase 4 commands replaced by Ralph", async () => {
+      await installProject(testDir);
+      const files = await readdir(join(testDir, ".claude/commands"));
+      expect(files).not.toContain("dev-story.md");
+      expect(files).not.toContain("code-review.md");
     });
 
     it("agent slash commands reference correct YAML paths", async () => {
@@ -207,6 +214,21 @@ describe("installer", () => {
       const taskManifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
       const workflowManifest = await readFile(join(testDir, "_bmad/_config/workflow-manifest.csv"), "utf-8");
       expect(workflowManifest).toBe(taskManifest);
+    });
+
+    it("generates _bmad/_config/bmad-help.csv with combined manifest content", async () => {
+      await copyBundledAssets(testDir);
+      const helpCsv = await readFile(join(testDir, "_bmad/_config/bmad-help.csv"), "utf-8");
+      expect(helpCsv).toContain("module,phase,name,code,");
+      expect(helpCsv).toContain("core,,Brainstorming,BS,");
+      expect(helpCsv).toContain("bmm,1-analysis,Create Brief,CB,");
+    });
+
+    it("manifests do not contain Dev Story or Code Review entries", async () => {
+      await copyBundledAssets(testDir);
+      const manifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
+      expect(manifest).not.toContain("Dev Story");
+      expect(manifest).not.toContain("Code Review");
     });
 
     it("does NOT create bmalph/state/ or .ralph/logs/", async () => {
@@ -386,6 +408,33 @@ describe("installer", () => {
       await mergeClaudeMd(testDir);
       const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
       expect(content).toContain("bmalph implement");
+    });
+
+    it("documents all 4 phases", async () => {
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+      expect(content).toContain("Analysis");
+      expect(content).toContain("Planning");
+      expect(content).toContain("Solutioning");
+      expect(content).toContain("Implementation");
+    });
+
+    it("references /bmad-help for command discovery", async () => {
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+      expect(content).toContain("/bmad-help");
+    });
+
+    it("lists available agent slash commands", async () => {
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+      expect(content).toContain("/analyst");
+      expect(content).toContain("/architect");
+      expect(content).toContain("/pm");
+      expect(content).toContain("/sm");
+      expect(content).toContain("/dev");
+      expect(content).toContain("/ux-designer");
+      expect(content).toContain("/tea");
     });
   });
 });

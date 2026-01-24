@@ -86,6 +86,11 @@ describe("init flow integration", { timeout: 30000 }, () => {
     expect(claudeMd).toContain("bmalph implement");
     expect(claudeMd).toContain("bmalph status");
     expect(claudeMd).not.toContain("bmalph plan");
+    // Expanded content: phases, agents, help command
+    expect(claudeMd).toContain("Analysis");
+    expect(claudeMd).toContain("Implementation");
+    expect(claudeMd).toContain("/bmad-help");
+    expect(claudeMd).toContain("/analyst");
   });
 
   it("installs slash command to .claude/commands/", async () => {

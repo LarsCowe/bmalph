@@ -1,12 +1,13 @@
 {
   "name": "bmalph",
-  "version": "0.8.14",
+  "version": "0.8.15",
   "description": "Unified AI Development Framework - BMAD phases with Ralph execution loop for Claude Code",
   "type": "module",
   "bin": {
     "bmalph": "./bin/bmalph.js"
   },
   "scripts": {
+    "prepare": "tsc",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
