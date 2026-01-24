@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, type Story } from "../src/transition.js";
+import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, type Story, type TechStack } from "../src/transition.js";
 
 describe("transition", () => {
   describe("parseStories", () => {
@@ -741,6 +741,267 @@ So that I can access the app.
       const result = await runTransition(testDir);
 
       expect(result.warnings).not.toContainEqual(expect.stringMatching(/NO.?GO/i));
+    });
+  });
+
+  describe("detectTechStack", () => {
+    it("detects Node/TypeScript stack", () => {
+      const content = `# Architecture
+
+## Tech Stack
+- Runtime: Node.js 20 LTS
+- Language: TypeScript
+- Test Runner: Vitest
+- Build: tsc
+- Package Manager: npm
+`;
+      const stack = detectTechStack(content);
+
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toContain("npm install");
+      expect(stack!.test).toContain("vitest");
+      expect(stack!.build).toContain("tsc");
+      expect(stack!.dev).toContain("npm run dev");
+    });
+
+    it("detects Python stack", () => {
+      const content = `# Architecture
+
+## Technology Stack
+- Language: Python 3.12
+- Framework: FastAPI
+- Testing: pytest
+- Package Manager: pip
+`;
+      const stack = detectTechStack(content);
+
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toContain("pip install");
+      expect(stack!.test).toContain("pytest");
+    });
+
+    it("detects Rust stack", () => {
+      const content = `# Architecture
+
+## Tech Stack
+- Language: Rust
+- Build System: Cargo
+`;
+      const stack = detectTechStack(content);
+
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toContain("cargo build");
+      expect(stack!.test).toContain("cargo test");
+      expect(stack!.build).toContain("cargo build --release");
+    });
+
+    it("detects Go stack", () => {
+      const content = `# Architecture
+
+## Tech Stack
+- Language: Go / Golang
+- Build: go build
+`;
+      const stack = detectTechStack(content);
+
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toContain("go mod download");
+      expect(stack!.test).toContain("go test");
+      expect(stack!.build).toContain("go build");
+    });
+
+    it("returns null when no stack section found", () => {
+      const content = `# Architecture
+
+Just some general text about the system.
+No tech stack section here.
+`;
+      expect(detectTechStack(content)).toBeNull();
+    });
+
+    it("returns null when stack section has no recognized keywords", () => {
+      const content = `# Architecture
+
+## Tech Stack
+- Language: Brainfuck
+- Build: custom
+`;
+      expect(detectTechStack(content)).toBeNull();
+    });
+
+    it("detects jest as test runner for Node", () => {
+      const content = `## Tech Stack
+- Runtime: Node.js
+- Testing: Jest
+`;
+      const stack = detectTechStack(content);
+      expect(stack).not.toBeNull();
+      expect(stack!.test).toContain("jest");
+    });
+  });
+
+  describe("customizeAgentMd", () => {
+    const template = `# Agent Build Instructions
+
+## Project Setup
+\`\`\`bash
+# Install dependencies (example for Node.js project)
+npm install
+
+# Or for Python project
+pip install -r requirements.txt
+
+# Or for Rust project
+cargo build
+\`\`\`
+
+## Running Tests
+\`\`\`bash
+# Node.js
+npm test
+
+# Python
+pytest
+
+# Rust
+cargo test
+\`\`\`
+
+## Build Commands
+\`\`\`bash
+# Production build
+npm run build
+# or
+cargo build --release
+\`\`\`
+
+## Development Server
+\`\`\`bash
+# Start development server
+npm run dev
+# or
+cargo run
+\`\`\`
+
+## Key Learnings
+- Update this section
+`;
+
+    it("replaces all sections with stack-specific commands", () => {
+      const stack: TechStack = {
+        setup: "npm install",
+        test: "npx vitest run",
+        build: "npx tsc",
+        dev: "npm run dev",
+      };
+
+      const result = customizeAgentMd(template, stack);
+
+      // Should contain the specific commands
+      expect(result).toContain("npm install");
+      expect(result).toContain("npx vitest run");
+      expect(result).toContain("npx tsc");
+      expect(result).toContain("npm run dev");
+
+      // Should not contain the multi-language examples
+      expect(result).not.toContain("pip install");
+      expect(result).not.toContain("cargo build");
+      expect(result).not.toContain("cargo test");
+      expect(result).not.toContain("cargo run");
+    });
+
+    it("preserves content after Development Server section", () => {
+      const stack: TechStack = {
+        setup: "npm install",
+        test: "npm test",
+        build: "npm run build",
+        dev: "npm run dev",
+      };
+
+      const result = customizeAgentMd(template, stack);
+
+      expect(result).toContain("## Key Learnings");
+      expect(result).toContain("Update this section");
+    });
+  });
+
+  describe("runTransition AGENT.md", () => {
+    let testDir: string;
+
+    beforeEach(async () => {
+      testDir = join(tmpdir(), `bmalph-agent-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
+      await writeFile(
+        join(testDir, "bmalph/config.json"),
+        JSON.stringify({ name: "test-project", level: 2 }),
+      );
+    });
+
+    afterEach(async () => {
+      try {
+        await rm(testDir, { recursive: true, force: true });
+      } catch {
+        // Windows file locking
+      }
+    });
+
+    it("customizes AGENT.md when architecture file has detectable stack", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        `# Architecture\n\n## Tech Stack\n- Runtime: Node.js\n- Language: TypeScript\n- Testing: Vitest\n`,
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      // Pre-populate AGENT.md with the template
+      await writeFile(
+        join(testDir, ".ralph/@AGENT.md"),
+        `# Agent Build Instructions\n\n## Project Setup\n\`\`\`bash\nnpm install\n# Or for Python project\npip install -r requirements.txt\n\`\`\`\n\n## Running Tests\n\`\`\`bash\nnpm test\n# Python\npytest\n\`\`\`\n\n## Build Commands\n\`\`\`bash\nnpm run build\n# or\ncargo build --release\n\`\`\`\n\n## Development Server\n\`\`\`bash\nnpm run dev\n# or\ncargo run\n\`\`\`\n`,
+      );
+
+      await runTransition(testDir);
+
+      const agent = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(agent).toContain("npm install");
+      expect(agent).not.toContain("pip install");
+      expect(agent).not.toContain("cargo");
+    });
+
+    it("leaves AGENT.md unchanged when no architecture file exists", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      const originalContent = "# Original AGENT\nUntouched.";
+      await writeFile(join(testDir, ".ralph/@AGENT.md"), originalContent);
+
+      await runTransition(testDir);
+
+      const agent = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(agent).toBe(originalContent);
+    });
+
+    it("leaves AGENT.md unchanged when stack is not detectable", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        `# Architecture\n\nJust text, no tech stack section.\n`,
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      const originalContent = "# Original AGENT\nUntouched.";
+      await writeFile(join(testDir, ".ralph/@AGENT.md"), originalContent);
+
+      await runTransition(testDir);
+
+      const agent = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(agent).toBe(originalContent);
     });
   });
 
