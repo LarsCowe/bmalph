@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, writeFile, access } from "fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile, access } from "fs/promises";
 import { readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -97,12 +97,14 @@ modules:
   await writeFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
 
-  // Install slash command → .claude/commands/bmalph.md
+  // Install all slash commands → .claude/commands/
   await mkdir(join(projectDir, ".claude/commands"), { recursive: true });
-  await cp(
-    join(slashCommandsDir, "bmalph.md"),
-    join(projectDir, ".claude/commands/bmalph.md"),
-  );
+  const slashFiles = await readdir(slashCommandsDir);
+  for (const file of slashFiles) {
+    if (file.endsWith(".md")) {
+      await cp(join(slashCommandsDir, file), join(projectDir, ".claude/commands", file));
+    }
+  }
 
   // Update .gitignore
   await updateGitignore(projectDir);
@@ -114,7 +116,7 @@ modules:
       ".ralph/lib/",
       ".ralph/PROMPT.md",
       ".ralph/@AGENT.md",
-      ".claude/commands/bmalph.md",
+      ".claude/commands/",
       ".gitignore",
     ],
   };

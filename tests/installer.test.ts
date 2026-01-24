@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { installProject, copyBundledAssets, mergeClaudeMd, isInitialized } from "../src/installer.js";
-import { mkdir, rm, access, readFile, writeFile } from "fs/promises";
+import { mkdir, rm, access, readFile, writeFile, readdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -125,6 +125,50 @@ describe("installer", () => {
       expect(content).not.toContain("Phase 1");
       expect(content).not.toContain("Phase 2");
     });
+
+    it("copies all slash commands from slash-commands/ directory", async () => {
+      await installProject(testDir);
+      const files = await readdir(join(testDir, ".claude/commands"));
+      expect(files.length).toBeGreaterThanOrEqual(56);
+      expect(files).toContain("bmalph.md");
+      expect(files).toContain("analyst.md");
+      expect(files).toContain("architect.md");
+      expect(files).toContain("create-prd.md");
+      expect(files).toContain("sprint-planning.md");
+    });
+
+    it("agent slash commands reference correct YAML paths", async () => {
+      await installProject(testDir);
+      const agents = [
+        { file: "analyst.md", path: "_bmad/bmm/agents/analyst.agent.yaml" },
+        { file: "architect.md", path: "_bmad/bmm/agents/architect.agent.yaml" },
+        { file: "dev.md", path: "_bmad/bmm/agents/dev.agent.yaml" },
+        { file: "pm.md", path: "_bmad/bmm/agents/pm.agent.yaml" },
+        { file: "sm.md", path: "_bmad/bmm/agents/sm.agent.yaml" },
+        { file: "tea.md", path: "_bmad/bmm/agents/tea.agent.yaml" },
+        { file: "ux-designer.md", path: "_bmad/bmm/agents/ux-designer.agent.yaml" },
+        { file: "quick-flow-solo-dev.md", path: "_bmad/bmm/agents/quick-flow-solo-dev.agent.yaml" },
+      ];
+      for (const { file, path } of agents) {
+        const content = await readFile(join(testDir, ".claude/commands", file), "utf-8");
+        expect(content).toContain(path);
+      }
+    });
+
+    it("workflow slash command adopts agent role and executes workflow", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".claude/commands/create-prd.md"), "utf-8");
+      expect(content).toContain("_bmad/bmm/agents/pm.agent.yaml");
+      expect(content).toContain("_bmad/bmm/workflows/2-plan-workflows/prd/workflow.md");
+      expect(content).toMatch(/[Cc]reate/);
+    });
+
+    it("core slash commands execute directly without agent role", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".claude/commands/brainstorming.md"), "utf-8");
+      expect(content).toContain("_bmad/core/workflows/brainstorming/workflow.md");
+      expect(content).not.toContain("agent");
+    });
   });
 
   describe("copyBundledAssets", { timeout: 30000 }, () => {
@@ -142,6 +186,7 @@ describe("installer", () => {
       await expect(access(join(testDir, ".ralph/PROMPT.md"))).resolves.toBeUndefined();
       await expect(access(join(testDir, ".ralph/@AGENT.md"))).resolves.toBeUndefined();
       await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".claude/commands/analyst.md"))).resolves.toBeUndefined();
       expect(result.updatedPaths.length).toBeGreaterThan(0);
     });
 
@@ -231,7 +276,7 @@ describe("installer", () => {
       expect(result.updatedPaths).toContain(".ralph/lib/");
       expect(result.updatedPaths).toContain(".ralph/PROMPT.md");
       expect(result.updatedPaths).toContain(".ralph/@AGENT.md");
-      expect(result.updatedPaths).toContain(".claude/commands/bmalph.md");
+      expect(result.updatedPaths).toContain(".claude/commands/");
       expect(result.updatedPaths).toContain(".gitignore");
     });
   });
