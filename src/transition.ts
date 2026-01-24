@@ -1,5 +1,6 @@
 import { readFile, writeFile, readdir, cp, mkdir, access } from "fs/promises";
 import { join } from "path";
+import { debug } from "./utils/logger.js";
 
 export interface Story {
   epic: string;
@@ -17,13 +18,17 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
   ];
 
   for (const candidate of candidates) {
+    const fullPath = join(projectDir, candidate);
+    debug(`Checking artifacts dir: ${fullPath}`);
     try {
-      await access(join(projectDir, candidate));
-      return join(projectDir, candidate);
+      await access(fullPath);
+      debug(`Found artifacts at: ${fullPath}`);
+      return fullPath;
     } catch {
       continue;
     }
   }
+  debug(`No artifacts found. Checked: ${candidates.join(", ")}`);
   return null;
 }
 
@@ -240,15 +245,18 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
 
   // Find and parse stories file
   const files = await readdir(artifactsDir);
+  const STORIES_PATTERN = /^(epics[-_]?(and[-_]?)?)?stor(y|ies)([-_]\d+)?\.md$/i;
   const storiesFile = files.find(
-    (f) => f.includes("epic") || f.includes("stories") || f.includes("story"),
+    (f) => STORIES_PATTERN.test(f) || /epic/i.test(f),
   );
 
   if (!storiesFile) {
+    debug(`Files in artifacts dir: ${files.join(", ")}`);
     throw new Error(
-      "No epics/stories file found in artifacts. Run 'CE' (Create Epics and Stories) first.",
+      `No epics/stories file found in ${artifactsDir}. Available files: ${files.join(", ")}. Run 'CE' (Create Epics and Stories) first.`,
     );
   }
+  debug(`Using stories file: ${storiesFile}`);
 
   const storiesContent = await readFile(join(artifactsDir, storiesFile), "utf-8");
   const stories = parseStories(storiesContent);

@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, rename } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
 import { validateState } from "./validate.js";
@@ -34,10 +34,10 @@ export async function readState(projectDir: string): Promise<BmalphState | null>
 
 export async function writeState(projectDir: string, state: BmalphState): Promise<void> {
   await mkdir(join(projectDir, STATE_DIR), { recursive: true });
-  await writeFile(
-    join(projectDir, STATE_DIR, "current-phase.json"),
-    JSON.stringify(state, null, 2) + "\n",
-  );
+  const target = join(projectDir, STATE_DIR, "current-phase.json");
+  const tmp = target + ".tmp";
+  await writeFile(tmp, JSON.stringify(state, null, 2) + "\n");
+  await rename(tmp, target);
 }
 
 export function getPhaseLabel(phase: number): string {

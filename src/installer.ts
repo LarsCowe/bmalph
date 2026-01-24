@@ -33,6 +33,23 @@ export async function copyBundledAssets(projectDir: string): Promise<UpgradeResu
   const ralphDir = getRalphDir();
   const slashCommandsDir = getSlashCommandsDir();
 
+  // Validate source directories exist
+  try {
+    await access(bmadDir);
+  } catch {
+    throw new Error(`BMAD source directory not found at ${bmadDir}. Package may be corrupted.`);
+  }
+  try {
+    await access(ralphDir);
+  } catch {
+    throw new Error(`Ralph source directory not found at ${ralphDir}. Package may be corrupted.`);
+  }
+  try {
+    await access(slashCommandsDir);
+  } catch {
+    throw new Error(`Slash commands directory not found at ${slashCommandsDir}. Package may be corrupted.`);
+  }
+
   // Copy BMAD files → _bmad/
   await cp(bmadDir, join(projectDir, "_bmad"), { recursive: true });
 
