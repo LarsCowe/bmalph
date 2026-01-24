@@ -10,6 +10,16 @@ interface InitOptions {
 }
 
 export async function initCommand(options: InitOptions): Promise<void> {
+  try {
+    await runInit(options);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`Error: ${message}`));
+    process.exit(1);
+  }
+}
+
+async function runInit(options: InitOptions): Promise<void> {
   const projectDir = process.cwd();
 
   if (await isInitialized(projectDir)) {

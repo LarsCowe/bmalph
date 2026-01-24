@@ -2,6 +2,16 @@ import chalk from "chalk";
 import { isInitialized, copyBundledAssets, mergeClaudeMd } from "../installer.js";
 
 export async function upgradeCommand(): Promise<void> {
+  try {
+    await runUpgrade();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`Error: ${message}`));
+    process.exit(1);
+  }
+}
+
+async function runUpgrade(): Promise<void> {
   const projectDir = process.cwd();
 
   if (!(await isInitialized(projectDir))) {

@@ -8,6 +8,16 @@ interface ResetOptions {
 }
 
 export async function resetCommand(options: ResetOptions): Promise<void> {
+  try {
+    await runReset(options);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`Error: ${message}`));
+    process.exit(1);
+  }
+}
+
+async function runReset(options: ResetOptions): Promise<void> {
   const projectDir = process.cwd();
 
   if (!(await isInitialized(projectDir))) {

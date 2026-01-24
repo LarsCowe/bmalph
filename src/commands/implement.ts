@@ -7,6 +7,16 @@ import { isInitialized } from "../installer.js";
 import { runTransition } from "../transition.js";
 
 export async function implementCommand(): Promise<void> {
+  try {
+    await runImplement();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(chalk.red(`Error: ${message}`));
+    process.exit(1);
+  }
+}
+
+async function runImplement(): Promise<void> {
   const projectDir = process.cwd();
 
   if (!(await isInitialized(projectDir))) {

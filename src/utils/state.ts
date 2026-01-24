@@ -1,5 +1,7 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { readJsonFile } from "./json.js";
+import { validateState } from "./validate.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -25,12 +27,9 @@ export interface PhaseInfo {
 const STATE_DIR = "bmalph/state";
 
 export async function readState(projectDir: string): Promise<BmalphState | null> {
-  try {
-    const content = await readFile(join(projectDir, STATE_DIR, "current-phase.json"), "utf-8");
-    return JSON.parse(content) as BmalphState;
-  } catch {
-    return null;
-  }
+  const data = await readJsonFile<unknown>(join(projectDir, STATE_DIR, "current-phase.json"));
+  if (data === null) return null;
+  return validateState(data);
 }
 
 export async function writeState(projectDir: string, state: BmalphState): Promise<void> {
@@ -104,10 +103,9 @@ export interface RalphStatus {
 }
 
 export async function readRalphStatus(projectDir: string): Promise<RalphStatus> {
-  try {
-    const content = await readFile(join(projectDir, ".ralph/status.json"), "utf-8");
-    return JSON.parse(content) as RalphStatus;
-  } catch {
+  const data = await readJsonFile<RalphStatus>(join(projectDir, ".ralph/status.json"));
+  if (data === null) {
     return { loopCount: 0, status: "not_started", tasksCompleted: 0, tasksTotal: 0 };
   }
+  return data;
 }
