@@ -2,13 +2,14 @@ import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { implementCommand } from "./commands/implement.js";
 import { resetCommand } from "./commands/reset.js";
+import { upgradeCommand } from "./commands/upgrade.js";
 
 const program = new Command();
 
 program
   .name("bmalph")
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
-  .version("0.4.2");
+  .version("0.6.0");
 
 program
   .command("init")
@@ -28,5 +29,10 @@ program
   .description("Reset state (keeps artifacts)")
   .option("--hard", "Also remove _bmad/, .ralph/, and artifacts")
   .action(resetCommand);
+
+program
+  .command("upgrade")
+  .description("Update installed assets to match current bmalph version")
+  .action(upgradeCommand);
 
 program.parse();

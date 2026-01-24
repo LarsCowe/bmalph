@@ -17,15 +17,14 @@ export function getSlashCommandsDir(): string {
   return join(__dirname, "..", "slash-commands");
 }
 
-export async function installProject(projectDir: string): Promise<void> {
+export interface UpgradeResult {
+  updatedPaths: string[];
+}
+
+export async function copyBundledAssets(projectDir: string): Promise<UpgradeResult> {
   const bmadDir = getBmadDir();
   const ralphDir = getRalphDir();
-
-  // Create directory structure
-  await mkdir(join(projectDir, "bmalph/state"), { recursive: true });
-  await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
-  await mkdir(join(projectDir, ".ralph/logs"), { recursive: true });
-  await mkdir(join(projectDir, ".ralph/lib"), { recursive: true });
+  const slashCommandsDir = getSlashCommandsDir();
 
   // Copy BMAD files → _bmad/
   await cp(bmadDir, join(projectDir, "_bmad"), { recursive: true });
@@ -42,6 +41,7 @@ modules:
   );
 
   // Copy Ralph templates → .ralph/
+  await mkdir(join(projectDir, ".ralph"), { recursive: true });
   await cp(
     join(ralphDir, "templates/PROMPT.md"),
     join(projectDir, ".ralph/PROMPT.md"),
@@ -56,7 +56,6 @@ modules:
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
 
   // Install slash command → .claude/commands/bmalph.md
-  const slashCommandsDir = getSlashCommandsDir();
   await mkdir(join(projectDir, ".claude/commands"), { recursive: true });
   await cp(
     join(slashCommandsDir, "bmalph.md"),
@@ -65,6 +64,28 @@ modules:
 
   // Update .gitignore
   await updateGitignore(projectDir);
+
+  return {
+    updatedPaths: [
+      "_bmad/",
+      ".ralph/ralph_loop.sh",
+      ".ralph/lib/",
+      ".ralph/PROMPT.md",
+      ".ralph/@AGENT.md",
+      ".claude/commands/bmalph.md",
+      ".gitignore",
+    ],
+  };
+}
+
+export async function installProject(projectDir: string): Promise<void> {
+  // Create user directories (not overwritten by upgrade)
+  await mkdir(join(projectDir, "bmalph/state"), { recursive: true });
+  await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
+  await mkdir(join(projectDir, ".ralph/logs"), { recursive: true });
+  await mkdir(join(projectDir, ".ralph/docs/generated"), { recursive: true });
+
+  await copyBundledAssets(projectDir);
 }
 
 async function updateGitignore(projectDir: string): Promise<void> {

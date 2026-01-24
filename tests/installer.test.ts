@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { installProject, mergeClaudeMd, isInitialized } from "../src/installer.js";
+import { installProject, copyBundledAssets, mergeClaudeMd, isInitialized } from "../src/installer.js";
 import { mkdir, rm, access, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -116,6 +116,96 @@ describe("installer", () => {
       expect(content).toContain("Phase 2");
       expect(content).toContain("Phase 3");
       expect(content).toContain("Phase 4");
+    });
+  });
+
+  describe("copyBundledAssets", { timeout: 30000 }, () => {
+    it("copies all expected files", async () => {
+      // Create minimal directory structure (simulating existing init)
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await mkdir(join(testDir, ".claude/commands"), { recursive: true });
+
+      const result = await copyBundledAssets(testDir);
+
+      await expect(access(join(testDir, "_bmad/core"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, "_bmad/config.yaml"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".ralph/ralph_loop.sh"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".ralph/lib"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".ralph/PROMPT.md"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".ralph/@AGENT.md"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
+      expect(result.updatedPaths.length).toBeGreaterThan(0);
+    });
+
+    it("does NOT create bmalph/state/ or .ralph/logs/", async () => {
+      const result = await copyBundledAssets(testDir);
+
+      await expect(access(join(testDir, "bmalph/state"))).rejects.toThrow();
+      await expect(access(join(testDir, ".ralph/logs"))).rejects.toThrow();
+      expect(result.updatedPaths).not.toContain("bmalph/state/");
+    });
+
+    it("preserves existing .ralph/@fix_plan.md", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/@fix_plan.md"), "# My Plan\n- task 1");
+
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(content).toBe("# My Plan\n- task 1");
+    });
+
+    it("preserves existing .ralph/logs/ content", async () => {
+      await mkdir(join(testDir, ".ralph/logs"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/logs/run-001.log"), "log content");
+
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/logs/run-001.log"), "utf-8");
+      expect(content).toBe("log content");
+    });
+
+    it("preserves existing bmalph/config.json", async () => {
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await writeFile(
+        join(testDir, "bmalph/config.json"),
+        JSON.stringify({ name: "my-project", level: 3 }),
+      );
+
+      await copyBundledAssets(testDir);
+
+      const config = JSON.parse(
+        await readFile(join(testDir, "bmalph/config.json"), "utf-8"),
+      );
+      expect(config.name).toBe("my-project");
+      expect(config.level).toBe(3);
+    });
+
+    it("is idempotent (twice = same result)", async () => {
+      await copyBundledAssets(testDir);
+      const firstRun = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+
+      await copyBundledAssets(testDir);
+      const secondRun = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+
+      expect(firstRun).toBe(secondRun);
+
+      // .gitignore should not duplicate entries
+      const gitignore = await readFile(join(testDir, ".gitignore"), "utf-8");
+      const matches = gitignore.match(/\.ralph\/logs\//g);
+      expect(matches).toHaveLength(1);
+    });
+
+    it("returns list of updated paths", async () => {
+      const result = await copyBundledAssets(testDir);
+
+      expect(result.updatedPaths).toContain("_bmad/");
+      expect(result.updatedPaths).toContain(".ralph/ralph_loop.sh");
+      expect(result.updatedPaths).toContain(".ralph/lib/");
+      expect(result.updatedPaths).toContain(".ralph/PROMPT.md");
+      expect(result.updatedPaths).toContain(".ralph/@AGENT.md");
+      expect(result.updatedPaths).toContain(".claude/commands/bmalph.md");
+      expect(result.updatedPaths).toContain(".gitignore");
     });
   });
 
