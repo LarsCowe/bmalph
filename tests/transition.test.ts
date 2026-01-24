@@ -531,6 +531,36 @@ So that I can access the app.
       expect(prompt).toContain("test-project");
     });
 
+    it("copies brainstorming sessions to .ralph/specs/brainstorming/", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "_bmad-output/brainstorming"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/brainstorming/session-1.md"), "# Brainstorm 1");
+      await writeFile(join(testDir, "_bmad-output/brainstorming/session-2.md"), "# Brainstorm 2");
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+
+      await runTransition(testDir);
+
+      const bs1 = await readFile(join(testDir, ".ralph/specs/brainstorming/session-1.md"), "utf-8");
+      const bs2 = await readFile(join(testDir, ".ralph/specs/brainstorming/session-2.md"), "utf-8");
+      expect(bs1).toContain("Brainstorm 1");
+      expect(bs2).toContain("Brainstorm 2");
+    });
+
+    it("skips brainstorming copy gracefully when directory does not exist", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+
+      // Should not throw
+      const result = await runTransition(testDir);
+      expect(result.storiesCount).toBe(1);
+    });
+
     it("returns warnings array in result", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(

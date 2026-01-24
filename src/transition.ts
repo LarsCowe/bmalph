@@ -308,6 +308,16 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     );
   }
 
+  // Copy brainstorming sessions if they exist
+  const brainstormingDir = join(projectDir, "_bmad-output/brainstorming");
+  try {
+    await access(brainstormingDir);
+    await cp(brainstormingDir, join(projectDir, ".ralph/specs/brainstorming"), { recursive: true });
+    debug("Copied brainstorming sessions to .ralph/specs/brainstorming/");
+  } catch {
+    debug("No brainstorming directory found, skipping");
+  }
+
   // Generate PROMPT.md
   let projectName = "project";
   try {
