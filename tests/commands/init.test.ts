@@ -20,7 +20,7 @@ vi.mock("inquirer", () => ({
 
 vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
-  scaffoldProject: vi.fn(),
+  installProject: vi.fn(),
   mergeClaudeMd: vi.fn(),
 }));
 
@@ -49,46 +49,46 @@ describe("init command", () => {
     await initCommand({});
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("already initialized")
+      expect.stringContaining("already initialized"),
     );
-    const { scaffoldProject } = await import("../../src/installer.js");
-    expect(scaffoldProject).not.toHaveBeenCalled();
+    const { installProject } = await import("../../src/installer.js");
+    expect(installProject).not.toHaveBeenCalled();
   });
 
-  it("scaffolds and writes config with CLI options", async () => {
-    const { isInitialized, scaffoldProject, mergeClaudeMd } = await import(
+  it("installs and writes config with CLI options", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import(
       "../../src/installer.js"
     );
     const { writeConfig } = await import("../../src/utils/config.js");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
-    vi.mocked(scaffoldProject).mockResolvedValue(undefined);
+    vi.mocked(installProject).mockResolvedValue(undefined);
     vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
     vi.mocked(writeConfig).mockResolvedValue(undefined);
 
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({ name: "my-proj", description: "A project", level: "2" });
 
-    expect(scaffoldProject).toHaveBeenCalled();
+    expect(installProject).toHaveBeenCalled();
     expect(writeConfig).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         name: "my-proj",
         description: "A project",
         level: 2,
-      })
+      }),
     );
     expect(mergeClaudeMd).toHaveBeenCalled();
   });
 
-  it("displays workflow roadmap with all phases", async () => {
-    const { isInitialized, scaffoldProject, mergeClaudeMd } = await import(
+  it("displays installed directories and workflow info", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import(
       "../../src/installer.js"
     );
     const { writeConfig } = await import("../../src/utils/config.js");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
-    vi.mocked(scaffoldProject).mockResolvedValue(undefined);
+    vi.mocked(installProject).mockResolvedValue(undefined);
     vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
     vi.mocked(writeConfig).mockResolvedValue(undefined);
 
@@ -96,27 +96,24 @@ describe("init command", () => {
     await initCommand({ name: "my-proj", description: "A project", level: "2" });
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
-    expect(output).toContain("Phase 1");
+    expect(output).toContain("_bmad/");
+    expect(output).toContain(".ralph/");
     expect(output).toContain("Analysis");
-    expect(output).toContain("Phase 2");
-    expect(output).toContain("Planning");
-    expect(output).toContain("Phase 3");
-    expect(output).toContain("Design");
-    expect(output).toContain("Phase 4");
+    expect(output).toContain("Solutioning");
     expect(output).toContain("Implementation");
-    expect(output).toContain("bmalph start");
-    expect(output).toContain("bmalph start -p 4");
+    expect(output).toContain("bmalph plan");
+    expect(output).toContain("bmalph implement");
   });
 
   it("prompts user when options missing", async () => {
-    const { isInitialized, scaffoldProject, mergeClaudeMd } = await import(
+    const { isInitialized, installProject, mergeClaudeMd } = await import(
       "../../src/installer.js"
     );
     const { writeConfig } = await import("../../src/utils/config.js");
     const inquirer = await import("inquirer");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
-    vi.mocked(scaffoldProject).mockResolvedValue(undefined);
+    vi.mocked(installProject).mockResolvedValue(undefined);
     vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
     vi.mocked(writeConfig).mockResolvedValue(undefined);
     vi.mocked(inquirer.default.prompt).mockResolvedValue({
@@ -135,7 +132,7 @@ describe("init command", () => {
         name: "prompted-name",
         description: "prompted-desc",
         level: 3,
-      })
+      }),
     );
   });
 });

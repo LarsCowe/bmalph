@@ -19,7 +19,6 @@ describe("status command", () => {
   let testDir: string;
   let originalCwd: string;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
-  let exitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     testDir = join(tmpdir(), `bmalph-status-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -27,19 +26,17 @@ describe("status command", () => {
     originalCwd = process.cwd();
     process.chdir(testDir);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
     vi.resetModules();
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
     consoleSpy.mockRestore();
-    exitSpy.mockRestore();
     vi.resetModules();
     try {
       await rm(testDir, { recursive: true, force: true });
     } catch {
-      // Windows file locking - ignore cleanup errors
+      // Windows file locking
     }
   });
 
@@ -47,19 +44,13 @@ describe("status command", () => {
     const { statusCommand } = await import("../../src/commands/status.js");
     await statusCommand();
 
-    expect(exitSpy).toHaveBeenCalledWith(1);
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("not initialized"));
   });
 
-  it("shows not started when no state", async () => {
+  it("shows no active phase when no state exists", async () => {
     await writeFile(
       join(testDir, "bmalph/config.json"),
-      JSON.stringify({
-        name: "test",
-        description: "test project",
-        level: 2,
-        createdAt: "2025-01-01T00:00:00.000Z",
-      })
+      JSON.stringify({ name: "test", description: "desc", level: 2, createdAt: "2025-01-01T00:00:00Z" }),
     );
 
     const { statusCommand } = await import("../../src/commands/status.js");
@@ -67,28 +58,22 @@ describe("status command", () => {
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("test");
-    expect(output).toContain("Not started");
+    expect(output).toContain("No active phase");
   });
 
-  it("shows current state when running", async () => {
+  it("shows planning phase info for phases 1-3", async () => {
     await writeFile(
       join(testDir, "bmalph/config.json"),
-      JSON.stringify({
-        name: "my-app",
-        description: "My application",
-        level: 3,
-        createdAt: "2025-01-01T00:00:00.000Z",
-      })
+      JSON.stringify({ name: "my-app", level: 2 }),
     );
     await writeFile(
       join(testDir, "bmalph/state/current-phase.json"),
       JSON.stringify({
         currentPhase: 2,
-        iteration: 5,
-        status: "running",
-        startedAt: "2025-01-01T00:00:00.000Z",
-        lastUpdated: "2025-01-01T01:00:00.000Z",
-      })
+        status: "planning",
+        startedAt: "2025-01-01T00:00:00Z",
+        lastUpdated: "2025-01-01T01:00:00Z",
+      }),
     );
 
     const { statusCommand } = await import("../../src/commands/status.js");
@@ -96,8 +81,38 @@ describe("status command", () => {
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("my-app");
-    expect(output).toContain("2/4");
+    expect(output).toContain("2");
     expect(output).toContain("Planning");
-    expect(output).toContain("running");
+    expect(output).toContain("CP");
+  });
+
+  it("shows ralph status for phase 4", async () => {
+    await writeFile(
+      join(testDir, "bmalph/config.json"),
+      JSON.stringify({ name: "my-app", level: 2 }),
+    );
+    await writeFile(
+      join(testDir, "bmalph/state/current-phase.json"),
+      JSON.stringify({
+        currentPhase: 4,
+        status: "implementing",
+        startedAt: "2025-01-01T00:00:00Z",
+        lastUpdated: "2025-01-01T01:00:00Z",
+      }),
+    );
+    await mkdir(join(testDir, ".ralph"), { recursive: true });
+    await writeFile(
+      join(testDir, ".ralph/status.json"),
+      JSON.stringify({ loopCount: 3, status: "running", tasksCompleted: 2, tasksTotal: 8 }),
+    );
+
+    const { statusCommand } = await import("../../src/commands/status.js");
+    await statusCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Implementation");
+    expect(output).toContain("3 iterations");
+    expect(output).toContain("2/8");
+    expect(output).toContain("Running");
   });
 });

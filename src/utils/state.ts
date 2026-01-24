@@ -1,60 +1,43 @@
-import { readFile, writeFile } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
-export interface PhaseState {
+export interface BmalphState {
   currentPhase: number;
-  iteration: number;
-  status: "running" | "paused" | "completed";
+  status: "planning" | "implementing" | "completed";
   startedAt: string;
   lastUpdated: string;
 }
 
-export interface PhaseTask {
-  id: string;
-  title: string;
-  status: "pending" | "in_progress" | "completed" | "blocked";
-  priority: number;
-  description?: string;
+export interface PhaseCommand {
+  code: string;
+  name: string;
+  agent: string;
+  description: string;
+  required: boolean;
+}
+
+export interface PhaseInfo {
+  name: string;
+  agent: string;
+  commands: PhaseCommand[];
 }
 
 const STATE_DIR = "bmalph/state";
 
-export async function readPhaseState(projectDir: string): Promise<PhaseState | null> {
+export async function readState(projectDir: string): Promise<BmalphState | null> {
   try {
     const content = await readFile(join(projectDir, STATE_DIR, "current-phase.json"), "utf-8");
-    return JSON.parse(content) as PhaseState;
+    return JSON.parse(content) as BmalphState;
   } catch {
     return null;
   }
 }
 
-export async function writePhaseState(projectDir: string, state: PhaseState): Promise<void> {
+export async function writeState(projectDir: string, state: BmalphState): Promise<void> {
+  await mkdir(join(projectDir, STATE_DIR), { recursive: true });
   await writeFile(
     join(projectDir, STATE_DIR, "current-phase.json"),
-    JSON.stringify(state, null, 2) + "\n"
-  );
-}
-
-export async function readPhaseTasks(projectDir: string, phase: number): Promise<PhaseTask[]> {
-  try {
-    const content = await readFile(
-      join(projectDir, STATE_DIR, `phase-${phase}-tasks.json`),
-      "utf-8"
-    );
-    return JSON.parse(content) as PhaseTask[];
-  } catch {
-    return [];
-  }
-}
-
-export async function writePhaseTasks(
-  projectDir: string,
-  phase: number,
-  tasks: PhaseTask[]
-): Promise<void> {
-  await writeFile(
-    join(projectDir, STATE_DIR, `phase-${phase}-tasks.json`),
-    JSON.stringify(tasks, null, 2) + "\n"
+    JSON.stringify(state, null, 2) + "\n",
   );
 }
 
@@ -62,45 +45,69 @@ export function getPhaseLabel(phase: number): string {
   const labels: Record<number, string> = {
     1: "Analysis",
     2: "Planning",
-    3: "Design",
+    3: "Solutioning",
     4: "Implementation",
   };
   return labels[phase] ?? "Unknown";
-}
-
-export interface PhaseInfo {
-  name: string;
-  agent: string;
-  goal: string;
-  outputs: string[];
 }
 
 export function getPhaseInfo(phase: number): PhaseInfo {
   const info: Record<number, PhaseInfo> = {
     1: {
       name: "Analysis",
-      agent: "Mary (Analyst)",
-      goal: "Gather requirements, constraints, and risks",
-      outputs: ["requirements.md", "constraints.md", "research.md", "risks.md"],
+      agent: "Analyst",
+      commands: [
+        { code: "BP", name: "Brainstorm Project", agent: "analyst", description: "Expert guided facilitation through brainstorming techniques", required: false },
+        { code: "MR", name: "Market Research", agent: "analyst", description: "Market analysis, competitive landscape, customer needs", required: false },
+        { code: "DR", name: "Domain Research", agent: "analyst", description: "Industry domain deep dive, subject matter expertise", required: false },
+        { code: "TR", name: "Technical Research", agent: "analyst", description: "Technical feasibility, architecture options", required: false },
+        { code: "CB", name: "Create Brief", agent: "analyst", description: "Guided experience to nail down your product idea", required: false },
+        { code: "VB", name: "Validate Brief", agent: "analyst", description: "Validates product brief completeness", required: false },
+      ],
     },
     2: {
       name: "Planning",
-      agent: "Larry (PM)",
-      goal: "Create PRD, user stories, and MVP scope",
-      outputs: ["prd.md", "stories.md", "mvp-scope.md"],
+      agent: "PM (John)",
+      commands: [
+        { code: "CP", name: "Create PRD", agent: "pm", description: "Expert led facilitation to produce your PRD", required: true },
+        { code: "VP", name: "Validate PRD", agent: "pm", description: "Validate PRD is comprehensive and cohesive", required: false },
+        { code: "CU", name: "Create UX", agent: "ux-designer", description: "Guidance through realizing the plan for your UX", required: false },
+        { code: "VU", name: "Validate UX", agent: "ux-designer", description: "Validates UX design deliverables", required: false },
+      ],
     },
     3: {
-      name: "Design",
-      agent: "Mo (Architect)",
-      goal: "Define architecture, data model, and conventions",
-      outputs: ["architecture.md", "data-model.md", "conventions.md"],
+      name: "Solutioning",
+      agent: "Architect",
+      commands: [
+        { code: "CA", name: "Create Architecture", agent: "architect", description: "Guided workflow to document technical decisions", required: true },
+        { code: "VA", name: "Validate Architecture", agent: "architect", description: "Validates architecture completeness", required: false },
+        { code: "CE", name: "Create Epics and Stories", agent: "pm", description: "Create the epics and stories listing", required: true },
+        { code: "VE", name: "Validate Epics and Stories", agent: "pm", description: "Validates epics and stories completeness", required: false },
+        { code: "TD", name: "Test Design", agent: "tea", description: "Create comprehensive test scenarios", required: false },
+        { code: "IR", name: "Implementation Readiness", agent: "architect", description: "Ensure PRD, UX, architecture, and stories are aligned", required: true },
+      ],
     },
     4: {
       name: "Implementation",
-      agent: "Ralph (Developer)",
-      goal: "TDD build, code review, and validation",
-      outputs: ["code", "tests", "documentation"],
+      agent: "Developer (Amelia)",
+      commands: [],
     },
   };
-  return info[phase] ?? { name: "Unknown", agent: "Unknown", goal: "Unknown", outputs: [] };
+  return info[phase] ?? { name: "Unknown", agent: "Unknown", commands: [] };
+}
+
+export interface RalphStatus {
+  loopCount: number;
+  status: "running" | "blocked" | "completed" | "not_started";
+  tasksCompleted: number;
+  tasksTotal: number;
+}
+
+export async function readRalphStatus(projectDir: string): Promise<RalphStatus> {
+  try {
+    const content = await readFile(join(projectDir, ".ralph/status.json"), "utf-8");
+    return JSON.parse(content) as RalphStatus;
+  } catch {
+    return { loopCount: 0, status: "not_started", tasksCompleted: 0, tasksTotal: 0 };
+  }
 }

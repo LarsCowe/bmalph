@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { writeConfig, type BmalphConfig } from "../utils/config.js";
-import { scaffoldProject, mergeClaudeMd, isInitialized } from "../installer.js";
+import { installProject, mergeClaudeMd, isInitialized } from "../installer.js";
 
 interface InitOptions {
   name?: string;
@@ -53,7 +53,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
               choices: [
                 { name: "0 - Trivial (single-shot, no loop)", value: 0 },
                 { name: "1 - Simple (quick flow, 1-5 iterations)", value: 1 },
-                { name: "2 - Moderate (all 4 phases, standard)", value: 2 },
+                { name: "2 - Moderate (all phases, standard)", value: 2 },
                 { name: "3 - Complex (extra review iterations)", value: 3 },
                 { name: "4 - Enterprise (full formal process)", value: 4 },
               ],
@@ -67,9 +67,9 @@ export async function initCommand(options: InitOptions): Promise<void> {
     level = level ?? answers.level;
   }
 
-  console.log(chalk.blue("\nScaffolding bmalph..."));
+  console.log(chalk.blue("\nInstalling BMAD + Ralph..."));
 
-  await scaffoldProject(projectDir);
+  await installProject(projectDir);
 
   const config: BmalphConfig = {
     name: name!,
@@ -84,13 +84,17 @@ export async function initCommand(options: InitOptions): Promise<void> {
   console.log(chalk.green("\nbmalph initialized successfully!"));
   console.log(`\n  Project: ${chalk.bold(config.name)}`);
   console.log(`  Level: ${chalk.bold(String(config.level))}`);
+  console.log(`\nInstalled:`);
+  console.log(`  _bmad/    BMAD agents and workflows`);
+  console.log(`  .ralph/   Ralph loop and templates`);
+  console.log(`  bmalph/   State management`);
   console.log(`\nWorkflow:`);
-  console.log(`\n  Phase 1 — Analysis        Gather requirements, research, constraints`);
-  console.log(`  Phase 2 — Planning        PRD, user stories, MVP scope`);
-  console.log(`  Phase 3 — Design          Architecture, data model, conventions`);
-  console.log(`  Phase 4 — Implementation  TDD build via Ralph loop`);
+  console.log(`  Phase 1 — Analysis       ${chalk.dim("BP, MR, DR, TR, CB, VB")}`);
+  console.log(`  Phase 2 — Planning       ${chalk.dim("CP, VP, CU, VU")}`);
+  console.log(`  Phase 3 — Solutioning    ${chalk.dim("CA, VA, CE, VE, TD, IR")}`);
+  console.log(`  Phase 4 — Implementation ${chalk.dim("Ralph autonomous loop")}`);
   console.log(`\nNext steps:`);
-  console.log(`  ${chalk.cyan("bmalph start")}         Start from Phase 1 (Analysis)`);
-  console.log(`  ${chalk.cyan("bmalph start -p 4")}    Skip to implementation (if you already have a plan)`);
-  console.log(`  ${chalk.cyan("/bmalph")}              Use interactively in Claude Code`);
+  console.log(`  ${chalk.cyan("bmalph plan --phase 1")}    Start with Analysis`);
+  console.log(`  ${chalk.cyan("bmalph plan --phase 3")}    Skip to Solutioning (if you have a PRD)`);
+  console.log(`  ${chalk.cyan("bmalph implement")}         Start Ralph loop (if planning is done)`);
 }

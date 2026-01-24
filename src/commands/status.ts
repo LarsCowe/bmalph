@@ -1,6 +1,6 @@
 import chalk from "chalk";
+import { readState, getPhaseInfo, getPhaseLabel, readRalphStatus } from "../utils/state.js";
 import { readConfig } from "../utils/config.js";
-import { readPhaseState, readPhaseTasks, getPhaseLabel } from "../utils/state.js";
 import { isInitialized } from "../installer.js";
 
 export async function statusCommand(): Promise<void> {
@@ -8,56 +8,73 @@ export async function statusCommand(): Promise<void> {
 
   if (!(await isInitialized(projectDir))) {
     console.log(chalk.red("bmalph is not initialized. Run 'bmalph init' first."));
-    process.exit(1);
-  }
-
-  const config = await readConfig(projectDir);
-  const state = await readPhaseState(projectDir);
-
-  console.log(chalk.bold("\n  BMALPH Status\n"));
-
-  if (config) {
-    console.log(`  Project:    ${config.name}`);
-    console.log(`  Level:      ${config.level}`);
-  }
-
-  if (!state) {
-    console.log(`  Status:     ${chalk.dim("Not started")}`);
-    console.log(`\n  Run ${chalk.cyan("bmalph start")} to begin.\n`);
     return;
   }
 
-  const statusColor =
-    state.status === "running"
-      ? chalk.green
-      : state.status === "paused"
-        ? chalk.yellow
-        : chalk.blue;
+  const config = await readConfig(projectDir);
+  const state = await readState(projectDir);
 
-  console.log(`  Phase:      ${state.currentPhase}/4 (${getPhaseLabel(state.currentPhase)})`);
-  console.log(`  Iteration:  ${state.iteration}`);
-  console.log(`  Status:     ${statusColor(state.status)}`);
-  console.log(`  Started:    ${new Date(state.startedAt).toLocaleString()}`);
-  console.log(`  Updated:    ${new Date(state.lastUpdated).toLocaleString()}`);
-
-  // Show task summary per phase
-  console.log(chalk.bold("\n  Phase Progress:\n"));
-  for (let p = 1; p <= 4; p++) {
-    const tasks = await readPhaseTasks(projectDir, p);
-    const completed = tasks.filter((t) => t.status === "completed").length;
-    const total = tasks.length;
-    const indicator =
-      p < state.currentPhase
-        ? chalk.green("done")
-        : p === state.currentPhase
-          ? chalk.yellow("active")
-          : chalk.dim("pending");
-
-    if (total > 0) {
-      console.log(`  ${p}. ${getPhaseLabel(p).padEnd(15)} [${indicator}] ${completed}/${total} tasks`);
-    } else {
-      console.log(`  ${p}. ${getPhaseLabel(p).padEnd(15)} [${indicator}]`);
-    }
+  console.log(chalk.bold(`\n${config?.name ?? "Project"}`));
+  if (config?.description) {
+    console.log(chalk.dim(config.description));
   }
-  console.log();
+  console.log("");
+
+  if (!state) {
+    console.log(chalk.yellow("No active phase. Run 'bmalph plan --phase 1' to start."));
+    return;
+  }
+
+  const phaseLabel = getPhaseLabel(state.currentPhase);
+  const info = getPhaseInfo(state.currentPhase);
+
+  console.log(`Phase:  ${chalk.cyan(`${state.currentPhase} — ${phaseLabel}`)}`);
+  console.log(`Agent:  ${info.agent}`);
+  console.log(`Status: ${formatStatus(state.status)}`);
+  console.log("");
+
+  if (state.currentPhase <= 3) {
+    console.log(chalk.dim("Planning phase — use BMAD commands in Claude Code"));
+    if (info.commands.length > 0) {
+      const required = info.commands.filter((c) => c.required);
+      if (required.length > 0) {
+        console.log(chalk.dim(`Required: ${required.map((c) => c.code).join(", ")}`));
+      }
+    }
+  } else {
+    const ralph = await readRalphStatus(projectDir);
+    console.log(`Loop:   ${ralph.loopCount} iterations`);
+    console.log(`Tasks:  ${ralph.tasksCompleted}/${ralph.tasksTotal} completed`);
+    console.log(`Ralph:  ${formatRalphStatus(ralph.status)}`);
+  }
+
+  console.log("");
+}
+
+function formatStatus(status: string): string {
+  switch (status) {
+    case "planning":
+      return chalk.blue("Planning");
+    case "implementing":
+      return chalk.green("Implementing");
+    case "completed":
+      return chalk.green("Completed");
+    default:
+      return status;
+  }
+}
+
+function formatRalphStatus(status: string): string {
+  switch (status) {
+    case "running":
+      return chalk.green("Running");
+    case "blocked":
+      return chalk.red("Blocked");
+    case "completed":
+      return chalk.green("Completed");
+    case "not_started":
+      return chalk.dim("Not started");
+    default:
+      return status;
+  }
 }

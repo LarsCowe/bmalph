@@ -1,15 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
-  readPhaseState,
-  writePhaseState,
-  readPhaseTasks,
-  writePhaseTasks,
+  readState,
+  writeState,
   getPhaseLabel,
   getPhaseInfo,
-  type PhaseState,
-  type PhaseTask,
+  readRalphStatus,
+  type BmalphState,
 } from "../../src/utils/state.js";
-import { mkdir, rm } from "fs/promises";
+import { mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -29,44 +27,24 @@ describe("state", () => {
     }
   });
 
-  describe("readPhaseState", () => {
+  describe("readState", () => {
     it("returns null when state does not exist", async () => {
-      const state = await readPhaseState(testDir);
+      const state = await readState(testDir);
       expect(state).toBeNull();
     });
 
     it("reads written state", async () => {
-      const state: PhaseState = {
+      const state: BmalphState = {
         currentPhase: 2,
-        iteration: 3,
-        status: "running",
+        status: "planning",
         startedAt: "2025-01-01T00:00:00.000Z",
         lastUpdated: "2025-01-01T01:00:00.000Z",
       };
 
-      await writePhaseState(testDir, state);
-      const result = await readPhaseState(testDir);
+      await writeState(testDir, state);
+      const result = await readState(testDir);
 
       expect(result).toEqual(state);
-    });
-  });
-
-  describe("phase tasks", () => {
-    it("returns empty array when no tasks exist", async () => {
-      const tasks = await readPhaseTasks(testDir, 1);
-      expect(tasks).toEqual([]);
-    });
-
-    it("writes and reads tasks", async () => {
-      const tasks: PhaseTask[] = [
-        { id: "1", title: "Research competitors", status: "completed", priority: 1 },
-        { id: "2", title: "Interview stakeholders", status: "pending", priority: 2 },
-      ];
-
-      await writePhaseTasks(testDir, 1, tasks);
-      const result = await readPhaseTasks(testDir, 1);
-
-      expect(result).toEqual(tasks);
     });
   });
 
@@ -74,7 +52,7 @@ describe("state", () => {
     it("returns correct labels", () => {
       expect(getPhaseLabel(1)).toBe("Analysis");
       expect(getPhaseLabel(2)).toBe("Planning");
-      expect(getPhaseLabel(3)).toBe("Design");
+      expect(getPhaseLabel(3)).toBe("Solutioning");
       expect(getPhaseLabel(4)).toBe("Implementation");
     });
 
@@ -84,42 +62,70 @@ describe("state", () => {
   });
 
   describe("getPhaseInfo", () => {
-    it("returns correct info for phase 1", () => {
+    it("returns correct info for phase 1 (Analysis)", () => {
       const info = getPhaseInfo(1);
       expect(info.name).toBe("Analysis");
-      expect(info.agent).toBe("Mary (Analyst)");
-      expect(info.goal).toContain("requirements");
-      expect(info.outputs).toContain("requirements.md");
+      expect(info.agent).toBe("Analyst");
+      expect(info.commands).toHaveLength(6);
+      expect(info.commands[0].code).toBe("BP");
     });
 
-    it("returns correct info for phase 2", () => {
+    it("returns correct info for phase 2 (Planning)", () => {
       const info = getPhaseInfo(2);
       expect(info.name).toBe("Planning");
-      expect(info.agent).toBe("Larry (PM)");
-      expect(info.goal).toContain("PRD");
-      expect(info.outputs).toContain("prd.md");
+      expect(info.agent).toBe("PM (John)");
+      expect(info.commands.find((c) => c.code === "CP")?.required).toBe(true);
     });
 
-    it("returns correct info for phase 3", () => {
+    it("returns correct info for phase 3 (Solutioning)", () => {
       const info = getPhaseInfo(3);
-      expect(info.name).toBe("Design");
-      expect(info.agent).toBe("Mo (Architect)");
-      expect(info.goal).toContain("architecture");
-      expect(info.outputs).toContain("architecture.md");
+      expect(info.name).toBe("Solutioning");
+      expect(info.agent).toBe("Architect");
+      expect(info.commands.find((c) => c.code === "CA")?.required).toBe(true);
+      expect(info.commands.find((c) => c.code === "CE")?.required).toBe(true);
+      expect(info.commands.find((c) => c.code === "IR")?.required).toBe(true);
     });
 
-    it("returns correct info for phase 4", () => {
+    it("returns correct info for phase 4 (Implementation)", () => {
       const info = getPhaseInfo(4);
       expect(info.name).toBe("Implementation");
-      expect(info.agent).toBe("Ralph (Developer)");
-      expect(info.goal).toContain("TDD");
-      expect(info.outputs).toContain("code");
+      expect(info.agent).toBe("Developer (Amelia)");
+      expect(info.commands).toHaveLength(0);
     });
 
     it("returns unknown info for invalid phase", () => {
       const info = getPhaseInfo(99);
       expect(info.name).toBe("Unknown");
       expect(info.agent).toBe("Unknown");
+    });
+  });
+
+  describe("readRalphStatus", () => {
+    it("returns default status when no file exists", async () => {
+      const status = await readRalphStatus(testDir);
+      expect(status).toEqual({
+        loopCount: 0,
+        status: "not_started",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+    });
+
+    it("reads status from file", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const statusData = {
+        loopCount: 5,
+        status: "running",
+        tasksCompleted: 3,
+        tasksTotal: 10,
+      };
+      await writeFile(
+        join(testDir, ".ralph/status.json"),
+        JSON.stringify(statusData),
+      );
+
+      const result = await readRalphStatus(testDir);
+      expect(result).toEqual(statusData);
     });
   });
 });
