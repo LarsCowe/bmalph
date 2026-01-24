@@ -6,6 +6,7 @@ export interface Story {
   id: string;
   title: string;
   description: string;
+  acceptanceCriteria: string[];
 }
 
 export async function findArtifactsDir(projectDir: string): Promise<string | null> {
@@ -24,6 +25,44 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
     }
   }
   return null;
+}
+
+function isGivenLine(line: string): boolean {
+  return /^\*?\*?Given\*?\*?\s/.test(line.trim());
+}
+
+function isGwtLine(line: string): boolean {
+  return /^\*?\*?(Given|When|Then)\*?\*?\s/.test(line.trim());
+}
+
+function stripBold(text: string): string {
+  return text.replace(/\*\*/g, "");
+}
+
+function parseAcBlocks(lines: string[]): string[] {
+  const criteria: string[] = [];
+  let current: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (isGivenLine(trimmed)) {
+      // Start new criterion block
+      if (current.length > 0) {
+        criteria.push(current.map(stripBold).join(", "));
+      }
+      current = [trimmed];
+    } else if (isGwtLine(trimmed)) {
+      current.push(trimmed);
+    }
+  }
+
+  if (current.length > 0) {
+    criteria.push(current.map(stripBold).join(", "));
+  }
+
+  return criteria;
 }
 
 export function parseStories(content: string): Story[] {
@@ -48,19 +87,41 @@ export function parseStories(content: string): Story[] {
       const id = storyMatch[1];
       const title = storyMatch[2].trim();
 
-      // Collect description lines until next heading or end
-      const descLines: string[] = [];
+      // Collect all body lines until next heading
+      const bodyLines: string[] = [];
       for (let j = i + 1; j < lines.length; j++) {
         if (lines[j].match(/^#{2,3}\s/)) break;
-        if (lines[j].trim()) descLines.push(lines[j].trim());
-        if (descLines.length >= 3) break; // Just the user story
+        bodyLines.push(lines[j]);
       }
+
+      // Find where AC starts: either "**Acceptance Criteria:**" heading or first Given line
+      let acStartIndex = bodyLines.findIndex((l) =>
+        /^\*?\*?Acceptance Criteria\*?\*?:?/i.test(l.trim()),
+      );
+
+      if (acStartIndex === -1) {
+        // Look for first Given/When/Then line as AC start
+        acStartIndex = bodyLines.findIndex((l) => isGivenLine(l));
+      }
+
+      // Description: non-empty lines before AC (max 3)
+      const descSource = acStartIndex > -1 ? bodyLines.slice(0, acStartIndex) : bodyLines;
+      const descLines: string[] = [];
+      for (const dl of descSource) {
+        if (dl.trim()) descLines.push(dl.trim());
+        if (descLines.length >= 3) break;
+      }
+
+      // Acceptance criteria: lines from AC start onward
+      const acLines = acStartIndex > -1 ? bodyLines.slice(acStartIndex) : [];
+      const acceptanceCriteria = parseAcBlocks(acLines);
 
       stories.push({
         epic: currentEpic,
         id,
         title,
         description: descLines.join(" "),
+        acceptanceCriteria,
       });
     }
   }
@@ -78,6 +139,19 @@ export function generateFixPlan(stories: Story[]): string {
       lines.push(`### ${currentEpic}`, "");
     }
     lines.push(`- [ ] Story ${story.id}: ${story.title}`);
+
+    // Add description lines (max 3, split on sentence boundaries)
+    if (story.description) {
+      const descParts = story.description.split(/,\s*(?=So that|I want)|(?<=\.)\s+/);
+      for (const part of descParts.slice(0, 3)) {
+        if (part.trim()) lines.push(`  > ${part.trim()}`);
+      }
+    }
+
+    // Add acceptance criteria
+    for (const ac of story.acceptanceCriteria) {
+      lines.push(`  > AC: ${ac}`);
+    }
   }
 
   lines.push("", "## Completed", "", "## Notes", "- Follow TDD methodology (red-green-refactor)", "- One story per Ralph loop iteration", "- Update this file after completing each story", "");
@@ -95,7 +169,7 @@ You follow BMAD-METHOD's developer (Amelia) persona and TDD methodology.
 ## Development Methodology (BMAD Dev Agent)
 
 For each story in @fix_plan.md:
-1. Read the story's acceptance criteria from specs/
+1. Read the story's inline acceptance criteria (lines starting with \`> AC:\`)
 2. Write failing tests first (RED)
 3. Implement minimum code to pass tests (GREEN)
 4. Refactor while keeping tests green (REFACTOR)

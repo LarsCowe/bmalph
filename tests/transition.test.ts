@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { parseStories, generateFixPlan, generatePrompt, runTransition } from "../src/transition.js";
+import { parseStories, generateFixPlan, generatePrompt, runTransition, type Story } from "../src/transition.js";
 
 describe("transition", () => {
   describe("parseStories", () => {
@@ -33,12 +33,14 @@ So that I can access my data.
         id: "1.1",
         title: "User Registration",
         description: expect.stringContaining("visitor"),
+        acceptanceCriteria: [],
       });
       expect(stories[1]).toEqual({
         epic: "User Authentication",
         id: "1.2",
         title: "User Login",
         description: expect.stringContaining("registered user"),
+        acceptanceCriteria: [],
       });
     });
 
@@ -87,15 +89,136 @@ Set up the project structure with TypeScript.
       expect(stories).toHaveLength(1);
       expect(stories[0].title).toBe("Project Init");
       expect(stories[0].description).toContain("project structure");
+      expect(stories[0].acceptanceCriteria).toEqual([]);
+    });
+
+    it("parses acceptance criteria in heading-based format", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: User Registration
+
+As a visitor,
+I want to create an account,
+So that I can access the application.
+
+**Acceptance Criteria:**
+
+**Given** valid email and password
+**When** user submits registration form
+**Then** account is created and user receives confirmation
+
+**Given** an already registered email
+**When** user submits registration form
+**Then** an error message is shown
+`;
+      const stories = parseStories(content);
+
+      expect(stories).toHaveLength(1);
+      expect(stories[0].description).toContain("visitor");
+      expect(stories[0].acceptanceCriteria).toHaveLength(2);
+      expect(stories[0].acceptanceCriteria[0]).toContain("Given");
+      expect(stories[0].acceptanceCriteria[0]).toContain("valid email and password");
+      expect(stories[0].acceptanceCriteria[0]).toContain("When");
+      expect(stories[0].acceptanceCriteria[0]).toContain("Then");
+      expect(stories[0].acceptanceCriteria[1]).toContain("already registered email");
+    });
+
+    it("parses inline Given/When/Then format without heading", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Login
+
+As a user, I want to log in.
+
+Given valid credentials
+When user submits login form
+Then user is redirected to dashboard
+`;
+      const stories = parseStories(content);
+
+      expect(stories).toHaveLength(1);
+      expect(stories[0].acceptanceCriteria).toHaveLength(1);
+      expect(stories[0].acceptanceCriteria[0]).toContain("Given valid credentials");
+      expect(stories[0].acceptanceCriteria[0]).toContain("When user submits login form");
+      expect(stories[0].acceptanceCriteria[0]).toContain("Then user is redirected to dashboard");
+    });
+
+    it("returns empty acceptanceCriteria when story has no AC", () => {
+      const content = `## Epic 1: Setup
+
+### Story 1.1: Init
+
+Initialize the project.
+`;
+      const stories = parseStories(content);
+
+      expect(stories).toHaveLength(1);
+      expect(stories[0].acceptanceCriteria).toEqual([]);
+    });
+
+    it("separates description from acceptance criteria correctly", () => {
+      const content = `## Epic 1: Core
+
+### Story 1.1: Feature X
+
+As a user,
+I want feature X,
+So that I can do Y.
+
+**Acceptance Criteria:**
+
+**Given** precondition A
+**When** action B
+**Then** result C
+`;
+      const stories = parseStories(content);
+
+      expect(stories[0].description).toContain("user");
+      expect(stories[0].description).toContain("feature X");
+      expect(stories[0].description).not.toContain("Given");
+      expect(stories[0].acceptanceCriteria).toHaveLength(1);
+    });
+
+    it("handles multiple stories with different AC formats", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Register
+
+As a visitor, I want to register.
+
+**Acceptance Criteria:**
+
+**Given** valid data
+**When** submit form
+**Then** account created
+
+### Story 1.2: Login
+
+As a user, I want to log in.
+
+Given correct password
+When submit login
+Then access granted
+
+### Story 1.3: Profile
+
+As a user, I want to view my profile.
+`;
+      const stories = parseStories(content);
+
+      expect(stories).toHaveLength(3);
+      expect(stories[0].acceptanceCriteria).toHaveLength(1);
+      expect(stories[1].acceptanceCriteria).toHaveLength(1);
+      expect(stories[2].acceptanceCriteria).toEqual([]);
     });
   });
 
   describe("generateFixPlan", () => {
     it("generates markdown with stories grouped by epic", () => {
-      const stories = [
-        { epic: "Auth", id: "1.1", title: "Login", description: "" },
-        { epic: "Auth", id: "1.2", title: "Register", description: "" },
-        { epic: "Dashboard", id: "2.1", title: "View Stats", description: "" },
+      const stories: Story[] = [
+        { epic: "Auth", id: "1.1", title: "Login", description: "", acceptanceCriteria: [] },
+        { epic: "Auth", id: "1.2", title: "Register", description: "", acceptanceCriteria: [] },
+        { epic: "Dashboard", id: "2.1", title: "View Stats", description: "", acceptanceCriteria: [] },
       ];
 
       const plan = generateFixPlan(stories);
@@ -111,10 +234,66 @@ Set up the project structure with TypeScript.
 
     it("includes completed section", () => {
       const plan = generateFixPlan([
-        { epic: "E1", id: "1.1", title: "T1", description: "" },
+        { epic: "E1", id: "1.1", title: "T1", description: "", acceptanceCriteria: [] },
       ]);
 
       expect(plan).toContain("## Completed");
+    });
+
+    it("includes description lines with > prefix", () => {
+      const stories: Story[] = [
+        {
+          epic: "Auth",
+          id: "1.1",
+          title: "Login",
+          description: "As a user, I want to log in, So that I can access my data.",
+          acceptanceCriteria: [],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("  > As a user");
+    });
+
+    it("includes acceptance criteria with > AC: prefix", () => {
+      const stories: Story[] = [
+        {
+          epic: "Auth",
+          id: "1.1",
+          title: "Login",
+          description: "As a user, I want to log in.",
+          acceptanceCriteria: [
+            "Given valid credentials, When user submits login form, Then user is redirected to dashboard",
+            "Given invalid credentials, When user submits login form, Then error is shown",
+          ],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("  > AC: Given valid credentials, When user submits login form, Then user is redirected to dashboard");
+      expect(plan).toContain("  > AC: Given invalid credentials, When user submits login form, Then error is shown");
+    });
+
+    it("outputs description before acceptance criteria", () => {
+      const stories: Story[] = [
+        {
+          epic: "Core",
+          id: "1.1",
+          title: "Feature",
+          description: "As a user, I want feature X.",
+          acceptanceCriteria: ["Given A, When B, Then C"],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+      const lines = plan.split("\n");
+      const descIndex = lines.findIndex((l) => l.includes("> As a user"));
+      const acIndex = lines.findIndex((l) => l.includes("> AC:"));
+
+      expect(descIndex).toBeGreaterThan(-1);
+      expect(acIndex).toBeGreaterThan(descIndex);
     });
   });
 
@@ -204,6 +383,41 @@ Build API endpoints.
       const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
       expect(fixPlan).toContain("Story 1.1: Setup");
       expect(fixPlan).toContain("Story 1.2: API");
+    });
+
+    it("generates enriched fix_plan.md with inline acceptance criteria", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
+        `## Epic 1: Auth
+
+### Story 1.1: Registration
+
+As a visitor,
+I want to create an account,
+So that I can access the app.
+
+**Acceptance Criteria:**
+
+**Given** valid email and password
+**When** user submits registration form
+**Then** account is created and user receives confirmation
+
+**Given** an already registered email
+**When** user submits registration form
+**Then** an error message is shown
+`,
+      );
+
+      await runTransition(testDir);
+
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(fixPlan).toContain("- [ ] Story 1.1: Registration");
+      expect(fixPlan).toContain("  > As a visitor");
+      expect(fixPlan).toContain("  > I want to create an account");
+      expect(fixPlan).toContain("  > So that I can access the app.");
+      expect(fixPlan).toContain("  > AC: Given valid email and password, When user submits registration form, Then account is created and user receives confirmation");
+      expect(fixPlan).toContain("  > AC: Given an already registered email, When user submits registration form, Then an error message is shown");
     });
 
     it("copies artifacts to .ralph/specs/", async () => {
