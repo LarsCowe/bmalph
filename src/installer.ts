@@ -53,6 +53,9 @@ export async function copyBundledAssets(projectDir: string): Promise<UpgradeResu
   // Copy BMAD files → _bmad/
   await cp(bmadDir, join(projectDir, "_bmad"), { recursive: true });
 
+  // Generate combined manifest from module-help.csv files
+  await generateManifests(projectDir);
+
   // Generate _bmad/config.yaml
   await writeFile(
     join(projectDir, "_bmad/config.yaml"),
@@ -116,6 +119,30 @@ export async function installProject(projectDir: string): Promise<void> {
   await mkdir(join(projectDir, ".ralph/docs/generated"), { recursive: true });
 
   await copyBundledAssets(projectDir);
+}
+
+async function generateManifests(projectDir: string): Promise<void> {
+  const configDir = join(projectDir, "_bmad/_config");
+  await mkdir(configDir, { recursive: true });
+
+  const coreHelpPath = join(projectDir, "_bmad/core/module-help.csv");
+  const bmmHelpPath = join(projectDir, "_bmad/bmm/module-help.csv");
+
+  const coreContent = await readFile(coreHelpPath, "utf-8");
+  const bmmContent = await readFile(bmmHelpPath, "utf-8");
+
+  // Extract header from core (first line) and data lines from both
+  const coreLines = coreContent.trimEnd().split(/\r?\n/);
+  const bmmLines = bmmContent.trimEnd().split(/\r?\n/);
+
+  const header = coreLines[0];
+  const coreData = coreLines.slice(1).filter((l) => l.trim());
+  const bmmData = bmmLines.slice(1).filter((l) => l.trim());
+
+  const combined = [header, ...coreData, ...bmmData].join("\n") + "\n";
+
+  await writeFile(join(configDir, "task-manifest.csv"), combined);
+  await writeFile(join(configDir, "workflow-manifest.csv"), combined);
 }
 
 async function updateGitignore(projectDir: string): Promise<void> {

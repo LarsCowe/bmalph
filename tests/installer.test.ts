@@ -103,19 +103,18 @@ describe("installer", () => {
       await expect(access(join(testDir, ".claude/commands"))).resolves.toBeUndefined();
     });
 
-    it("slash command contains phase state reading instructions", async () => {
+    it("slash command loads BMAD master agent", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
-      expect(content).toContain("current-phase.json");
+      expect(content).toContain("_bmad/core/agents/bmad-master.agent.yaml");
     });
 
-    it("slash command contains phase advancement logic", async () => {
+    it("slash command does not contain hardcoded phase logic", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
-      expect(content).toContain("Phase 1");
-      expect(content).toContain("Phase 2");
-      expect(content).toContain("Phase 3");
-      expect(content).toContain("Phase 4");
+      expect(content).not.toContain("current-phase.json");
+      expect(content).not.toContain("Phase 1");
+      expect(content).not.toContain("Phase 2");
     });
   });
 
@@ -135,6 +134,25 @@ describe("installer", () => {
       await expect(access(join(testDir, ".ralph/@AGENT.md"))).resolves.toBeUndefined();
       await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
       expect(result.updatedPaths.length).toBeGreaterThan(0);
+    });
+
+    it("generates _bmad/_config/task-manifest.csv with combined module-help content", async () => {
+      await copyBundledAssets(testDir);
+      const manifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
+      // Should contain header row
+      expect(manifest).toContain("module,phase,name,code,");
+      // Should contain core module entries
+      expect(manifest).toContain("core,,Brainstorming,BS,");
+      // Should contain bmm module entries
+      expect(manifest).toContain("bmm,1-analysis,Create Brief,CB,");
+      expect(manifest).toContain("bmm,3-solutioning,Create Architecture,CA,");
+    });
+
+    it("generates _bmad/_config/workflow-manifest.csv identical to task-manifest.csv", async () => {
+      await copyBundledAssets(testDir);
+      const taskManifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
+      const workflowManifest = await readFile(join(testDir, "_bmad/_config/workflow-manifest.csv"), "utf-8");
+      expect(workflowManifest).toBe(taskManifest);
     });
 
     it("does NOT create bmalph/state/ or .ralph/logs/", async () => {
@@ -231,14 +249,10 @@ describe("installer", () => {
       expect(content).toContain("modules:");
     });
 
-    it("slash command contains expected sections", async () => {
+    it("slash command delegates to BMAD master agent", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
-      expect(content).toContain("Phase 1");
-      expect(content).toContain("Phase 2");
-      expect(content).toContain("Phase 3");
-      expect(content).toContain("Phase 4");
-      expect(content).toContain("current-phase.json");
+      expect(content).toContain("_bmad/core/agents/bmad-master.agent.yaml");
     });
 
     it("PROMPT.md template contains TDD instructions", async () => {

@@ -95,6 +95,6 @@ describe("init flow integration", { timeout: 30000 }, () => {
     await installProject(testDir);
     await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
     const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
-    expect(content).toContain("current-phase.json");
+    expect(content).toContain("_bmad/core/agents/bmad-master.agent.yaml");
   });
 });
