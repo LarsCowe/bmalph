@@ -6,7 +6,6 @@ import { validateConfig } from "./validate.js";
 export interface BmalphConfig {
   name: string;
   description: string;
-  level: number;
   createdAt: string;
 }
 

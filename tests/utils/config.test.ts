@@ -25,7 +25,6 @@ describe("config", () => {
     const config: BmalphConfig = {
       name: "test-project",
       description: "A test",
-      level: 2,
       createdAt: "2025-01-01T00:00:00.000Z",
     };
 

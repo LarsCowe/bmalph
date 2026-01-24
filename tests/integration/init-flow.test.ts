@@ -27,7 +27,6 @@ describe("init flow integration", { timeout: 30000 }, () => {
     const config: BmalphConfig = {
       name: "test-project",
       description: "Integration test project",
-      level: 2,
       createdAt: new Date().toISOString(),
     };
     await writeConfig(testDir, config);
@@ -70,14 +69,12 @@ describe("init flow integration", { timeout: 30000 }, () => {
     const config: BmalphConfig = {
       name: "my-project",
       description: "A complex project",
-      level: 4,
       createdAt: "2025-06-01T00:00:00.000Z",
     };
     await writeConfig(testDir, config);
 
     const readBack = await readConfig(testDir);
     expect(readBack).toEqual(config);
-    expect(readBack!.level).toBe(4);
   });
 
   it("mergeClaudeMd references /bmalph slash command", async () => {

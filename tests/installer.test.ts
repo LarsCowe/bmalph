@@ -241,7 +241,7 @@ describe("installer", () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "my-project", level: 3 }),
+        JSON.stringify({ name: "my-project", description: "test" }),
       );
 
       await copyBundledAssets(testDir);
@@ -250,7 +250,6 @@ describe("installer", () => {
         await readFile(join(testDir, "bmalph/config.json"), "utf-8"),
       );
       expect(config.name).toBe("my-project");
-      expect(config.level).toBe(3);
     });
 
     it("is idempotent (twice = same result)", async () => {
@@ -315,7 +314,7 @@ describe("installer", () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "my-cool-project", level: 3 }),
+        JSON.stringify({ name: "my-cool-project", description: "test" }),
       );
       await copyBundledAssets(testDir);
       const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");

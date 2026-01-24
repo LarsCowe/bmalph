@@ -25,7 +25,6 @@ program
   .description("Initialize bmalph in the current project")
   .option("-n, --name <name>", "Project name")
   .option("-d, --description <desc>", "Project description")
-  .option("-l, --level <level>", "Complexity level (0-4)")
   .action(initCommand);
 
 program

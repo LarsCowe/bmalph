@@ -6,7 +6,6 @@ describe("validateConfig", () => {
     const data = {
       name: "my-project",
       description: "A test project",
-      level: 2,
       createdAt: "2025-01-01T00:00:00.000Z",
     };
 
@@ -15,32 +14,17 @@ describe("validateConfig", () => {
   });
 
   it("throws when name is missing", () => {
-    const data = { description: "test", level: 2, createdAt: "2025-01-01T00:00:00.000Z" };
+    const data = { description: "test", createdAt: "2025-01-01T00:00:00.000Z" };
     expect(() => validateConfig(data)).toThrow(/name/i);
   });
 
   it("throws when name is not a string", () => {
-    const data = { name: 123, description: "test", level: 2, createdAt: "2025-01-01T00:00:00.000Z" };
+    const data = { name: 123, description: "test", createdAt: "2025-01-01T00:00:00.000Z" };
     expect(() => validateConfig(data)).toThrow(/name/i);
   });
 
-  it("throws when level is missing", () => {
-    const data = { name: "proj", description: "test", createdAt: "2025-01-01T00:00:00.000Z" };
-    expect(() => validateConfig(data)).toThrow(/level/i);
-  });
-
-  it("throws when level is not a number", () => {
-    const data = { name: "proj", description: "test", level: "high", createdAt: "2025-01-01T00:00:00.000Z" };
-    expect(() => validateConfig(data)).toThrow(/level/i);
-  });
-
-  it("throws when level is out of range", () => {
-    const data = { name: "proj", description: "test", level: 5, createdAt: "2025-01-01T00:00:00.000Z" };
-    expect(() => validateConfig(data)).toThrow(/level/i);
-  });
-
   it("throws when createdAt is missing", () => {
-    const data = { name: "proj", description: "test", level: 2 };
+    const data = { name: "proj", description: "test" };
     expect(() => validateConfig(data)).toThrow(/createdAt/i);
   });
 
@@ -53,12 +37,12 @@ describe("validateConfig", () => {
   });
 
   it("allows empty description", () => {
-    const data = { name: "proj", description: "", level: 0, createdAt: "2025-01-01T00:00:00.000Z" };
+    const data = { name: "proj", description: "", createdAt: "2025-01-01T00:00:00.000Z" };
     expect(validateConfig(data)).toEqual(data);
   });
 
   it("allows description to be missing (defaults to empty string)", () => {
-    const data = { name: "proj", level: 0, createdAt: "2025-01-01T00:00:00.000Z" };
+    const data = { name: "proj", createdAt: "2025-01-01T00:00:00.000Z" };
     const result = validateConfig(data);
     expect(result.description).toBe("");
   });

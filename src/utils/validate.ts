@@ -16,14 +16,6 @@ export function validateConfig(data: unknown): BmalphConfig {
     throw new Error("config.name must be a string");
   }
 
-  if (data.level === undefined || typeof data.level !== "number") {
-    throw new Error("config.level must be a number");
-  }
-
-  if (data.level < 0 || data.level > 4) {
-    throw new Error("config.level must be between 0 and 4");
-  }
-
   if (typeof data.createdAt !== "string") {
     throw new Error("config.createdAt must be a string");
   }
@@ -33,7 +25,6 @@ export function validateConfig(data: unknown): BmalphConfig {
   return {
     name: data.name,
     description,
-    level: data.level,
     createdAt: data.createdAt,
   };
 }

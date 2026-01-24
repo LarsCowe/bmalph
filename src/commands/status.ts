@@ -29,7 +29,7 @@ async function runStatus(): Promise<void> {
   const status = state?.status ?? "planning";
   const lastUpdated = state?.lastUpdated;
 
-  console.log(chalk.bold("Project:") + ` ${config!.name} (level ${config!.level})`);
+  console.log(chalk.bold("Project:") + ` ${config!.name}`);
   console.log(chalk.bold("Phase:") + `   ${phase} — ${getPhaseLabel(phase)}`);
   console.log(chalk.bold("Status:") + `  ${status}`);
 

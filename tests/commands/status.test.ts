@@ -51,7 +51,6 @@ describe("statusCommand", () => {
     const config = {
       name: "my-project",
       description: "A test",
-      level: 2,
       createdAt: "2025-01-01T00:00:00.000Z",
     };
     await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify(config));
@@ -61,11 +60,10 @@ describe("statusCommand", () => {
 
     const output = consoleLogSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("my-project");
-    expect(output).toContain("2");
   });
 
   it("shows current phase from state", async () => {
-    const config = { name: "proj", description: "", level: 2, createdAt: "2025-01-01T00:00:00.000Z" };
+    const config = { name: "proj", description: "", createdAt: "2025-01-01T00:00:00.000Z" };
     const state = {
       currentPhase: 3,
       status: "planning",
@@ -85,7 +83,7 @@ describe("statusCommand", () => {
   });
 
   it("shows phase 1 when no state file exists", async () => {
-    const config = { name: "proj", description: "", level: 1, createdAt: "2025-01-01T00:00:00.000Z" };
+    const config = { name: "proj", description: "", createdAt: "2025-01-01T00:00:00.000Z" };
     await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify(config));
 
     const { statusCommand } = await import("../../src/commands/status.js");
@@ -97,7 +95,7 @@ describe("statusCommand", () => {
   });
 
   it("shows Ralph status when available", async () => {
-    const config = { name: "proj", description: "", level: 2, createdAt: "2025-01-01T00:00:00.000Z" };
+    const config = { name: "proj", description: "", createdAt: "2025-01-01T00:00:00.000Z" };
     await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify(config));
     await mkdir(join(testDir, ".ralph"), { recursive: true });
     await writeFile(
@@ -113,7 +111,7 @@ describe("statusCommand", () => {
   });
 
   it("shows idle Ralph status when no status file", async () => {
-    const config = { name: "proj", description: "", level: 2, createdAt: "2025-01-01T00:00:00.000Z" };
+    const config = { name: "proj", description: "", createdAt: "2025-01-01T00:00:00.000Z" };
     await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify(config));
 
     const { statusCommand } = await import("../../src/commands/status.js");

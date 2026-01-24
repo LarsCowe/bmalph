@@ -76,9 +76,9 @@ describe("CLI entry point", () => {
     expect(stdout).toContain("--verbose");
   });
 
-  it("init level option has no default value", () => {
+  it("init accepts name and description options", () => {
     const { stdout } = runCli(["init", "--help"]);
-    expect(stdout).toContain("--level");
-    expect(stdout).not.toContain("default");
+    expect(stdout).toContain("--name");
+    expect(stdout).toContain("--description");
   });
 });
