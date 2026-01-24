@@ -1,6 +1,6 @@
 {
   "name": "bmalph",
-  "version": "0.8.8",
+  "version": "0.8.9",
   "description": "Unified AI Development Framework - BMAD phases with Ralph execution loop for Claude Code",
   "type": "module",
   "bin": {

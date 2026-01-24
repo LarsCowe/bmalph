@@ -33,6 +33,7 @@ So that I can access my data.
         id: "1.1",
         title: "User Registration",
         description: expect.stringContaining("visitor"),
+        epicDescription: "Secure user access management",
         acceptanceCriteria: [],
       });
       expect(stories[1]).toEqual({
@@ -40,8 +41,37 @@ So that I can access my data.
         id: "1.2",
         title: "User Login",
         description: expect.stringContaining("registered user"),
+        epicDescription: "Secure user access management",
         acceptanceCriteria: [],
       });
+    });
+
+    it("parses epic description with max 2 lines", () => {
+      const content = `## Epic 1: Auth
+
+Provide secure authentication.
+Enable multi-factor support.
+This third line should be ignored.
+
+### Story 1.1: Login
+
+As a user, I want to log in.
+`;
+      const stories = parseStories(content);
+
+      expect(stories[0].epicDescription).toBe("Provide secure authentication. Enable multi-factor support.");
+    });
+
+    it("parses epic with no description lines", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Login
+
+As a user, I want to log in.
+`;
+      const stories = parseStories(content);
+
+      expect(stories[0].epicDescription).toBe("");
     });
 
     it("parses multiple epics", () => {
@@ -300,9 +330,9 @@ As a user, I want to view my profile.
   describe("generateFixPlan", () => {
     it("generates markdown with stories grouped by epic", () => {
       const stories: Story[] = [
-        { epic: "Auth", id: "1.1", title: "Login", description: "", acceptanceCriteria: [] },
-        { epic: "Auth", id: "1.2", title: "Register", description: "", acceptanceCriteria: [] },
-        { epic: "Dashboard", id: "2.1", title: "View Stats", description: "", acceptanceCriteria: [] },
+        { epic: "Auth", id: "1.1", title: "Login", description: "", epicDescription: "", acceptanceCriteria: [] },
+        { epic: "Auth", id: "1.2", title: "Register", description: "", epicDescription: "", acceptanceCriteria: [] },
+        { epic: "Dashboard", id: "2.1", title: "View Stats", description: "", epicDescription: "", acceptanceCriteria: [] },
       ];
 
       const plan = generateFixPlan(stories);
@@ -318,10 +348,30 @@ As a user, I want to view my profile.
 
     it("includes completed section", () => {
       const plan = generateFixPlan([
-        { epic: "E1", id: "1.1", title: "T1", description: "", acceptanceCriteria: [] },
+        { epic: "E1", id: "1.1", title: "T1", description: "", epicDescription: "", acceptanceCriteria: [] },
       ]);
 
       expect(plan).toContain("## Completed");
+    });
+
+    it("includes epic description as Goal line", () => {
+      const stories: Story[] = [
+        { epic: "Auth", id: "1.1", title: "Login", description: "", epicDescription: "Secure user access", acceptanceCriteria: [] },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("> Goal: Secure user access");
+    });
+
+    it("does not include Goal line when epic description is empty", () => {
+      const stories: Story[] = [
+        { epic: "Auth", id: "1.1", title: "Login", description: "", epicDescription: "", acceptanceCriteria: [] },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).not.toContain("> Goal:");
     });
 
     it("includes description lines with > prefix", () => {
@@ -331,6 +381,7 @@ As a user, I want to view my profile.
           id: "1.1",
           title: "Login",
           description: "As a user, I want to log in, So that I can access my data.",
+          epicDescription: "",
           acceptanceCriteria: [],
         },
       ];
@@ -347,6 +398,7 @@ As a user, I want to view my profile.
           id: "1.1",
           title: "Login",
           description: "As a user, I want to log in.",
+          epicDescription: "",
           acceptanceCriteria: [
             "Given valid credentials, When user submits login form, Then user is redirected to dashboard",
             "Given invalid credentials, When user submits login form, Then error is shown",
@@ -367,6 +419,7 @@ As a user, I want to view my profile.
           id: "1.1",
           title: "Feature",
           description: "As a user, I want feature X.",
+          epicDescription: "",
           acceptanceCriteria: ["Given A, When B, Then C"],
         },
       ];

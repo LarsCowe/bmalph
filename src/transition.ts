@@ -4,6 +4,7 @@ import { debug } from "./utils/logger.js";
 
 export interface Story {
   epic: string;
+  epicDescription: string;
   id: string;
   title: string;
   description: string;
@@ -73,6 +74,7 @@ function parseAcBlocks(lines: string[]): string[] {
 export function parseStories(content: string): Story[] {
   const stories: Story[] = [];
   let currentEpic = "";
+  let currentEpicDescription = "";
 
   const lines = content.split("\n");
 
@@ -83,6 +85,14 @@ export function parseStories(content: string): Story[] {
     const epicMatch = line.match(/^##\s+Epic\s+\d+:\s+(.+)/);
     if (epicMatch) {
       currentEpic = epicMatch[1].trim();
+      // Collect max 2 non-empty lines between epic header and first story/next heading
+      const descLines: string[] = [];
+      for (let j = i + 1; j < lines.length && descLines.length < 2; j++) {
+        if (lines[j].match(/^#{2,3}\s/)) break;
+        const trimmed = lines[j].trim();
+        if (trimmed) descLines.push(trimmed);
+      }
+      currentEpicDescription = descLines.join(" ");
       continue;
     }
 
@@ -123,6 +133,7 @@ export function parseStories(content: string): Story[] {
 
       stories.push({
         epic: currentEpic,
+        epicDescription: currentEpicDescription,
         id,
         title,
         description: descLines.join(" "),
@@ -141,7 +152,11 @@ export function generateFixPlan(stories: Story[]): string {
   for (const story of stories) {
     if (story.epic !== currentEpic) {
       currentEpic = story.epic;
-      lines.push(`### ${currentEpic}`, "");
+      lines.push(`### ${currentEpic}`);
+      if (story.epicDescription) {
+        lines.push(`> Goal: ${story.epicDescription}`);
+      }
+      lines.push("");
     }
     lines.push(`- [ ] Story ${story.id}: ${story.title}`);
 
