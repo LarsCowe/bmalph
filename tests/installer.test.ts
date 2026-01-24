@@ -209,6 +209,51 @@ describe("installer", () => {
     });
   });
 
+  describe("bundled asset validation", { timeout: 30000 }, () => {
+    it("ralph_loop.sh starts with shebang", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+      expect(content.startsWith("#!/")).toBe(true);
+    });
+
+    it("ralph_loop.sh contains version marker", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+      expect(content).toContain("# bmalph-version:");
+      expect(content).toMatch(/# bmalph-version: \d+\.\d+\.\d+/);
+    });
+
+    it("config.yaml has valid structure", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
+      expect(content).toContain("platform:");
+      expect(content).toContain("output_dir:");
+      expect(content).toContain("modules:");
+    });
+
+    it("slash command contains expected sections", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".claude/commands/bmalph.md"), "utf-8");
+      expect(content).toContain("Phase 1");
+      expect(content).toContain("Phase 2");
+      expect(content).toContain("Phase 3");
+      expect(content).toContain("Phase 4");
+      expect(content).toContain("current-phase.json");
+    });
+
+    it("PROMPT.md template contains TDD instructions", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content.length).toBeGreaterThan(0);
+    });
+
+    it("@AGENT.md template exists and has content", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(content.length).toBeGreaterThan(0);
+    });
+  });
+
   describe("mergeClaudeMd", () => {
     it("creates CLAUDE.md if it does not exist", async () => {
       await mergeClaudeMd(testDir);

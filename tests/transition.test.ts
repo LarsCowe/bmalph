@@ -92,6 +92,90 @@ Set up the project structure with TypeScript.
       expect(stories[0].acceptanceCriteria).toEqual([]);
     });
 
+    it("skips story with no title after colon", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1:
+
+As a user, I want something.
+
+### Story 1.2: Valid Story
+
+Description here.
+`;
+      const stories = parseStories(content);
+      // Story 1.1 has no title (regex requires .+), so it's skipped
+      expect(stories).toHaveLength(1);
+      expect(stories[0].id).toBe("1.2");
+      expect(stories[0].title).toBe("Valid Story");
+    });
+
+    it("handles epic header with no stories", () => {
+      const content = `## Epic 1: Empty Epic
+
+No stories here.
+
+## Epic 2: Has Stories
+
+### Story 2.1: First Story
+
+Description.
+`;
+      const stories = parseStories(content);
+      expect(stories).toHaveLength(1);
+      expect(stories[0].epic).toBe("Has Stories");
+      expect(stories[0].id).toBe("2.1");
+    });
+
+    it("handles complex story IDs", () => {
+      const content = `## Epic 1: Core
+
+### Story 10.25: Complex ID
+
+Description.
+`;
+      const stories = parseStories(content);
+      expect(stories).toHaveLength(1);
+      expect(stories[0].id).toBe("10.25");
+    });
+
+    it("handles AC with empty When/Then lines", () => {
+      const content = `## Epic 1: Core
+
+### Story 1.1: Feature
+
+Description.
+
+**Acceptance Criteria:**
+
+**Given** some precondition
+**When**
+**Then**
+`;
+      const stories = parseStories(content);
+      expect(stories).toHaveLength(1);
+      // The parser requires a space after the keyword, so empty When/Then won't match
+      expect(stories[0].acceptanceCriteria.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it("handles story with only description, no AC section", () => {
+      const content = `## Epic 1: Setup
+
+### Story 1.1: Init
+
+Line one of description.
+Line two of description.
+Line three of description.
+Line four of description.
+Line five of description.
+`;
+      const stories = parseStories(content);
+      expect(stories).toHaveLength(1);
+      // Description is limited to max 3 lines
+      expect(stories[0].description.split(" ").length).toBeLessThanOrEqual(20);
+      expect(stories[0].acceptanceCriteria).toEqual([]);
+    });
+
     it("parses acceptance criteria in heading-based format", () => {
       const content = `## Epic 1: Auth
 

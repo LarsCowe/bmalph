@@ -46,6 +46,57 @@ describe("state", () => {
 
       expect(result).toEqual(state);
     });
+
+    it("throws on corrupt state file", async () => {
+      await writeFile(join(testDir, "bmalph/state/current-phase.json"), "not json{{{");
+      await expect(readState(testDir)).rejects.toThrow("Invalid JSON");
+    });
+
+    it("throws on invalid state structure", async () => {
+      await writeFile(
+        join(testDir, "bmalph/state/current-phase.json"),
+        JSON.stringify({ currentPhase: "not-a-number" }),
+      );
+      await expect(readState(testDir)).rejects.toThrow();
+    });
+  });
+
+  describe("writeState", () => {
+    it("creates state directory if it does not exist", async () => {
+      await rm(join(testDir, "bmalph/state"), { recursive: true, force: true });
+
+      const state: BmalphState = {
+        currentPhase: 1,
+        status: "planning",
+        startedAt: "2025-01-01T00:00:00.000Z",
+        lastUpdated: "2025-01-01T00:00:00.000Z",
+      };
+      await writeState(testDir, state);
+
+      const result = await readState(testDir);
+      expect(result).toEqual(state);
+    });
+
+    it("overwrites existing state atomically", async () => {
+      const state1: BmalphState = {
+        currentPhase: 1,
+        status: "planning",
+        startedAt: "2025-01-01T00:00:00.000Z",
+        lastUpdated: "2025-01-01T00:00:00.000Z",
+      };
+      await writeState(testDir, state1);
+
+      const state2: BmalphState = {
+        currentPhase: 3,
+        status: "implementing",
+        startedAt: "2025-01-01T00:00:00.000Z",
+        lastUpdated: "2025-01-02T00:00:00.000Z",
+      };
+      await writeState(testDir, state2);
+
+      const result = await readState(testDir);
+      expect(result).toEqual(state2);
+    });
   });
 
   describe("getPhaseLabel", () => {

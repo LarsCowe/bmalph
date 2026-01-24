@@ -81,7 +81,7 @@ modules:
   const markerLine = `# bmalph-version: ${getPackageVersion()}`;
   const markedContent = loopContent.includes("# bmalph-version:")
     ? loopContent.replace(/# bmalph-version: .+/, markerLine)
-    : loopContent.replace(/^(#!.+\n)/, `$1${markerLine}\n`);
+    : loopContent.replace(/^(#!.+\r?\n)/, `$1${markerLine}\n`);
   await writeFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
 
