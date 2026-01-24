@@ -78,7 +78,7 @@ describe("implement command", () => {
     await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\necho ok");
 
     const { runTransition } = await import("../../src/transition.js");
-    vi.mocked(runTransition).mockResolvedValue({ storiesCount: 5, warnings: [] });
+    vi.mocked(runTransition).mockResolvedValue({ storiesCount: 5, warnings: [], fixPlanPreserved: false });
 
     const { implementCommand } = await import("../../src/commands/implement.js");
     await implementCommand();
@@ -94,6 +94,20 @@ describe("implement command", () => {
       [join(testDir, ".ralph/ralph_loop.sh")],
       expect.objectContaining({ cwd: testDir, stdio: "inherit" }),
     );
+  });
+
+  it("shows preserved message when fix_plan has progress", async () => {
+    await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
+    await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\necho ok");
+
+    const { runTransition } = await import("../../src/transition.js");
+    vi.mocked(runTransition).mockResolvedValue({ storiesCount: 5, warnings: [], fixPlanPreserved: true });
+
+    const { implementCommand } = await import("../../src/commands/implement.js");
+    await implementCommand();
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Preserved existing @fix_plan.md");
   });
 
   it("shows error when transition fails", async () => {

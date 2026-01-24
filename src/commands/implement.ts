@@ -39,7 +39,11 @@ async function runImplement(): Promise<void> {
 
   try {
     const result = await runTransition(projectDir);
-    console.log(chalk.green(`Generated fix_plan.md with ${result.storiesCount} stories`));
+    if (result.fixPlanPreserved) {
+      console.log(chalk.green("Preserved existing @fix_plan.md (has progress)"));
+    } else {
+      console.log(chalk.green(`Generated fix_plan.md with ${result.storiesCount} stories`));
+    }
     for (const warning of result.warnings) {
       console.log(chalk.yellow(`Warning: ${warning}`));
     }

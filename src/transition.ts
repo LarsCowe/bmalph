@@ -2,6 +2,16 @@ import { readFile, writeFile, readdir, cp, mkdir, access } from "fs/promises";
 import { join } from "path";
 import { debug } from "./utils/logger.js";
 
+export interface ProjectContext {
+  projectGoals: string;
+  successMetrics: string;
+  architectureConstraints: string;
+  technicalRisks: string;
+  scopeBoundaries: string;
+  targetUsers: string;
+  nonFunctionalRequirements: string;
+}
+
 export interface Story {
   epic: string;
   epicDescription: string;
@@ -197,11 +207,12 @@ For each story in @fix_plan.md:
 6. Commit with descriptive conventional commit message
 
 ## Current Objectives
-1. Study .ralph/specs/* to learn about the project specifications
-2. Review .ralph/@fix_plan.md for current priorities
-3. Implement the highest priority story using TDD
-4. Run tests after each implementation
-5. Update @fix_plan.md with your progress
+1. Read .ralph/PROJECT_CONTEXT.md for project goals, constraints, and scope
+2. Study .ralph/specs/* to learn about the project specifications
+3. Review .ralph/@fix_plan.md for current priorities
+4. Implement the highest priority story using TDD
+5. Run tests after each implementation
+6. Update @fix_plan.md with your progress
 
 ## Key Principles
 - ONE story per loop - focus completely on it
@@ -239,6 +250,7 @@ RECOMMENDATION: <one line summary of what to do next>
 4. All requirements from specs/ are implemented
 
 ## File Structure
+- .ralph/PROJECT_CONTEXT.md: High-level project goals, constraints, and scope
 - .ralph/specs/: Project specifications (PRD, architecture, stories)
 - .ralph/@fix_plan.md: Prioritized TODO list (one entry per story)
 - .ralph/@AGENT.md: Project build and run instructions
@@ -328,6 +340,119 @@ export function customizeAgentMd(template: string, stack: TechStack): string {
   return result;
 }
 
+export function hasFixPlanProgress(content: string): boolean {
+  return /^\s*-\s*\[x\]/im.test(content);
+}
+
+export function extractSection(content: string, headingPattern: RegExp, maxLength = 500): string {
+  const match = headingPattern.exec(content);
+  if (!match) return "";
+
+  // Determine heading level from the match
+  const headingLevelMatch = match[0].match(/^(#{1,6})\s/);
+  const level = headingLevelMatch ? headingLevelMatch[1].length : 2;
+
+  const startIndex = match.index! + match[0].length;
+  const rest = content.slice(startIndex);
+
+  // Find next heading of same or higher level
+  const nextHeadingPattern = new RegExp(`^#{1,${level}}\\s`, "m");
+  const nextMatch = nextHeadingPattern.exec(rest);
+  const sectionBody = nextMatch ? rest.slice(0, nextMatch.index) : rest;
+
+  const trimmed = sectionBody.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return trimmed.slice(0, maxLength);
+}
+
+export function extractProjectContext(artifacts: Map<string, string>): ProjectContext {
+  // Combine all content, keyed by likely role
+  let prdContent = "";
+  let archContent = "";
+
+  for (const [filename, content] of artifacts) {
+    if (/prd/i.test(filename)) prdContent += "\n" + content;
+    if (/architect/i.test(filename)) archContent += "\n" + content;
+    if (/readiness/i.test(filename)) archContent += "\n" + content;
+  }
+
+  const allContent = prdContent + "\n" + archContent;
+
+  return {
+    projectGoals: extractFromPatterns(prdContent || allContent, [
+      /^##\s+Executive Summary/m,
+      /^##\s+Vision/m,
+      /^##\s+Goals/m,
+      /^##\s+Project Goals/m,
+    ]),
+    successMetrics: extractFromPatterns(prdContent || allContent, [
+      /^##\s+Success (?:Criteria|Metrics)/m,
+      /^##\s+KPIs?/m,
+      /^##\s+Metrics/m,
+      /^##\s+Key Performance/m,
+    ]),
+    architectureConstraints: extractFromPatterns(archContent || allContent, [
+      /^##\s+Constraints/m,
+      /^##\s+ADR/m,
+      /^##\s+Architecture Decision/m,
+    ]),
+    technicalRisks: extractFromPatterns(archContent || allContent, [
+      /^##\s+Risks/m,
+      /^##\s+Technical Risks/m,
+      /^##\s+Mitigations/m,
+      /^##\s+Risk/m,
+    ]),
+    scopeBoundaries: extractFromPatterns(prdContent || allContent, [
+      /^##\s+Scope/m,
+      /^##\s+In Scope/m,
+      /^##\s+Out of Scope/m,
+      /^##\s+Boundaries/m,
+    ]),
+    targetUsers: extractFromPatterns(prdContent || allContent, [
+      /^##\s+Target Users/m,
+      /^##\s+Users/m,
+      /^##\s+Personas/m,
+      /^##\s+User Profiles/m,
+    ]),
+    nonFunctionalRequirements: extractFromPatterns(prdContent || allContent, [
+      /^##\s+Non-Functional/m,
+      /^##\s+NFR/m,
+      /^##\s+Quality/m,
+      /^##\s+Quality Attributes/m,
+    ]),
+  };
+}
+
+function extractFromPatterns(content: string, patterns: RegExp[]): string {
+  for (const pattern of patterns) {
+    const result = extractSection(content, pattern);
+    if (result) return result;
+  }
+  return "";
+}
+
+export function generateProjectContextMd(context: ProjectContext, projectName: string): string {
+  const lines: string[] = [`# ${projectName} — Project Context`, ""];
+
+  const sections: { heading: string; content: string }[] = [
+    { heading: "Project Goals", content: context.projectGoals },
+    { heading: "Success Metrics", content: context.successMetrics },
+    { heading: "Architecture Constraints", content: context.architectureConstraints },
+    { heading: "Technical Risks", content: context.technicalRisks },
+    { heading: "Scope Boundaries", content: context.scopeBoundaries },
+    { heading: "Target Users", content: context.targetUsers },
+    { heading: "Non-Functional Requirements", content: context.nonFunctionalRequirements },
+  ];
+
+  for (const { heading, content } of sections) {
+    if (content) {
+      lines.push(`## ${heading}`, "", content, "");
+    }
+  }
+
+  return lines.join("\n");
+}
+
 export async function validateArtifacts(files: string[], artifactsDir: string): Promise<string[]> {
   const warnings: string[] = [];
 
@@ -357,7 +482,7 @@ export async function validateArtifacts(files: string[], artifactsDir: string): 
   return warnings;
 }
 
-export async function runTransition(projectDir: string): Promise<{ storiesCount: number; warnings: string[] }> {
+export async function runTransition(projectDir: string): Promise<{ storiesCount: number; warnings: string[]; fixPlanPreserved: boolean }> {
   const artifactsDir = await findArtifactsDir(projectDir);
   if (!artifactsDir) {
     throw new Error(
@@ -387,9 +512,22 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     throw new Error("No stories parsed from the epics file. Ensure stories follow the format: ### Story N.M: Title");
   }
 
-  // Generate fix_plan.md
-  const fixPlan = generateFixPlan(stories);
-  await writeFile(join(projectDir, ".ralph/@fix_plan.md"), fixPlan);
+  // Generate fix_plan.md (with overwrite protection)
+  let fixPlanPreserved = false;
+  const fixPlanPath = join(projectDir, ".ralph/@fix_plan.md");
+  try {
+    const existingFixPlan = await readFile(fixPlanPath, "utf-8");
+    if (hasFixPlanProgress(existingFixPlan)) {
+      fixPlanPreserved = true;
+      debug("Preserving existing @fix_plan.md (has checked items)");
+    }
+  } catch {
+    // No existing file
+  }
+  if (!fixPlanPreserved) {
+    const fixPlan = generateFixPlan(stories);
+    await writeFile(fixPlanPath, fixPlan);
+  }
 
   // Copy specs (PRD, architecture, stories)
   await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
@@ -411,7 +549,19 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     debug("No brainstorming directory found, skipping");
   }
 
-  // Generate PROMPT.md
+  // Generate PROJECT_CONTEXT.md from planning artifacts
+  const artifactContents = new Map<string, string>();
+  for (const file of files) {
+    if (file.endsWith(".md")) {
+      try {
+        const content = await readFile(join(artifactsDir, file), "utf-8");
+        artifactContents.set(file, content);
+      } catch {
+        debug(`Could not read artifact: ${file}`);
+      }
+    }
+  }
+
   let projectName = "project";
   try {
     const configContent = await readFile(join(projectDir, "bmalph/config.json"), "utf-8");
@@ -421,6 +571,14 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     // Use default name
   }
 
+  if (artifactContents.size > 0) {
+    const projectContext = extractProjectContext(artifactContents);
+    const contextMd = generateProjectContextMd(projectContext, projectName);
+    await writeFile(join(projectDir, ".ralph/PROJECT_CONTEXT.md"), contextMd);
+    debug("Generated PROJECT_CONTEXT.md");
+  }
+
+  // Generate PROMPT.md
   // Try to preserve rich PROMPT.md template if it has the placeholder
   let prompt: string;
   try {
@@ -456,5 +614,5 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
   // Validate artifacts and collect warnings
   const warnings = await validateArtifacts(files, artifactsDir);
 
-  return { storiesCount: stories.length, warnings };
+  return { storiesCount: stories.length, warnings, fixPlanPreserved };
 }

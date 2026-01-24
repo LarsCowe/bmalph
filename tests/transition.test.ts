@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile, readFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, type Story, type TechStack } from "../src/transition.js";
+import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
 
 describe("transition", () => {
   describe("parseStories", () => {
@@ -453,6 +453,22 @@ As a user, I want to view my profile.
       expect(prompt).toContain("RALPH_STATUS");
       expect(prompt).toContain("EXIT_SIGNAL");
     });
+
+    it("references PROJECT_CONTEXT.md in Current Objectives", () => {
+      const prompt = generatePrompt("test");
+      expect(prompt).toContain("PROJECT_CONTEXT.md");
+      // Should be first item in objectives
+      const lines = prompt.split("\n");
+      const objectivesStart = lines.findIndex((l) => l.includes("Current Objectives"));
+      const contextLine = lines.findIndex((l) => l.includes("PROJECT_CONTEXT.md") && l.match(/^\d+\.|^-/));
+      expect(contextLine).toBeGreaterThan(objectivesStart);
+    });
+
+    it("references PROJECT_CONTEXT.md in File Structure", () => {
+      const prompt = generatePrompt("test");
+      const fileStructureSection = prompt.slice(prompt.indexOf("File Structure"));
+      expect(fileStructureSection).toContain("PROJECT_CONTEXT.md");
+    });
   });
 
   describe("runTransition", () => {
@@ -723,6 +739,79 @@ So that I can access the app.
       const result = await runTransition(testDir);
 
       expect(result.warnings).toContainEqual(expect.stringMatching(/NO.?GO/i));
+    });
+
+    it("preserves fix_plan.md when it has checked items", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n\n### Story 1.2: Z\n\nDo Z.\n`,
+      );
+      // Pre-populate fix_plan with progress
+      await writeFile(
+        join(testDir, ".ralph/@fix_plan.md"),
+        `# Ralph Fix Plan\n\n- [x] Story 1.1: Y\n- [ ] Story 1.2: Z\n`,
+      );
+
+      const result = await runTransition(testDir);
+
+      expect(result.fixPlanPreserved).toBe(true);
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(fixPlan).toContain("[x] Story 1.1: Y");
+    });
+
+    it("overwrites fix_plan.md when no items are checked", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+      await writeFile(
+        join(testDir, ".ralph/@fix_plan.md"),
+        `# Ralph Fix Plan\n\n- [ ] Story 1.1: Old\n`,
+      );
+
+      const result = await runTransition(testDir);
+
+      expect(result.fixPlanPreserved).toBe(false);
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(fixPlan).toContain("Story 1.1: Y");
+    });
+
+    it("generates PROJECT_CONTEXT.md from PRD and architecture", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/prd.md"),
+        `# PRD\n\n## Executive Summary\nBuild a task management platform.\n\n## Success Metrics\n- 500 active teams\n\n## Scope\nIn scope: task CRUD.\n`,
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        `# Architecture\n\n## Constraints\nUse PostgreSQL for storage.\n\n## Risks\nScalability under load.\n`,
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+
+      await runTransition(testDir);
+
+      const contextMd = await readFile(join(testDir, ".ralph/PROJECT_CONTEXT.md"), "utf-8");
+      expect(contextMd).toContain("test-project");
+      expect(contextMd).toContain("task management platform");
+      expect(contextMd).toContain("500 active teams");
+      expect(contextMd).toContain("PostgreSQL");
+      expect(contextMd).toContain("Scalability");
+    });
+
+    it("sets fixPlanPreserved to false when no existing fix_plan", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+      );
+
+      const result = await runTransition(testDir);
+      expect(result.fixPlanPreserved).toBe(false);
     });
 
     it("no readiness warning when report is GO", async () => {
@@ -1002,6 +1091,200 @@ cargo run
 
       const agent = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
       expect(agent).toBe(originalContent);
+    });
+  });
+
+  describe("hasFixPlanProgress", () => {
+    it("returns true when content has checked items", () => {
+      const content = `# Ralph Fix Plan\n\n- [x] Story 1.1: Setup\n- [ ] Story 1.2: API\n`;
+      expect(hasFixPlanProgress(content)).toBe(true);
+    });
+
+    it("returns false when no items are checked", () => {
+      const content = `# Ralph Fix Plan\n\n- [ ] Story 1.1: Setup\n- [ ] Story 1.2: API\n`;
+      expect(hasFixPlanProgress(content)).toBe(false);
+    });
+
+    it("returns false for empty content", () => {
+      expect(hasFixPlanProgress("")).toBe(false);
+    });
+
+    it("returns true with uppercase X", () => {
+      const content = `- [X] Story 1.1: Done\n`;
+      expect(hasFixPlanProgress(content)).toBe(true);
+    });
+
+    it("returns true when checked item is indented", () => {
+      const content = `  - [x] Subtask done\n`;
+      expect(hasFixPlanProgress(content)).toBe(true);
+    });
+
+    it("returns false when [x] appears in non-checkbox context", () => {
+      const content = `Some text with [x] in it but no dash prefix\n`;
+      expect(hasFixPlanProgress(content)).toBe(false);
+    });
+  });
+
+  describe("extractSection", () => {
+    it("extracts section content by heading regex", () => {
+      const content = `# Doc\n\n## Goals\nBuild a great app.\nWith many features.\n\n## Other\nStuff.\n`;
+      const result = extractSection(content, /^##\s+Goals/m);
+      expect(result).toContain("Build a great app.");
+      expect(result).toContain("With many features.");
+      expect(result).not.toContain("Stuff.");
+    });
+
+    it("returns empty string when heading not found", () => {
+      const content = `# Doc\n\n## Foo\nBar.\n`;
+      expect(extractSection(content, /^##\s+Missing/m)).toBe("");
+    });
+
+    it("truncates to maxLength", () => {
+      const content = `## Goals\n${"A".repeat(600)}\n## Next\n`;
+      const result = extractSection(content, /^##\s+Goals/m, 100);
+      expect(result.length).toBeLessThanOrEqual(100);
+    });
+
+    it("extracts until end of file when no next heading", () => {
+      const content = `## Goals\nContent to end of file.\nMore content.\n`;
+      const result = extractSection(content, /^##\s+Goals/m);
+      expect(result).toContain("Content to end of file.");
+      expect(result).toContain("More content.");
+    });
+
+    it("stops at same-level or higher heading", () => {
+      const content = `## Section A\nContent A.\n## Section B\nContent B.\n`;
+      const result = extractSection(content, /^##\s+Section A/m);
+      expect(result).toContain("Content A.");
+      expect(result).not.toContain("Content B.");
+    });
+  });
+
+  describe("extractProjectContext", () => {
+    it("extracts project goals from PRD executive summary", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("prd.md", `# PRD\n\n## Executive Summary\nBuild a SaaS platform for teams.\n\n## Other\nStuff.\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.projectGoals).toContain("SaaS platform");
+    });
+
+    it("extracts success metrics from PRD", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("prd.md", `# PRD\n\n## Success Metrics\n- 1000 DAU\n- 99.9% uptime\n\n## Next\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.successMetrics).toContain("1000 DAU");
+    });
+
+    it("extracts architecture constraints", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("architecture.md", `# Architecture\n\n## Constraints\nMust use PostgreSQL.\nNo vendor lock-in.\n\n## Next\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.architectureConstraints).toContain("PostgreSQL");
+    });
+
+    it("extracts technical risks from architecture", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("architecture.md", `# Architecture\n\n## Risks\nScalability concerns.\nThird-party API rate limits.\n\n## Next\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.technicalRisks).toContain("Scalability");
+    });
+
+    it("extracts scope boundaries from PRD", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("prd.md", `# PRD\n\n## Scope\nIn scope: user management.\nOut of scope: payment processing.\n\n## Next\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.scopeBoundaries).toContain("user management");
+    });
+
+    it("extracts target users from PRD", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("prd.md", `# PRD\n\n## Target Users\nDevelopers building SaaS apps.\n\n## Next\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.targetUsers).toContain("Developers");
+    });
+
+    it("extracts non-functional requirements from PRD", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("prd.md", `# PRD\n\n## Non-Functional Requirements\n- Response time < 200ms\n- WCAG 2.1 AA compliance\n\n## Next\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.nonFunctionalRequirements).toContain("200ms");
+    });
+
+    it("returns empty strings when no matching sections found", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("random.md", `# Random\n\nSome content.\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.projectGoals).toBe("");
+      expect(ctx.successMetrics).toBe("");
+      expect(ctx.architectureConstraints).toBe("");
+    });
+
+    it("tries alternative heading patterns", () => {
+      const artifacts = new Map<string, string>();
+      artifacts.set("prd.md", `# PRD\n\n## Vision\nRevolutionize team collaboration.\n\n## KPIs\n- NPS > 50\n`);
+      const ctx = extractProjectContext(artifacts);
+      expect(ctx.projectGoals).toContain("collaboration");
+      expect(ctx.successMetrics).toContain("NPS");
+    });
+  });
+
+  describe("generateProjectContextMd", () => {
+    it("renders all fields as markdown sections", () => {
+      const ctx: ProjectContext = {
+        projectGoals: "Build a platform",
+        successMetrics: "1000 users",
+        architectureConstraints: "Use PostgreSQL",
+        technicalRisks: "Scalability",
+        scopeBoundaries: "MVP only",
+        targetUsers: "Developers",
+        nonFunctionalRequirements: "< 200ms response",
+      };
+      const md = generateProjectContextMd(ctx, "my-app");
+      expect(md).toContain("# my-app — Project Context");
+      expect(md).toContain("## Project Goals");
+      expect(md).toContain("Build a platform");
+      expect(md).toContain("## Success Metrics");
+      expect(md).toContain("1000 users");
+      expect(md).toContain("## Architecture Constraints");
+      expect(md).toContain("Use PostgreSQL");
+      expect(md).toContain("## Technical Risks");
+      expect(md).toContain("Scalability");
+      expect(md).toContain("## Scope Boundaries");
+      expect(md).toContain("MVP only");
+      expect(md).toContain("## Target Users");
+      expect(md).toContain("Developers");
+      expect(md).toContain("## Non-Functional Requirements");
+      expect(md).toContain("< 200ms response");
+    });
+
+    it("omits empty sections", () => {
+      const ctx: ProjectContext = {
+        projectGoals: "Build a platform",
+        successMetrics: "",
+        architectureConstraints: "",
+        technicalRisks: "",
+        scopeBoundaries: "",
+        targetUsers: "",
+        nonFunctionalRequirements: "",
+      };
+      const md = generateProjectContextMd(ctx, "my-app");
+      expect(md).toContain("## Project Goals");
+      expect(md).not.toContain("## Success Metrics");
+      expect(md).not.toContain("## Architecture Constraints");
+    });
+
+    it("includes project name in title", () => {
+      const ctx: ProjectContext = {
+        projectGoals: "Goals",
+        successMetrics: "",
+        architectureConstraints: "",
+        technicalRisks: "",
+        scopeBoundaries: "",
+        targetUsers: "",
+        nonFunctionalRequirements: "",
+      };
+      const md = generateProjectContextMd(ctx, "super-project");
+      expect(md).toContain("# super-project — Project Context");
     });
   });
 
