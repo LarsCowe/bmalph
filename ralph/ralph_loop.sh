@@ -958,8 +958,9 @@ EOF
     done
 
     # Wait for the process to finish and get exit code
-    wait $claude_pid
-    local exit_code=$?
+    # Use || to prevent set -e from killing the script on non-zero (e.g. timeout 124)
+    local exit_code=0
+    wait $claude_pid || exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
         # Only increment counter on successful execution
