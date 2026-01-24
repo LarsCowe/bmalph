@@ -18,8 +18,8 @@ npm install -g bmalph
 
 ```bash
 bmalph init --name my-project --level 2
-bmalph plan --phase 1
-# ... work through BMAD phases ...
+# Use /bmalph slash command in Claude Code to navigate phases
+# ... work through BMAD phases 1-3 ...
 bmalph implement
 ```
 
@@ -40,19 +40,13 @@ This installs:
 
 ### Step 2: Plan with BMAD (Phases 1-3)
 
-Work interactively in Claude Code with BMAD agents. Load the master agent:
-
-```
-Read and follow the instructions in _bmad/core/agents/bmad-master.agent.yaml
-```
-
-Then use `bmalph plan` to set each phase:
+Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash command to see your current phase, available commands, and advance phases.
 
 | Phase | Agent | Commands |
 |-------|-------|----------|
-| `--phase 1` Analysis | Analyst | BP, MR, DR, TR, CB, VB |
-| `--phase 2` Planning | PM (John) | CP, VP, CU, VU |
-| `--phase 3` Solutioning | Architect | CA, VA, CE, VE, TD, IR |
+| 1 Analysis | Analyst | BP, MR, DR, TR, CB, VB |
+| 2 Planning | PM (John) | CP, VP, CU, VU |
+| 3 Solutioning | Architect | CA, VA, CE, VE, TD, IR |
 
 **Phase 1 — Analysis**
 - `BP` Brainstorm Project — guided facilitation through brainstorming techniques
@@ -94,10 +88,19 @@ Ralph picks stories one by one, implements with TDD, and commits. The loop stops
 | Command | Description |
 |---------|-------------|
 | `bmalph init` | Install BMAD + Ralph into project |
-| `bmalph plan [--phase N]` | Set active phase (1-3), show available commands |
 | `bmalph implement` | Transition planning artifacts → start Ralph loop |
-| `bmalph status` | Show current phase and progress |
+| `bmalph status` | Show current phase, Ralph progress, and version info |
+| `bmalph upgrade` | Update bundled assets to match current bmalph version |
+| `bmalph doctor` | Check project health and report issues |
 | `bmalph reset [--hard]` | Reset state (--hard removes `_bmad/`, `.ralph/`, artifacts) |
+
+### Global options
+
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Enable debug logging |
+| `--version` | Show version |
+| `--help` | Show help |
 
 ### init options
 

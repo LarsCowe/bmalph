@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name("bmalph")
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
-  .version("0.8.2")
+  .version("0.8.3")
   .option("--verbose", "Enable debug logging")
   .hook("preAction", () => {
     if (program.opts().verbose) {
