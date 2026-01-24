@@ -962,7 +962,14 @@ EOF
     local exit_code=0
     wait $claude_pid || exit_code=$?
 
-    if [ $exit_code -eq 0 ]; then
+    if [ $exit_code -eq 124 ]; then
+        # Timeout - not a failure, just took too long
+        log_status "WARN" "⏰ Claude Code timed out after ${CLAUDE_TIMEOUT_MINUTES} minutes"
+        log_status "INFO" "Session will be reset and retried in next loop"
+        rm -f "$CLAUDE_SESSION_FILE"
+        echo '{"status": "timeout", "timestamp": "'$(date '+%Y-%m-%d %H:%M:%S')'"}' > "$PROGRESS_FILE"
+        return 4  # Specific return code for timeout
+    elif [ $exit_code -eq 0 ]; then
         # Only increment counter on successful execution
         echo "$calls_made" > "$CALL_COUNT_FILE"
 
@@ -1149,8 +1156,8 @@ main() {
         update_status "$loop_count" "$calls_made" "executing" "running"
         
         # Execute Claude Code
-        execute_claude_code "$loop_count"
-        local exec_result=$?
+        local exec_result=0
+        execute_claude_code "$loop_count" || exec_result=$?
         
         if [ $exec_result -eq 0 ]; then
             update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "completed" "success"
@@ -1201,6 +1208,11 @@ main() {
                 done
                 printf "\n"
             fi
+        elif [ $exec_result -eq 4 ]; then
+            # Timeout - non-fatal, session already reset in execute_claude_code
+            update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "timeout" "retrying"
+            log_status "INFO" "Retrying with fresh session in 10 seconds..."
+            sleep 10
         else
             update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "failed" "error"
             log_status "WARN" "Execution failed, waiting 30 seconds before retry..."
