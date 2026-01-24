@@ -87,8 +87,8 @@ describe("init flow integration", { timeout: 30000 }, () => {
     const claudeMd = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
     expect(claudeMd).toContain("/bmalph");
     expect(claudeMd).toContain("bmalph implement");
+    expect(claudeMd).toContain("bmalph status");
     expect(claudeMd).not.toContain("bmalph plan");
-    expect(claudeMd).not.toContain("bmalph status");
   });
 
   it("installs slash command to .claude/commands/", async () => {

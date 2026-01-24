@@ -243,7 +243,12 @@ describe("installer", () => {
       const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
       expect(content).not.toContain("--phase");
       expect(content).not.toContain("bmalph plan");
-      expect(content).not.toContain("bmalph status");
+    });
+
+    it("references bmalph status command", async () => {
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+      expect(content).toContain("bmalph status");
     });
 
     it("references bmalph implement for transition", async () => {

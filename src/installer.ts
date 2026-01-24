@@ -118,6 +118,7 @@ export async function mergeClaudeMd(projectDir: string): Promise<void> {
 
 Use \`/bmalph\` to see your current phase and available commands.
 Use \`/bmalph\` again when ready to advance to the next phase.
+Use \`bmalph status\` for a quick overview of project phase and Ralph state.
 
 ### One-time setup
 
