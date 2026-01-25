@@ -33,25 +33,28 @@ project-root/
 | Command | Action |
 |---------|--------|
 | `bmalph init` | Install BMAD + Ralph, configure project |
+| `bmalph upgrade` | Update bundled assets to current version |
+| `bmalph doctor` | Check installation health |
 
 ## Slash Commands
 
 | Command | Action |
 |---------|--------|
+| `/bmalph` | Navigate BMAD phases |
 | `/bmalph-status` | Show current phase, Ralph progress, version info |
 | `/bmalph-implement` | Transition: BMAD artifacts → Ralph inputs |
-| `/bmalph-upgrade` | Update bundled assets to match current bmalph version |
-| `/bmalph-doctor` | Check project health and report issues |
 | `/bmalph-reset` | Reset state (soft or hard with confirmation) |
-
-Phase navigation uses the `/bmalph` slash command in Claude Code.
+| `/bmalph-upgrade` | Instructions to run `bmalph upgrade` |
+| `/bmalph-doctor` | Instructions to run `bmalph doctor` |
 
 ## Key Files
 
-- `src/cli.ts` — Commander.js CLI definition (init only)
+- `src/cli.ts` — Commander.js CLI definition
 - `src/installer.ts` — Copies bmad/ and ralph/ into target project
 - `src/transition.ts` — Converts BMAD stories → Ralph @fix_plan.md
 - `src/commands/init.ts` — CLI init handler
+- `src/commands/upgrade.ts` — CLI upgrade handler
+- `src/commands/doctor.ts` — CLI doctor handler
 - `src/utils/state.ts` — Phase tracking + Ralph status reading
 - `src/utils/json.ts` — Safe JSON file reading with error discrimination
 - `src/utils/validate.ts` — Runtime config/state validation

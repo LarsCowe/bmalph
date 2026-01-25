@@ -118,6 +118,8 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 | Command | Description |
 |---------|-------------|
 | `bmalph init` | Install BMAD + Ralph into project |
+| `bmalph upgrade` | Update bundled assets to current version |
+| `bmalph doctor` | Check installation health |
 
 ### Global options
 
@@ -136,16 +138,18 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ## Slash Commands
 
-All workflow functionality is provided via Claude Code slash commands:
+Workflow functionality is provided via Claude Code slash commands:
 
 | Command | Description |
 |---------|-------------|
 | `/bmalph` | Navigate BMAD phases |
 | `/bmalph-status` | Show current phase, Ralph progress, version info |
 | `/bmalph-implement` | Transition planning artifacts → prepare Ralph loop |
-| `/bmalph-upgrade` | Update bundled assets to match current bmalph version |
-| `/bmalph-doctor` | Check project health and report issues |
 | `/bmalph-reset` | Reset state (soft or hard reset with confirmation) |
+| `/bmalph-upgrade` | Instructions to run `bmalph upgrade` CLI |
+| `/bmalph-doctor` | Instructions to run `bmalph doctor` CLI |
+
+> **Note**: `/bmalph-upgrade` and `/bmalph-doctor` delegate to CLI commands because they need access to npm package assets.
 
 ## Project Structure (after init)
 
