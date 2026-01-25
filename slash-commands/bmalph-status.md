@@ -50,10 +50,10 @@ Show current project status.
    Ralph loop is active. Use `/bmalph-implement` to start the loop.
 
 4. **Show Ralph progress** (if in Phase 4)
-   If `.ralph/logs/` exists and contains logs, show Ralph progress:
+   Read `.ralph/status.json` if it exists and show Ralph progress:
    - Loop count
+   - Status (running/blocked/completed/not_started)
    - Tasks completed / total
-   - Last activity timestamp
 
 ## Output Format
 
