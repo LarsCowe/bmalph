@@ -348,6 +348,148 @@ export function hasFixPlanProgress(content: string): boolean {
   return /^\s*-\s*\[x\]/im.test(content);
 }
 
+export interface FixPlanItem {
+  id: string;
+  completed: boolean;
+}
+
+export function parseFixPlan(content: string): FixPlanItem[] {
+  const items: FixPlanItem[] = [];
+  // Match: - [x] Story 1.1: Title  or  - [ ] Story 2.3: Title
+  const pattern = /^\s*-\s*\[([ xX])\]\s*Story\s+(\d+\.\d+):/gm;
+  let match;
+  while ((match = pattern.exec(content)) !== null) {
+    items.push({
+      id: match[2],
+      completed: match[1].toLowerCase() === "x",
+    });
+  }
+  return items;
+}
+
+export function mergeFixPlanProgress(
+  newFixPlan: string,
+  completedIds: Set<string>,
+): string {
+  // Replace [ ] with [x] for completed story IDs
+  return newFixPlan.replace(
+    /^(\s*-\s*)\[ \](\s*Story\s+(\d+\.\d+):)/gm,
+    (match, prefix, suffix, id) => {
+      return completedIds.has(id) ? `${prefix}[x]${suffix}` : match;
+    },
+  );
+}
+
+export interface SpecsChange {
+  file: string;
+  status: "added" | "modified" | "removed";
+  summary?: string;
+}
+
+async function getFileListRecursive(dir: string): Promise<string[]> {
+  const files: string[] = [];
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const relativePath = entry.name;
+      if (entry.isDirectory()) {
+        const subFiles = await getFileListRecursive(join(dir, entry.name));
+        files.push(...subFiles.map((f) => join(relativePath, f)));
+      } else {
+        files.push(relativePath);
+      }
+    }
+  } catch {
+    // Directory doesn't exist
+  }
+  return files;
+}
+
+function getFirstDiffLine(oldContent: string, newContent: string): string {
+  const oldLines = oldContent.split("\n");
+  const newLines = newContent.split("\n");
+
+  for (let i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
+    const oldLine = oldLines[i] || "";
+    const newLine = newLines[i] || "";
+    if (oldLine !== newLine) {
+      // Return a truncated version of the changed line
+      const line = newLine.trim().slice(0, 50);
+      return line || "(line changed)";
+    }
+  }
+  return "";
+}
+
+export async function generateSpecsChangelog(
+  oldSpecsDir: string,
+  newSourceDir: string,
+): Promise<SpecsChange[]> {
+  const changes: SpecsChange[] = [];
+
+  // Get file lists
+  const oldFiles = await getFileListRecursive(oldSpecsDir);
+  const newFiles = await getFileListRecursive(newSourceDir);
+
+  // Normalize path separators for comparison
+  const normalize = (p: string) => p.replace(/\\/g, "/");
+  const oldSet = new Set(oldFiles.map(normalize));
+  const newSet = new Set(newFiles.map(normalize));
+
+  // Check for added/modified files
+  for (const file of newFiles) {
+    const normalizedFile = normalize(file);
+    if (!oldSet.has(normalizedFile)) {
+      changes.push({ file: normalizedFile, status: "added" });
+    } else {
+      // Compare content
+      const oldContent = await readFile(join(oldSpecsDir, file), "utf-8").catch(() => "");
+      const newContent = await readFile(join(newSourceDir, file), "utf-8");
+      if (oldContent !== newContent) {
+        changes.push({
+          file: normalizedFile,
+          status: "modified",
+          summary: getFirstDiffLine(oldContent, newContent),
+        });
+      }
+    }
+  }
+
+  // Check for removed files
+  for (const file of oldFiles) {
+    const normalizedFile = normalize(file);
+    if (!newSet.has(normalizedFile)) {
+      changes.push({ file: normalizedFile, status: "removed" });
+    }
+  }
+
+  return changes;
+}
+
+export function formatChangelog(changes: SpecsChange[], timestamp: string): string {
+  if (changes.length === 0) {
+    return `# Specs Changelog\n\nNo changes detected.\n`;
+  }
+
+  let md = `# Specs Changelog\n\nLast updated: ${timestamp}\n\n`;
+
+  const added = changes.filter((c) => c.status === "added");
+  const modified = changes.filter((c) => c.status === "modified");
+  const removed = changes.filter((c) => c.status === "removed");
+
+  if (added.length) {
+    md += `## Added\n${added.map((c) => `- ${c.file}`).join("\n")}\n\n`;
+  }
+  if (modified.length) {
+    md += `## Modified\n${modified.map((c) => `- ${c.file}${c.summary ? ` (${c.summary})` : ""}`).join("\n")}\n\n`;
+  }
+  if (removed.length) {
+    md += `## Removed\n${removed.map((c) => `- ${c.file}`).join("\n")}\n\n`;
+  }
+
+  return md;
+}
+
 export function extractSection(content: string, headingPattern: RegExp, maxLength = 500): string {
   const match = headingPattern.exec(content);
   if (!match) return "";
@@ -516,25 +658,42 @@ export async function runTransition(projectDir: string): Promise<{ storiesCount:
     throw new Error("No stories parsed from the epics file. Ensure stories follow the format: ### Story N.M: Title");
   }
 
-  // Generate fix_plan.md (with overwrite protection)
-  let fixPlanPreserved = false;
+  // Check existing fix_plan for completed items (smart merge)
+  let completedIds = new Set<string>();
   const fixPlanPath = join(projectDir, ".ralph/@fix_plan.md");
   try {
     const existingFixPlan = await readFile(fixPlanPath, "utf-8");
-    if (hasFixPlanProgress(existingFixPlan)) {
-      fixPlanPreserved = true;
-      debug("Preserving existing @fix_plan.md (has checked items)");
+    const items = parseFixPlan(existingFixPlan);
+    completedIds = new Set(items.filter((i) => i.completed).map((i) => i.id));
+    debug(`Found ${completedIds.size} completed stories in existing fix_plan`);
+  } catch {
+    // No existing file, start fresh
+  }
+
+  // Generate new fix_plan from current stories, preserving completion status
+  const newFixPlan = generateFixPlan(stories);
+  const mergedFixPlan = mergeFixPlanProgress(newFixPlan, completedIds);
+  await writeFile(fixPlanPath, mergedFixPlan);
+
+  // Track whether progress was preserved for return value
+  const fixPlanPreserved = completedIds.size > 0;
+
+  // Generate changelog before overwriting specs/
+  const specsDir = join(projectDir, ".ralph/specs");
+  const bmadOutputDir = join(projectDir, "_bmad-output");
+  try {
+    await access(bmadOutputDir);
+    const changes = await generateSpecsChangelog(specsDir, bmadOutputDir);
+    if (changes.length > 0) {
+      const changelog = formatChangelog(changes, new Date().toISOString());
+      await writeFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
+      debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
     }
   } catch {
-    // No existing file
-  }
-  if (!fixPlanPreserved) {
-    const fixPlan = generateFixPlan(stories);
-    await writeFile(fixPlanPath, fixPlan);
+    // No bmad-output directory yet, skip changelog
   }
 
   // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
-  const bmadOutputDir = join(projectDir, "_bmad-output");
   try {
     await access(bmadOutputDir);
     await cp(bmadOutputDir, join(projectDir, ".ralph/specs"), { recursive: true });

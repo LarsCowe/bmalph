@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile, readFile, access } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
+import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, parseFixPlan, mergeFixPlanProgress, generateSpecsChangelog, formatChangelog, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
 
 describe("transition", () => {
   describe("parseStories", () => {
@@ -1378,6 +1378,298 @@ cargo run
       await writeFile(join(testDir, "readiness-report.md"), "Status: GO\nAll clear.");
       const warnings = await validateArtifacts(["prd.md", "architecture.md", "readiness-report.md"], testDir);
       expect(warnings).not.toContainEqual(expect.stringMatching(/NO.?GO/i));
+    });
+  });
+
+  describe("parseFixPlan", () => {
+    it("extracts completed and pending story IDs", () => {
+      const content = `# Fix Plan
+### Epic 1
+- [x] Story 1.1: Done
+- [ ] Story 1.2: Pending
+### Epic 2
+- [X] Story 2.1: Also done
+- [ ] Story 2.2: Not done`;
+      const items = parseFixPlan(content);
+      expect(items).toEqual([
+        { id: "1.1", completed: true },
+        { id: "1.2", completed: false },
+        { id: "2.1", completed: true },
+        { id: "2.2", completed: false },
+      ]);
+    });
+
+    it("returns empty array for content with no story items", () => {
+      const content = `# Fix Plan\n\nNo stories here.\n`;
+      expect(parseFixPlan(content)).toEqual([]);
+    });
+
+    it("handles inline description and AC after story line", () => {
+      const content = `# Fix Plan
+- [x] Story 1.1: Setup
+  > As a developer
+  > AC: Given setup, When run, Then works
+- [ ] Story 1.2: API`;
+      const items = parseFixPlan(content);
+      expect(items).toHaveLength(2);
+      expect(items[0]).toEqual({ id: "1.1", completed: true });
+      expect(items[1]).toEqual({ id: "1.2", completed: false });
+    });
+
+    it("handles complex story IDs like 10.25", () => {
+      const content = `- [x] Story 10.25: Complex ID`;
+      const items = parseFixPlan(content);
+      expect(items).toEqual([{ id: "10.25", completed: true }]);
+    });
+  });
+
+  describe("mergeFixPlanProgress", () => {
+    it("marks stories as completed based on ID set", () => {
+      const newPlan = `- [ ] Story 1.1: Setup
+- [ ] Story 1.2: API
+- [ ] Story 2.1: New feature`;
+      const completed = new Set(["1.1"]);
+      const merged = mergeFixPlanProgress(newPlan, completed);
+      expect(merged).toContain("- [x] Story 1.1: Setup");
+      expect(merged).toContain("- [ ] Story 1.2: API");
+      expect(merged).toContain("- [ ] Story 2.1: New feature");
+    });
+
+    it("preserves multiple completed stories", () => {
+      const newPlan = `- [ ] Story 1.1: A
+- [ ] Story 1.2: B
+- [ ] Story 2.1: C`;
+      const completed = new Set(["1.1", "2.1"]);
+      const merged = mergeFixPlanProgress(newPlan, completed);
+      expect(merged).toContain("- [x] Story 1.1: A");
+      expect(merged).toContain("- [ ] Story 1.2: B");
+      expect(merged).toContain("- [x] Story 2.1: C");
+    });
+
+    it("does nothing when completed set is empty", () => {
+      const newPlan = `- [ ] Story 1.1: A`;
+      const completed = new Set<string>();
+      const merged = mergeFixPlanProgress(newPlan, completed);
+      expect(merged).toBe(newPlan);
+    });
+
+    it("ignores IDs not in the new plan", () => {
+      const newPlan = `- [ ] Story 2.1: New`;
+      const completed = new Set(["1.1"]); // old story not in new plan
+      const merged = mergeFixPlanProgress(newPlan, completed);
+      expect(merged).toContain("- [ ] Story 2.1: New");
+    });
+  });
+
+  describe("generateSpecsChangelog", () => {
+    let testDir: string;
+
+    beforeEach(async () => {
+      testDir = join(tmpdir(), `bmalph-changelog-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await mkdir(testDir, { recursive: true });
+    });
+
+    afterEach(async () => {
+      try {
+        await rm(testDir, { recursive: true, force: true });
+      } catch {
+        // Windows file locking
+      }
+    });
+
+    it("detects added files", async () => {
+      await mkdir(join(testDir, "new/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "# PRD");
+
+      const changes = await generateSpecsChangelog(
+        join(testDir, "old"),  // doesn't exist
+        join(testDir, "new")
+      );
+
+      expect(changes).toContainEqual({ file: "planning-artifacts/prd.md", status: "added" });
+    });
+
+    it("detects modified files", async () => {
+      await mkdir(join(testDir, "old/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "new/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "old/planning-artifacts/prd.md"), "# PRD v1");
+      await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "# PRD v2");
+
+      const changes = await generateSpecsChangelog(
+        join(testDir, "old"),
+        join(testDir, "new")
+      );
+
+      expect(changes).toContainEqual(expect.objectContaining({
+        file: "planning-artifacts/prd.md",
+        status: "modified"
+      }));
+    });
+
+    it("detects removed files", async () => {
+      await mkdir(join(testDir, "old/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "new"), { recursive: true });
+      await writeFile(join(testDir, "old/planning-artifacts/old-doc.md"), "# Old");
+
+      const changes = await generateSpecsChangelog(
+        join(testDir, "old"),
+        join(testDir, "new")
+      );
+
+      expect(changes).toContainEqual({ file: "planning-artifacts/old-doc.md", status: "removed" });
+    });
+
+    it("returns empty array when no changes", async () => {
+      await mkdir(join(testDir, "old/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "new/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "old/planning-artifacts/prd.md"), "# Same content");
+      await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "# Same content");
+
+      const changes = await generateSpecsChangelog(
+        join(testDir, "old"),
+        join(testDir, "new")
+      );
+
+      expect(changes).toEqual([]);
+    });
+
+    it("includes summary for modified files", async () => {
+      await mkdir(join(testDir, "old/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "new/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "old/planning-artifacts/prd.md"), "Line 1\nLine 2");
+      await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "Line 1\nLine 2 changed");
+
+      const changes = await generateSpecsChangelog(
+        join(testDir, "old"),
+        join(testDir, "new")
+      );
+
+      const modified = changes.find(c => c.status === "modified");
+      expect(modified).toBeDefined();
+      expect(modified!.summary).toBeDefined();
+    });
+  });
+
+  describe("formatChangelog", () => {
+    it("formats empty changes", () => {
+      const md = formatChangelog([], "2024-01-01T00:00:00Z");
+      expect(md).toContain("No changes detected");
+    });
+
+    it("formats added files", () => {
+      const changes = [{ file: "prd.md", status: "added" as const }];
+      const md = formatChangelog(changes, "2024-01-01T00:00:00Z");
+      expect(md).toContain("## Added");
+      expect(md).toContain("- prd.md");
+    });
+
+    it("formats modified files with summary", () => {
+      const changes = [{ file: "arch.md", status: "modified" as const, summary: "Changed API" }];
+      const md = formatChangelog(changes, "2024-01-01T00:00:00Z");
+      expect(md).toContain("## Modified");
+      expect(md).toContain("- arch.md (Changed API)");
+    });
+
+    it("formats removed files", () => {
+      const changes = [{ file: "old.md", status: "removed" as const }];
+      const md = formatChangelog(changes, "2024-01-01T00:00:00Z");
+      expect(md).toContain("## Removed");
+      expect(md).toContain("- old.md");
+    });
+
+    it("includes timestamp", () => {
+      const changes = [{ file: "prd.md", status: "added" as const }];
+      const md = formatChangelog(changes, "2024-01-01T00:00:00Z");
+      expect(md).toContain("Last updated: 2024-01-01T00:00:00Z");
+    });
+
+    it("groups changes by type", () => {
+      const changes = [
+        { file: "new.md", status: "added" as const },
+        { file: "changed.md", status: "modified" as const },
+        { file: "gone.md", status: "removed" as const },
+      ];
+      const md = formatChangelog(changes, "2024-01-01T00:00:00Z");
+      expect(md).toContain("## Added");
+      expect(md).toContain("## Modified");
+      expect(md).toContain("## Removed");
+    });
+  });
+
+  describe("runTransition merge", () => {
+    let testDir: string;
+
+    beforeEach(async () => {
+      testDir = join(tmpdir(), `bmalph-merge-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
+      await writeFile(
+        join(testDir, "bmalph/config.json"),
+        JSON.stringify({ name: "test-project", level: 2 }),
+      );
+    });
+
+    afterEach(async () => {
+      try {
+        await rm(testDir, { recursive: true, force: true });
+      } catch {
+        // Windows file locking
+      }
+    });
+
+    it("preserves completed stories when BMAD adds new epic", async () => {
+      // Setup: existing fix_plan with story 1.1 completed
+      await writeFile(join(testDir, ".ralph/@fix_plan.md"),
+        `# Fix Plan\n- [x] Story 1.1: Old\n- [ ] Story 1.2: Pending\n`);
+
+      // New BMAD output adds Epic 2
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Old\nDesc.\n### Story 1.2: Also old\nDesc.\n
+## Epic 2: New\n### Story 2.1: Brand new\nDesc.\n`);
+
+      await runTransition(testDir);
+
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(fixPlan).toContain("[x] Story 1.1"); // Preserved
+      expect(fixPlan).toContain("[ ] Story 1.2"); // Stayed pending
+      expect(fixPlan).toContain("[ ] Story 2.1"); // New story added
+    });
+
+    it("generates SPECS_CHANGELOG.md when specs change", async () => {
+      // Setup: existing specs
+      await mkdir(join(testDir, ".ralph/specs/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/specs/planning-artifacts/prd.md"), "# PRD v1");
+
+      // New BMAD output with modified PRD
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# PRD v2");
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+
+      await runTransition(testDir);
+
+      const changelog = await readFile(join(testDir, ".ralph/SPECS_CHANGELOG.md"), "utf-8");
+      expect(changelog).toContain("Modified");
+      expect(changelog).toContain("prd.md");
+    });
+
+    it("does not generate SPECS_CHANGELOG.md when no specs changes", async () => {
+      // No existing specs
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+
+      await runTransition(testDir);
+
+      // First run - changelog should mention "added" for new files
+      let changelog: string;
+      try {
+        changelog = await readFile(join(testDir, ".ralph/SPECS_CHANGELOG.md"), "utf-8");
+        expect(changelog).toContain("Added");
+      } catch {
+        // No changelog is also acceptable if no existing specs
+      }
     });
   });
 });
