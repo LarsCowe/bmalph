@@ -2,6 +2,14 @@
 
 BMAD-METHOD planning + Ralph autonomous implementation, glued by a CLI.
 
+## What is bmalph?
+
+bmalph orchestrates two autonomous AI development systems:
+
+- **BMAD-METHOD** — Structured planning through Analysis, Planning, and Solutioning phases
+- **Ralph** — Autonomous implementation loop (bash-driven, fresh AI instances, TDD methodology)
+- **bmalph** — The glue: CLI commands, state management, artifact transition
+
 ## Prerequisites
 
 - Node.js 20+
@@ -17,7 +25,8 @@ npm install -g bmalph
 ## Quick Start
 
 ```bash
-bmalph init --name my-project --level 2
+cd my-project
+bmalph init --name my-project
 # Use /bmalph slash command in Claude Code to navigate phases
 # ... work through BMAD phases 1-3 ...
 bmalph implement
@@ -35,8 +44,9 @@ bmalph init
 This installs:
 - `_bmad/` — BMAD agents and workflows
 - `.ralph/` — Ralph loop, libs, templates
-- `bmalph/` — State management (config.json, state/)
+- `bmalph/` — State management (config.json)
 - Updates `CLAUDE.md` with BMAD workflow instructions
+- Installs slash commands in `.claude/commands/`
 
 ### Step 2: Plan with BMAD (Phases 1-3)
 
@@ -79,9 +89,26 @@ bmalph implement
 This transitions your BMAD artifacts into Ralph's format:
 1. Reads your stories from BMAD output
 2. Generates `.ralph/@fix_plan.md` with ordered tasks
-3. Starts the Ralph autonomous loop
+3. Copies specs to `.ralph/specs/` with changelog tracking
+4. Starts the Ralph autonomous loop
 
 Ralph picks stories one by one, implements with TDD, and commits. The loop stops when all stories are done or the circuit breaker triggers.
+
+### Incremental Development
+
+bmalph supports iterative development cycles:
+
+```
+BMAD (Epic 1) → bmalph implement → Ralph works on Epic 1
+     ↓
+BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
+```
+
+**Smart Merge**: When you run `bmalph implement` again after Ralph has made progress:
+- Completed stories (`[x]`) are preserved in the new fix_plan
+- New stories from BMAD are added as pending (`[ ]`)
+
+**Specs Changelog**: `.ralph/SPECS_CHANGELOG.md` shows what changed in specs since the last run, so Ralph knows what's new or modified.
 
 ## CLI Reference
 
@@ -108,7 +135,6 @@ Ralph picks stories one by one, implements with TDD, and commits. The loop stops
 |------|-------------|---------|
 | `-n, --name <name>` | Project name | directory name |
 | `-d, --description <desc>` | Project description | (prompted) |
-| `-l, --level <level>` | Complexity level (0-4) | 2 |
 
 ## Project Structure (after init)
 
@@ -123,29 +149,26 @@ project/
 │   └── bmm/
 │       ├── workflows/      # Phase 1-3 workflows
 │       └── teams/          # Agent team definitions
+├── _bmad-output/           # BMAD planning artifacts (generated)
+│   ├── planning-artifacts/ # PRD, architecture, stories
+│   ├── implementation-artifacts/ # Sprint plans (optional)
+│   └── brainstorming/      # Brainstorm sessions (optional)
 ├── .ralph/                 # Ralph autonomous loop
 │   ├── ralph_loop.sh       # Main loop script
 │   ├── lib/                # Circuit breaker, response analyzer
-│   ├── specs/              # Populated during transition
+│   ├── specs/              # Copied from _bmad-output during transition
 │   ├── logs/               # Loop execution logs
 │   ├── PROMPT.md           # Iteration prompt template
-│   ├── @AGENT.md           # Agent instructions
-│   └── @fix_plan.md        # Generated task list
+│   ├── PROJECT_CONTEXT.md  # Extracted goals, constraints, scope
+│   ├── SPECS_CHANGELOG.md  # What changed since last run
+│   ├── @AGENT.md           # Agent build instructions
+│   └── @fix_plan.md        # Generated task list with progress
 ├── bmalph/                 # State only
-│   ├── config.json         # Project config (name, level)
-│   └── state/              # Phase tracking
+│   └── config.json         # Project config (name, description)
+├── .claude/
+│   └── commands/           # Slash commands for Claude Code
 └── CLAUDE.md               # Updated with BMAD instructions
 ```
-
-## Scale Levels
-
-| Level | Label | Behavior |
-|-------|-------|----------|
-| 0 | Trivial | Single-shot, no loop |
-| 1 | Simple | Quick flow (brief spec + implement) |
-| 2 | Moderate | All 4 phases, standard depth |
-| 3 | Complex | All 4 phases + extra review iterations |
-| 4 | Enterprise | Full formal process |
 
 ## How Ralph Works
 
