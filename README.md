@@ -1,13 +1,13 @@
 # bmalph
 
-BMAD-METHOD planning + Ralph autonomous implementation, glued by a CLI.
+[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) planning + [Ralph](https://github.com/snarktank/ralph) autonomous implementation, glued by a CLI.
 
 ## What is bmalph?
 
 bmalph orchestrates two autonomous AI development systems:
 
-- **BMAD-METHOD** — Structured planning through Analysis, Planning, and Solutioning phases
-- **Ralph** — Autonomous implementation loop (bash-driven, fresh AI instances, TDD methodology)
+- **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** — Structured planning through Analysis, Planning, and Solutioning phases
+- **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (bash-driven, fresh AI instances, TDD methodology)
 - **bmalph** — The glue: CLI commands, state management, artifact transition
 
 ## Prerequisites
