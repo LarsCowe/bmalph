@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { upgradeCommand } from "./commands/upgrade.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { checkUpdatesCommand } from "./commands/check-updates.js";
 import { setVerbose } from "./utils/logger.js";
 import { getPackageVersion } from "./installer.js";
 
@@ -33,5 +34,11 @@ program
   .action(upgradeCommand);
 
 program.command("doctor").description("Check installation health").action(doctorCommand);
+
+program
+  .command("check-updates")
+  .description("Check if bundled BMAD/Ralph versions are up to date with upstream")
+  .option("--json", "Output as JSON")
+  .action(checkUpdatesCommand);
 
 program.parse();

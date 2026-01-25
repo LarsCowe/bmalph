@@ -4,6 +4,7 @@ import { join } from "path";
 import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
 import { getBundledVersions } from "../installer.js";
+import { checkUpstream, type GitHubError } from "../utils/github.js";
 
 interface CheckResult {
   label: string;
@@ -94,6 +95,10 @@ async function runDoctor(): Promise<void> {
   // 14. Ralph Health: API calls this hour
   const apiCallsResult = await checkApiCalls(projectDir);
   results.push(apiCallsResult);
+
+  // 15. Upstream GitHub status (never fails doctor)
+  const upstreamGitHubResult = await checkUpstreamGitHub();
+  results.push(upstreamGitHubResult);
 
   // Output
   console.log(chalk.bold("bmalph doctor\n"));
@@ -318,4 +323,40 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
   } catch {
     return { label, passed: true, detail: "not running" };
   }
+}
+
+async function checkUpstreamGitHub(): Promise<CheckResult> {
+  const label = "upstream status";
+  try {
+    const bundled = getBundledVersions();
+    const result = await checkUpstream(bundled);
+
+    // Check if all requests failed
+    if (result.bmad === null && result.ralph === null) {
+      const reason = getSkipReason(result.errors);
+      return { label, passed: true, detail: `skipped: ${reason}` };
+    }
+
+    // Build status string
+    const statuses: string[] = [];
+    if (result.bmad) {
+      statuses.push(`BMAD: ${result.bmad.isUpToDate ? "up to date" : "behind"}`);
+    }
+    if (result.ralph) {
+      statuses.push(`Ralph: ${result.ralph.isUpToDate ? "up to date" : "behind"}`);
+    }
+
+    return { label, passed: true, detail: statuses.join(", ") };
+  } catch {
+    return { label, passed: true, detail: "skipped: error" };
+  }
+}
+
+function getSkipReason(errors: GitHubError[]): string {
+  if (errors.length === 0) return "unknown";
+  const types = new Set(errors.map((e) => e.type));
+  if (types.has("rate-limit")) return "rate limited";
+  if (types.has("network")) return "offline";
+  if (types.has("timeout")) return "timeout";
+  return "error";
 }

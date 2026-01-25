@@ -7,6 +7,7 @@ vi.mock("chalk", () => ({
   default: {
     red: (s: string) => s,
     green: (s: string) => s,
+    yellow: (s: string) => s,
     blue: (s: string) => s,
     bold: (s: string) => s,
     dim: (s: string) => s,
@@ -25,6 +26,15 @@ vi.mock("../../src/installer.js", async (importOriginal) => {
       bmadCommit: TEST_BMAD_COMMIT,
       ralphCommit: TEST_RALPH_COMMIT,
     })),
+  };
+});
+
+vi.mock("../../src/utils/github.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/utils/github.js")>();
+  return {
+    ...actual,
+    checkUpstream: vi.fn(),
+    clearCache: vi.fn(),
   };
 });
 
@@ -707,6 +717,127 @@ describe("doctor command", () => {
         expect(output).toContain("API calls");
         expect(output).toContain("95/100");
       });
+    });
+  });
+
+  describe("upstream GitHub status check", () => {
+    it("shows status when both repos are up to date", async () => {
+      await setupFullProject();
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: {
+          bundledSha: TEST_BMAD_COMMIT,
+          latestSha: TEST_BMAD_COMMIT,
+          isUpToDate: true,
+          compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
+        },
+        ralph: {
+          bundledSha: TEST_RALPH_COMMIT,
+          latestSha: TEST_RALPH_COMMIT,
+          isUpToDate: true,
+          compareUrl: "https://github.com/snarktank/ralph/compare/...",
+        },
+        errors: [],
+      });
+
+      const { doctorCommand } = await import("../../src/commands/doctor.js");
+      await doctorCommand();
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("upstream status");
+      expect(output).toContain("up to date");
+    });
+
+    it("shows warning when repos have updates", async () => {
+      await setupFullProject();
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: {
+          bundledSha: TEST_BMAD_COMMIT,
+          latestSha: TEST_BMAD_COMMIT,
+          isUpToDate: true,
+          compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
+        },
+        ralph: {
+          bundledSha: TEST_RALPH_COMMIT,
+          latestSha: "newralph",
+          isUpToDate: false,
+          compareUrl: "https://github.com/snarktank/ralph/compare/...",
+        },
+        errors: [],
+      });
+
+      const { doctorCommand } = await import("../../src/commands/doctor.js");
+      await doctorCommand();
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("upstream status");
+      expect(output).toContain("behind");
+    });
+
+    it("shows skipped when offline", async () => {
+      await setupFullProject();
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: null,
+        ralph: null,
+        errors: [
+          { type: "network", message: "Network error", repo: "bmad" },
+          { type: "network", message: "Network error", repo: "ralph" },
+        ],
+      });
+
+      const { doctorCommand } = await import("../../src/commands/doctor.js");
+      await doctorCommand();
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("upstream status");
+      expect(output).toContain("skipped");
+      expect(output).toContain("offline");
+    });
+
+    it("shows skipped when rate limited", async () => {
+      await setupFullProject();
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: null,
+        ralph: null,
+        errors: [
+          { type: "rate-limit", message: "Rate limited", repo: "bmad" },
+          { type: "rate-limit", message: "Rate limited", repo: "ralph" },
+        ],
+      });
+
+      const { doctorCommand } = await import("../../src/commands/doctor.js");
+      await doctorCommand();
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("upstream status");
+      expect(output).toContain("skipped");
+      expect(output).toContain("rate");
+    });
+
+    it("does not fail overall doctor check due to network issues", async () => {
+      await setupFullProject();
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: null,
+        ralph: null,
+        errors: [
+          { type: "network", message: "Network error", repo: "bmad" },
+          { type: "network", message: "Network error", repo: "ralph" },
+        ],
+      });
+
+      const { doctorCommand } = await import("../../src/commands/doctor.js");
+      await doctorCommand();
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      // Upstream status check should pass even when network fails
+      expect(output).toContain("upstream status");
+      expect(output).toContain("skipped: offline");
+      // The ✓ symbol indicates it passed (not ✗)
+      expect(output).toMatch(/✓.*upstream status/);
     });
   });
 });
