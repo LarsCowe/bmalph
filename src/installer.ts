@@ -363,7 +363,7 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
   return { wouldCreate, wouldModify, wouldSkip };
 }
 
-export async function previewUpgrade(projectDir: string): Promise<PreviewUpgradeResult> {
+export async function previewUpgrade(_projectDir: string): Promise<PreviewUpgradeResult> {
   // In upgrade, we update the bundled assets
   const wouldUpdate = [
     "_bmad/",
