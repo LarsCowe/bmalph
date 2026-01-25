@@ -46,6 +46,55 @@ describe("validateConfig", () => {
     const result = validateConfig(data);
     expect(result.description).toBe("");
   });
+
+  it("accepts upstreamVersions when present", () => {
+    const data = {
+      name: "proj",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      upstreamVersions: {
+        bmadCommit: "48881f86",
+        ralphCommit: "019b8c73",
+      },
+    };
+    const result = validateConfig(data);
+    expect(result.upstreamVersions).toEqual({
+      bmadCommit: "48881f86",
+      ralphCommit: "019b8c73",
+    });
+  });
+
+  it("allows upstreamVersions to be missing (defaults to undefined)", () => {
+    const data = { name: "proj", createdAt: "2025-01-01T00:00:00.000Z" };
+    const result = validateConfig(data);
+    expect(result.upstreamVersions).toBeUndefined();
+  });
+
+  it("throws when upstreamVersions is not an object", () => {
+    const data = {
+      name: "proj",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      upstreamVersions: "invalid",
+    };
+    expect(() => validateConfig(data)).toThrow(/upstreamVersions/i);
+  });
+
+  it("throws when upstreamVersions has invalid bmadCommit type", () => {
+    const data = {
+      name: "proj",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      upstreamVersions: { bmadCommit: 123 },
+    };
+    expect(() => validateConfig(data)).toThrow(/bmadCommit/i);
+  });
+
+  it("throws when upstreamVersions has invalid ralphCommit type", () => {
+    const data = {
+      name: "proj",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      upstreamVersions: { bmadCommit: "abc", ralphCommit: 456 },
+    };
+    expect(() => validateConfig(data)).toThrow(/ralphCommit/i);
+  });
 });
 
 describe("validateState", () => {

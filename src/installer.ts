@@ -12,6 +12,20 @@ export function getPackageVersion(): string {
   return pkg.version;
 }
 
+export interface BundledVersions {
+  bmadCommit: string;
+  ralphCommit: string;
+}
+
+export function getBundledVersions(): BundledVersions {
+  const versionsPath = join(__dirname, "..", "bundled-versions.json");
+  const versions = JSON.parse(readFileSync(versionsPath, "utf-8"));
+  return {
+    bmadCommit: versions.bmadCommit,
+    ralphCommit: versions.ralphCommit,
+  };
+}
+
 export function getBmadDir(): string {
   return join(__dirname, "..", "bmad");
 }
@@ -96,6 +110,10 @@ modules:
     join(ralphDir, "templates/AGENT.md"),
     join(projectDir, ".ralph/@AGENT.md"),
   );
+  await cp(
+    join(ralphDir, "RALPH-REFERENCE.md"),
+    join(projectDir, ".ralph/RALPH-REFERENCE.md"),
+  );
 
   // Copy Ralph loop and lib → .ralph/
   // Add version marker to ralph_loop.sh
@@ -106,6 +124,10 @@ modules:
     : loopContent.replace(/^(#!.+\r?\n)/, `$1${markerLine}\n`);
   await writeFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
+
+  // Copy Ralph utilities → .ralph/
+  await cp(join(ralphDir, "ralph_import.sh"), join(projectDir, ".ralph/ralph_import.sh"));
+  await cp(join(ralphDir, "ralph_monitor.sh"), join(projectDir, ".ralph/ralph_monitor.sh"));
 
   // Install all slash commands → .claude/commands/
   await mkdir(join(projectDir, ".claude/commands"), { recursive: true });
@@ -123,9 +145,12 @@ modules:
     updatedPaths: [
       "_bmad/",
       ".ralph/ralph_loop.sh",
+      ".ralph/ralph_import.sh",
+      ".ralph/ralph_monitor.sh",
       ".ralph/lib/",
       ".ralph/PROMPT.md",
       ".ralph/@AGENT.md",
+      ".ralph/RALPH-REFERENCE.md",
       ".claude/commands/",
       ".gitignore",
     ],
@@ -343,9 +368,12 @@ export async function previewUpgrade(projectDir: string): Promise<PreviewUpgrade
   const wouldUpdate = [
     "_bmad/",
     ".ralph/ralph_loop.sh",
+    ".ralph/ralph_import.sh",
+    ".ralph/ralph_monitor.sh",
     ".ralph/lib/",
     ".ralph/PROMPT.md",
     ".ralph/@AGENT.md",
+    ".ralph/RALPH-REFERENCE.md",
     ".claude/commands/",
     ".gitignore",
   ];

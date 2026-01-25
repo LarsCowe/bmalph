@@ -13,6 +13,21 @@ vi.mock("chalk", () => ({
   },
 }));
 
+// Test versions for upstream version tracking
+const TEST_BMAD_COMMIT = "test1234";
+const TEST_RALPH_COMMIT = "test5678";
+
+vi.mock("../../src/installer.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/installer.js")>();
+  return {
+    ...actual,
+    getBundledVersions: vi.fn(() => ({
+      bmadCommit: TEST_BMAD_COMMIT,
+      ralphCommit: TEST_RALPH_COMMIT,
+    })),
+  };
+});
+
 describe("doctor command", () => {
   let testDir: string;
   let originalCwd: string;
@@ -49,7 +64,15 @@ describe("doctor command", () => {
     await mkdir(join(testDir, "bmalph"), { recursive: true });
     await writeFile(
       join(testDir, "bmalph/config.json"),
-      JSON.stringify({ name: "test", description: "test desc" }),
+      JSON.stringify({
+        name: "test",
+        description: "test desc",
+        createdAt: "2025-01-01T00:00:00.000Z",
+        upstreamVersions: {
+          bmadCommit: TEST_BMAD_COMMIT,
+          ralphCommit: TEST_RALPH_COMMIT,
+        },
+      }),
     );
     await mkdir(join(testDir, "_bmad"), { recursive: true });
     await mkdir(join(testDir, ".ralph/lib"), { recursive: true });
@@ -502,6 +525,188 @@ describe("doctor command", () => {
 
       // Should still complete without crashing
       expect(processExitSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Ralph health checks", () => {
+    describe("circuit breaker check", () => {
+      it("shows CLOSED state when circuit breaker is healthy", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/.circuit_breaker_state"),
+          JSON.stringify({
+            state: "CLOSED",
+            consecutive_no_progress: 0,
+            last_progress_loop: 5,
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("circuit breaker");
+        expect(output).toContain("CLOSED");
+      });
+
+      it("shows warning when circuit breaker is HALF_OPEN", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/.circuit_breaker_state"),
+          JSON.stringify({
+            state: "HALF_OPEN",
+            consecutive_no_progress: 2,
+            reason: "Monitoring: 2 loops without progress",
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("circuit breaker");
+        expect(output).toContain("HALF_OPEN");
+      });
+
+      it("shows failure when circuit breaker is OPEN", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/.circuit_breaker_state"),
+          JSON.stringify({
+            state: "OPEN",
+            consecutive_no_progress: 3,
+            reason: "No progress detected in 3 consecutive loops",
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("circuit breaker");
+        expect(output).toContain("OPEN");
+      });
+
+      it("shows not running when no circuit breaker state file", async () => {
+        await setupFullProject();
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("circuit breaker");
+        expect(output).toContain("not running");
+      });
+    });
+
+    describe("session age check", () => {
+      it("shows session age when Ralph session exists", async () => {
+        await setupFullProject();
+        const now = new Date();
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        await writeFile(
+          join(testDir, ".ralph/.ralph_session"),
+          JSON.stringify({
+            session_id: "ralph-12345",
+            created_at: twoHoursAgo.toISOString(),
+            last_used: now.toISOString(),
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("session");
+        expect(output).toMatch(/\d+h/); // Should show hours
+      });
+
+      it("shows no active session when session file missing", async () => {
+        await setupFullProject();
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("session");
+        expect(output).toContain("no active session");
+      });
+
+      it("warns when session age exceeds 24h", async () => {
+        await setupFullProject();
+        const now = new Date();
+        const thirtyHoursAgo = new Date(now.getTime() - 30 * 60 * 60 * 1000);
+        await writeFile(
+          join(testDir, ".ralph/.ralph_session"),
+          JSON.stringify({
+            session_id: "ralph-12345",
+            created_at: thirtyHoursAgo.toISOString(),
+            last_used: now.toISOString(),
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("session");
+        // Session older than 24h should be flagged
+      });
+    });
+
+    describe("API calls check", () => {
+      it("shows API call count from status file", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/status.json"),
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            loop_count: 5,
+            calls_made_this_hour: 12,
+            max_calls_per_hour: 100,
+            status: "running",
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("API calls");
+        expect(output).toContain("12/100");
+      });
+
+      it("shows not running when status file missing", async () => {
+        await setupFullProject();
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("API calls");
+        expect(output).toContain("not running");
+      });
+
+      it("warns when API calls approach limit", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/status.json"),
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            loop_count: 50,
+            calls_made_this_hour: 95,
+            max_calls_per_hour: 100,
+            status: "running",
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("API calls");
+        expect(output).toContain("95/100");
+      });
     });
   });
 });

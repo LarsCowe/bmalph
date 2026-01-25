@@ -3,10 +3,16 @@ import { join } from "path";
 import { readJsonFile } from "./json.js";
 import { validateConfig } from "./validate.js";
 
+export interface UpstreamVersions {
+  bmadCommit: string;
+  ralphCommit: string;
+}
+
 export interface BmalphConfig {
   name: string;
   description: string;
   createdAt: string;
+  upstreamVersions?: UpstreamVersions;
 }
 
 const CONFIG_FILE = "bmalph/config.json";

@@ -378,6 +378,40 @@ describe("installer", () => {
       const content = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
       expect(content.length).toBeGreaterThan(0);
     });
+
+    it("RALPH-REFERENCE.md is copied to .ralph/", async () => {
+      await installProject(testDir);
+      await expect(access(join(testDir, ".ralph/RALPH-REFERENCE.md"))).resolves.toBeUndefined();
+    });
+
+    it("RALPH-REFERENCE.md contains session management documentation", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/RALPH-REFERENCE.md"), "utf-8");
+      expect(content).toContain("Session");
+      expect(content).toContain(".ralph_session");
+    });
+
+    it("RALPH-REFERENCE.md contains circuit breaker documentation", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/RALPH-REFERENCE.md"), "utf-8");
+      expect(content).toContain("Circuit Breaker");
+      expect(content).toContain("CLOSED");
+      expect(content).toContain("HALF_OPEN");
+      expect(content).toContain("OPEN");
+    });
+
+    it("RALPH-REFERENCE.md contains exit detection documentation", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/RALPH-REFERENCE.md"), "utf-8");
+      expect(content).toContain("EXIT_SIGNAL");
+      expect(content).toContain("completion_indicators");
+    });
+
+    it("RALPH-REFERENCE.md contains troubleshooting section", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/RALPH-REFERENCE.md"), "utf-8");
+      expect(content).toContain("Troubleshooting");
+    });
   });
 
   describe("mergeClaudeMd", () => {

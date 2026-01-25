@@ -2,6 +2,8 @@ import chalk from "chalk";
 import { access, readFile, stat } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "../utils/json.js";
+import { readConfig } from "../utils/config.js";
+import { getBundledVersions } from "../installer.js";
 
 interface CheckResult {
   label: string;
@@ -76,6 +78,22 @@ async function runDoctor(): Promise<void> {
   // 10. Version marker check
   const versionResult = await checkVersionMarker(projectDir);
   results.push(versionResult);
+
+  // 11. Upstream versions check
+  const upstreamResult = await checkUpstreamVersions(projectDir);
+  results.push(upstreamResult);
+
+  // 12. Ralph Health: Circuit breaker status
+  const circuitBreakerResult = await checkCircuitBreaker(projectDir);
+  results.push(circuitBreakerResult);
+
+  // 13. Ralph Health: Session age
+  const sessionResult = await checkRalphSession(projectDir);
+  results.push(sessionResult);
+
+  // 14. Ralph Health: API calls this hour
+  const apiCallsResult = await checkApiCalls(projectDir);
+  results.push(apiCallsResult);
 
   // Output
   console.log(chalk.bold("bmalph doctor\n"));
@@ -190,5 +208,114 @@ async function checkVersionMarker(projectDir: string): Promise<CheckResult> {
     return { label, passed: false, detail: `installed: ${match[1].trim()}, current: ${current}` };
   } catch {
     return { label, passed: true, detail: "no marker found" };
+  }
+}
+
+async function checkUpstreamVersions(projectDir: string): Promise<CheckResult> {
+  const label = "upstream versions tracked";
+  try {
+    const config = await readConfig(projectDir);
+    if (!config) {
+      return { label, passed: false, detail: "config not found" };
+    }
+    if (!config.upstreamVersions) {
+      return { label, passed: true, detail: "not tracked (pre-1.2.0 install)" };
+    }
+    const bundled = getBundledVersions();
+    const { bmadCommit, ralphCommit } = config.upstreamVersions;
+    const bmadMatch = bmadCommit === bundled.bmadCommit;
+    const ralphMatch = ralphCommit === bundled.ralphCommit;
+    if (bmadMatch && ralphMatch) {
+      return { label, passed: true, detail: `BMAD:${bmadCommit.slice(0, 8)}, Ralph:${ralphCommit.slice(0, 8)}` };
+    }
+    const mismatches: string[] = [];
+    if (!bmadMatch) mismatches.push(`BMAD:${bmadCommit.slice(0, 8)}→${bundled.bmadCommit.slice(0, 8)}`);
+    if (!ralphMatch) mismatches.push(`Ralph:${ralphCommit.slice(0, 8)}→${bundled.ralphCommit.slice(0, 8)}`);
+    return { label, passed: false, detail: `outdated: ${mismatches.join(", ")}` };
+  } catch {
+    return { label, passed: false, detail: "error reading versions" };
+  }
+}
+
+interface CircuitBreakerState {
+  state: "CLOSED" | "HALF_OPEN" | "OPEN";
+  consecutive_no_progress: number;
+  reason?: string;
+}
+
+async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
+  const label = "circuit breaker";
+  const statePath = join(projectDir, ".ralph/.circuit_breaker_state");
+  try {
+    const content = await readFile(statePath, "utf-8");
+    const state = JSON.parse(content) as CircuitBreakerState;
+    if (state.state === "CLOSED") {
+      return { label, passed: true, detail: `CLOSED (${state.consecutive_no_progress} loops without progress)` };
+    }
+    if (state.state === "HALF_OPEN") {
+      return { label, passed: true, detail: `HALF_OPEN - monitoring` };
+    }
+    // OPEN state is a failure
+    return { label, passed: false, detail: `OPEN - ${state.reason ?? "stagnation detected"}` };
+  } catch {
+    return { label, passed: true, detail: "not running" };
+  }
+}
+
+interface RalphSession {
+  session_id: string;
+  created_at: string;
+  last_used?: string;
+}
+
+async function checkRalphSession(projectDir: string): Promise<CheckResult> {
+  const label = "Ralph session";
+  const sessionPath = join(projectDir, ".ralph/.ralph_session");
+  try {
+    const content = await readFile(sessionPath, "utf-8");
+    const session = JSON.parse(content) as RalphSession;
+    if (!session.session_id || session.session_id === "") {
+      return { label, passed: true, detail: "no active session" };
+    }
+    const createdAt = new Date(session.created_at);
+    const now = new Date();
+    const ageMs = now.getTime() - createdAt.getTime();
+    const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+    const ageMinutes = Math.floor((ageMs % (1000 * 60 * 60)) / (1000 * 60));
+    const ageStr = ageHours > 0 ? `${ageHours}h${ageMinutes}m` : `${ageMinutes}m`;
+
+    // Warn if session is older than 24 hours
+    if (ageHours >= 24) {
+      return { label, passed: false, detail: `${ageStr} old (max 24h)` };
+    }
+    return { label, passed: true, detail: ageStr };
+  } catch {
+    return { label, passed: true, detail: "no active session" };
+  }
+}
+
+interface RalphStatus {
+  calls_made_this_hour: number;
+  max_calls_per_hour: number;
+  status?: string;
+}
+
+async function checkApiCalls(projectDir: string): Promise<CheckResult> {
+  const label = "API calls this hour";
+  const statusPath = join(projectDir, ".ralph/status.json");
+  try {
+    const content = await readFile(statusPath, "utf-8");
+    const status = JSON.parse(content) as RalphStatus;
+    const calls = status.calls_made_this_hour;
+    const max = status.max_calls_per_hour;
+    const percentage = (calls / max) * 100;
+
+    // Warn if approaching limit (> 90%)
+    if (percentage >= 90) {
+      return { label, passed: false, detail: `${calls}/${max} (approaching limit)` };
+    }
+    return { label, passed: true, detail: `${calls}/${max}` };
+  } catch {
+    return { label, passed: true, detail: "not running" };
   }
 }

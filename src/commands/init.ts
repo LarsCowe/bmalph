@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { writeConfig, type BmalphConfig } from "../utils/config.js";
-import { installProject, mergeClaudeMd, isInitialized, previewInstall } from "../installer.js";
+import { installProject, mergeClaudeMd, isInitialized, previewInstall, getBundledVersions } from "../installer.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 
 interface InitOptions {
@@ -75,10 +75,12 @@ async function runInit(options: InitOptions): Promise<void> {
 
   await installProject(projectDir);
 
+  const bundledVersions = getBundledVersions();
   const config: BmalphConfig = {
     name: name!,
     description: description ?? "",
     createdAt: new Date().toISOString(),
+    upstreamVersions: bundledVersions,
   };
 
   await writeConfig(projectDir, config);

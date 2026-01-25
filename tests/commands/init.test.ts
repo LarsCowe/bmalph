@@ -23,6 +23,7 @@ vi.mock("../../src/installer.js", () => ({
   installProject: vi.fn(),
   mergeClaudeMd: vi.fn(),
   previewInstall: vi.fn(),
+  getBundledVersions: vi.fn(() => ({ bmadCommit: "test1234", ralphCommit: "test5678" })),
 }));
 
 vi.mock("../../src/utils/config.js", () => ({

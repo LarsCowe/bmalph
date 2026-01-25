@@ -1,4 +1,4 @@
-import type { BmalphConfig } from "./config.js";
+import type { BmalphConfig, UpstreamVersions } from "./config.js";
 import type { BmalphState } from "./state.js";
 
 const VALID_STATUSES = ["planning", "implementing", "completed"] as const;
@@ -7,6 +7,23 @@ function assertObject(data: unknown, label: string): asserts data is Record<stri
   if (data === null || data === undefined || typeof data !== "object" || Array.isArray(data)) {
     throw new Error(`${label}: expected an object`);
   }
+}
+
+function validateUpstreamVersions(data: unknown): UpstreamVersions {
+  assertObject(data, "upstreamVersions");
+
+  if (typeof data.bmadCommit !== "string") {
+    throw new Error("upstreamVersions.bmadCommit must be a string");
+  }
+
+  if (typeof data.ralphCommit !== "string") {
+    throw new Error("upstreamVersions.ralphCommit must be a string");
+  }
+
+  return {
+    bmadCommit: data.bmadCommit,
+    ralphCommit: data.ralphCommit,
+  };
 }
 
 export function validateConfig(data: unknown): BmalphConfig {
@@ -22,10 +39,14 @@ export function validateConfig(data: unknown): BmalphConfig {
 
   const description = typeof data.description === "string" ? data.description : "";
 
+  const upstreamVersions =
+    data.upstreamVersions !== undefined ? validateUpstreamVersions(data.upstreamVersions) : undefined;
+
   return {
     name: data.name,
     description,
     createdAt: data.createdAt,
+    upstreamVersions,
   };
 }
 
