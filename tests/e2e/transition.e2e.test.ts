@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdir, writeFile, readFile, access } from "fs/promises";
+import { mkdir, writeFile, readFile } from "fs/promises";
 import { join } from "path";
 import { runInit } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
