@@ -23,9 +23,14 @@ program
   .description("Initialize bmalph in the current project")
   .option("-n, --name <name>", "Project name")
   .option("-d, --description <desc>", "Project description")
+  .option("--dry-run", "Preview changes without writing files")
   .action(initCommand);
 
-program.command("upgrade").description("Update bundled assets to current version").action(upgradeCommand);
+program
+  .command("upgrade")
+  .description("Update bundled assets to current version")
+  .option("--dry-run", "Preview changes without writing files")
+  .action(upgradeCommand);
 
 program.command("doctor").description("Check installation health").action(doctorCommand);
 

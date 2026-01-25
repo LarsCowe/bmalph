@@ -28,6 +28,16 @@ export interface UpgradeResult {
   updatedPaths: string[];
 }
 
+export interface PreviewInstallResult {
+  wouldCreate: string[];
+  wouldModify: string[];
+  wouldSkip: string[];
+}
+
+export interface PreviewUpgradeResult {
+  wouldUpdate: string[];
+}
+
 export async function copyBundledAssets(projectDir: string): Promise<UpgradeResult> {
   const bmadDir = getBmadDir();
   const ralphDir = getRalphDir();
@@ -257,4 +267,88 @@ export async function isInitialized(projectDir: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function previewInstall(projectDir: string): Promise<PreviewInstallResult> {
+  const wouldCreate: string[] = [];
+  const wouldModify: string[] = [];
+  const wouldSkip: string[] = [];
+
+  // Directories that would be created
+  const dirsToCreate = [
+    "bmalph/state/",
+    ".ralph/specs/",
+    ".ralph/logs/",
+    ".ralph/docs/generated/",
+    "_bmad/",
+    ".claude/commands/",
+  ];
+
+  for (const dir of dirsToCreate) {
+    try {
+      await access(join(projectDir, dir));
+      // Directory exists - would be updated
+      if (dir === "_bmad/" || dir === ".claude/commands/") {
+        wouldModify.push(dir);
+      }
+    } catch {
+      wouldCreate.push(dir);
+    }
+  }
+
+  // Files that would be created/modified
+  const filesToCheck = [
+    { path: ".ralph/PROMPT.md", isTemplate: true },
+    { path: ".ralph/@AGENT.md", isTemplate: true },
+    { path: ".ralph/ralph_loop.sh", isTemplate: false },
+    { path: "bmalph/config.json", isTemplate: false },
+  ];
+
+  for (const file of filesToCheck) {
+    try {
+      await access(join(projectDir, file.path));
+      if (file.isTemplate) {
+        wouldModify.push(file.path);
+      }
+    } catch {
+      wouldCreate.push(file.path);
+    }
+  }
+
+  // .gitignore would be modified if it exists, created otherwise
+  try {
+    await access(join(projectDir, ".gitignore"));
+    wouldModify.push(".gitignore");
+  } catch {
+    wouldCreate.push(".gitignore");
+  }
+
+  // CLAUDE.md integration check
+  try {
+    const claudeMd = await readFile(join(projectDir, "CLAUDE.md"), "utf-8");
+    if (claudeMd.includes("## BMAD-METHOD Integration")) {
+      wouldSkip.push("CLAUDE.md (already integrated)");
+    } else {
+      wouldModify.push("CLAUDE.md");
+    }
+  } catch {
+    wouldCreate.push("CLAUDE.md");
+  }
+
+  return { wouldCreate, wouldModify, wouldSkip };
+}
+
+export async function previewUpgrade(projectDir: string): Promise<PreviewUpgradeResult> {
+  // In upgrade, we update the bundled assets
+  const wouldUpdate = [
+    "_bmad/",
+    ".ralph/ralph_loop.sh",
+    ".ralph/lib/",
+    ".ralph/PROMPT.md",
+    ".ralph/@AGENT.md",
+    ".claude/commands/",
+    ".gitignore",
+  ];
+
+  return { wouldUpdate };
 }

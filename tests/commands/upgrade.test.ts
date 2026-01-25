@@ -5,6 +5,7 @@ vi.mock("chalk", () => ({
     red: (s: string) => s,
     green: (s: string) => s,
     blue: (s: string) => s,
+    yellow: (s: string) => s,
     bold: (s: string) => s,
     dim: (s: string) => s,
   },
@@ -14,6 +15,7 @@ vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
   copyBundledAssets: vi.fn(),
   mergeClaudeMd: vi.fn(),
+  previewUpgrade: vi.fn(),
 }));
 
 describe("upgrade command", () => {
@@ -26,6 +28,7 @@ describe("upgrade command", () => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     processExitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     vi.resetModules();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -41,7 +44,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(false);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("not initialized"));
     });
@@ -51,7 +54,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(false);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("bmalph init"));
     });
@@ -61,7 +64,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(false);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(copyBundledAssets).not.toHaveBeenCalled();
     });
@@ -79,7 +82,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(copyBundledAssets).toHaveBeenCalled();
     });
@@ -95,7 +98,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(mergeClaudeMd).toHaveBeenCalled();
     });
@@ -111,7 +114,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Upgrading"));
     });
@@ -127,7 +130,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("_bmad/");
@@ -146,7 +149,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("Preserved");
@@ -169,7 +172,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Upgrade complete"));
     });
@@ -182,7 +185,7 @@ describe("upgrade command", () => {
       vi.mocked(copyBundledAssets).mockRejectedValue(new Error("Copy failed"));
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Copy failed"));
     });
@@ -193,9 +196,51 @@ describe("upgrade command", () => {
       vi.mocked(copyBundledAssets).mockRejectedValue(new Error("Copy failed"));
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand();
+      await upgradeCommand({});
 
       expect(processExitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe("dry-run mode", () => {
+    it("does not call copyBundledAssets in dry-run mode", async () => {
+      const { isInitialized, copyBundledAssets, previewUpgrade } = await import(
+        "../../src/installer.js"
+      );
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(previewUpgrade).mockResolvedValue({
+        wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],
+      });
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ dryRun: true });
+
+      expect(copyBundledAssets).not.toHaveBeenCalled();
+    });
+
+    it("shows preview of changes in dry-run mode", async () => {
+      const { isInitialized, previewUpgrade } = await import("../../src/installer.js");
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(previewUpgrade).mockResolvedValue({
+        wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],
+      });
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ dryRun: true });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("dry-run");
+    });
+
+    it("still requires initialization in dry-run mode", async () => {
+      const { isInitialized, previewUpgrade } = await import("../../src/installer.js");
+      vi.mocked(isInitialized).mockResolvedValue(false);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ dryRun: true });
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("not initialized"));
+      expect(previewUpgrade).not.toHaveBeenCalled();
     });
   });
 });

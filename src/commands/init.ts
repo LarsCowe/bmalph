@@ -1,11 +1,13 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { writeConfig, type BmalphConfig } from "../utils/config.js";
-import { installProject, mergeClaudeMd, isInitialized } from "../installer.js";
+import { installProject, mergeClaudeMd, isInitialized, previewInstall } from "../installer.js";
+import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 
 interface InitOptions {
   name?: string;
   description?: string;
+  dryRun?: boolean;
 }
 
 export async function initCommand(options: InitOptions): Promise<void> {
@@ -24,6 +26,18 @@ async function runInit(options: InitOptions): Promise<void> {
   if (await isInitialized(projectDir)) {
     console.log(chalk.yellow("bmalph is already initialized in this project."));
     console.log("Use 'bmalph reset --hard' to reinitialize.");
+    return;
+  }
+
+  // Handle dry-run mode
+  if (options.dryRun) {
+    const preview = await previewInstall(projectDir);
+    const actions: DryRunAction[] = [
+      ...preview.wouldCreate.map((p) => ({ type: "create" as const, path: p })),
+      ...preview.wouldModify.map((p) => ({ type: "modify" as const, path: p })),
+      ...preview.wouldSkip.map((p) => ({ type: "skip" as const, path: p })),
+    ];
+    console.log(formatDryRunSummary(actions));
     return;
   }
 

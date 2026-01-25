@@ -1,9 +1,14 @@
 import chalk from "chalk";
-import { isInitialized, copyBundledAssets, mergeClaudeMd } from "../installer.js";
+import { isInitialized, copyBundledAssets, mergeClaudeMd, previewUpgrade } from "../installer.js";
+import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 
-export async function upgradeCommand(): Promise<void> {
+interface UpgradeOptions {
+  dryRun?: boolean;
+}
+
+export async function upgradeCommand(options: UpgradeOptions = {}): Promise<void> {
   try {
-    await runUpgrade();
+    await runUpgrade(options);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(chalk.red(`Error: ${message}`));
@@ -11,11 +16,22 @@ export async function upgradeCommand(): Promise<void> {
   }
 }
 
-async function runUpgrade(): Promise<void> {
+async function runUpgrade(options: UpgradeOptions): Promise<void> {
   const projectDir = process.cwd();
 
   if (!(await isInitialized(projectDir))) {
     console.log(chalk.red("bmalph is not initialized. Run 'bmalph init' first."));
+    return;
+  }
+
+  // Handle dry-run mode
+  if (options.dryRun) {
+    const preview = await previewUpgrade(projectDir);
+    const actions: DryRunAction[] = preview.wouldUpdate.map((p) => ({
+      type: "modify" as const,
+      path: p,
+    }));
+    console.log(formatDryRunSummary(actions));
     return;
   }
 

@@ -22,6 +22,7 @@ vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
   installProject: vi.fn(),
   mergeClaudeMd: vi.fn(),
+  previewInstall: vi.fn(),
 }));
 
 vi.mock("../../src/utils/config.js", () => ({
@@ -34,6 +35,7 @@ describe("init command", () => {
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.resetModules();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -128,5 +130,46 @@ describe("init command", () => {
         description: "prompted-desc",
       }),
     );
+  });
+
+  it("dry-run does not install files", async () => {
+    const { isInitialized, installProject, mergeClaudeMd, previewInstall } = await import(
+      "../../src/installer.js"
+    );
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+    vi.mocked(previewInstall).mockResolvedValue({
+      wouldCreate: ["bmalph/state/", ".ralph/"],
+      wouldModify: [".gitignore"],
+      wouldSkip: [],
+    });
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "test", description: "test", dryRun: true });
+
+    expect(installProject).not.toHaveBeenCalled();
+    expect(writeConfig).not.toHaveBeenCalled();
+    expect(mergeClaudeMd).not.toHaveBeenCalled();
+  });
+
+  it("dry-run shows preview of changes", async () => {
+    const { isInitialized, previewInstall } = await import("../../src/installer.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(previewInstall).mockResolvedValue({
+      wouldCreate: ["bmalph/state/", ".ralph/specs/"],
+      wouldModify: [".gitignore"],
+      wouldSkip: [],
+    });
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "test", description: "test", dryRun: true });
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("dry-run");
   });
 });
