@@ -51,16 +51,20 @@ cargo run
 
 ### Testing Requirements
 
+- **Minimum Coverage**: 85% code coverage ratio required for all new code
 - **Test Pass Rate**: 100% - all tests must pass, no exceptions
-- **Test Effort**: Limit testing to ~20% of your loop effort (per PROMPT.md guidelines)
-- **Test Types Recommended**:
-  - Unit tests for new business logic and services
+- **Test Types Required**:
+  - Unit tests for all business logic and services
   - Integration tests for API endpoints or main functionality
-  - End-to-end tests for critical user workflows (when applicable)
-- **Test Quality Over Coverage**: Tests must validate behavior, not just achieve coverage metrics
-  - Focus on testing NEW functionality you implement
-  - Do NOT refactor existing tests unless broken
-  - Do NOT add "additional test coverage" as busy work
+  - End-to-end tests for critical user workflows
+- **Coverage Validation**: Run coverage reports before marking features complete:
+  ```bash
+  # Examples by language/framework
+  npm run test:coverage
+  pytest --cov=src tests/ --cov-report=term-missing
+  cargo tarpaulin --out Html
+  ```
+- **Test Quality**: Tests must validate behavior, not just achieve coverage metrics
 - **Test Documentation**: Complex test scenarios must include comments explaining the test strategy
 
 ### Git Workflow Requirements
@@ -127,7 +131,8 @@ Before moving to the next feature, ALL changes must be:
 Before marking ANY feature as complete, verify:
 
 - [ ] All tests pass with appropriate framework command
-- [ ] Tests validate actual behavior (quality over coverage metrics)
+- [ ] Code coverage meets 85% minimum threshold
+- [ ] Coverage report reviewed for meaningful test quality
 - [ ] Code formatted according to project standards
 - [ ] Type checking passes (if applicable)
 - [ ] All changes committed with conventional commit messages

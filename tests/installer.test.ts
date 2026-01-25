@@ -224,11 +224,12 @@ describe("installer", () => {
       expect(helpCsv).toContain("bmm,1-analysis,Create Brief,CB,");
     });
 
-    it("manifests do not contain Dev Story or Code Review entries", async () => {
+    it("manifests contain implementation phase workflows", async () => {
       await copyBundledAssets(testDir);
       const manifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
-      expect(manifest).not.toContain("Dev Story");
-      expect(manifest).not.toContain("Code Review");
+      // Dev Story and Code Review are valid Phase 4 workflows from upstream BMAD
+      expect(manifest).toContain("Dev Story");
+      expect(manifest).toContain("Code Review");
     });
 
     it("does NOT create bmalph/state/ or .ralph/logs/", async () => {
@@ -355,16 +356,16 @@ describe("installer", () => {
       expect(content.length).toBeGreaterThan(0);
     });
 
-    it("PROMPT.md references planning-artifacts/ structure", async () => {
+    it("PROMPT.md references .ralph/specs/ for specifications", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
-      expect(content).toContain("planning-artifacts/");
+      expect(content).toContain(".ralph/specs/");
     });
 
-    it("PROMPT.md references implementation-artifacts/", async () => {
+    it("PROMPT.md references @fix_plan.md", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
-      expect(content).toContain("implementation-artifacts/");
+      expect(content).toContain("@fix_plan.md");
     });
 
     it("PROMPT.md references docs/ for project knowledge", async () => {

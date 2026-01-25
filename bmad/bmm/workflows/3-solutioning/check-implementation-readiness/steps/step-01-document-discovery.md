@@ -3,7 +3,7 @@ name: 'step-01-document-discovery'
 description: 'Discover and inventory all project documents, handling duplicates and organizing file structure'
 
 # Path Definitions
-workflow_path: '{project-root}/_bmad/bmm/workflows/3-solutioning/implementation-readiness'
+workflow_path: '{project-root}/_bmad/bmm/workflows/3-solutioning/check-implementation-readiness'
 
 # File References
 thisStepFile: './step-01-document-discovery.md'
@@ -162,7 +162,7 @@ Display: **Select an Option:** [C] Continue to File Validation
 
 #### Menu Handling Logic:
 
-- IF C: Save document inventory to {outputFile}, update frontmatter with completed step and files being included, and only then load read fully and execute {nextStepFile}
+- IF C: Save document inventory to {outputFile}, update frontmatter with completed step and files being included, and then read fully and follow: {nextStepFile}
 - IF Any other comments or queries: help user respond then redisplay menu
 
 ## CRITICAL STEP COMPLETION NOTE
