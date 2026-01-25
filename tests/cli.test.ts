@@ -46,29 +46,18 @@ describe("CLI entry point", () => {
     expect(stdout).toContain("init");
   });
 
-  it("registers implement command", () => {
+  it("only registers init command (not implement, reset, upgrade, status, doctor)", () => {
     const { stdout } = runCli(["--help"]);
-    expect(stdout).toContain("implement");
-  });
-
-  it("registers reset command", () => {
-    const { stdout } = runCli(["--help"]);
-    expect(stdout).toContain("reset");
-  });
-
-  it("registers upgrade command", () => {
-    const { stdout } = runCli(["--help"]);
-    expect(stdout).toContain("upgrade");
-  });
-
-  it("registers status command", () => {
-    const { stdout } = runCli(["--help"]);
-    expect(stdout).toContain("status");
-  });
-
-  it("registers doctor command", () => {
-    const { stdout } = runCli(["--help"]);
-    expect(stdout).toContain("doctor");
+    // The Commands section should only contain init and help
+    const commandsSection = stdout.split("Commands:")[1] ?? "";
+    expect(commandsSection).toContain("init");
+    expect(commandsSection).toContain("help");
+    // These commands are now slash commands, not CLI commands
+    expect(commandsSection).not.toContain("implement");
+    expect(commandsSection).not.toContain("reset");
+    expect(commandsSection).not.toContain("upgrade");
+    expect(commandsSection).not.toContain("status");
+    expect(commandsSection).not.toContain("doctor");
   });
 
   it("accepts --verbose flag", () => {

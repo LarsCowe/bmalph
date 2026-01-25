@@ -1,6 +1,6 @@
 # bmalph
 
-[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) planning + [Ralph](https://github.com/snarktank/ralph) autonomous implementation, glued by a CLI.
+[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) planning + [Ralph](https://github.com/snarktank/ralph) autonomous implementation, glued by slash commands.
 
 ## What is bmalph?
 
@@ -8,7 +8,7 @@ bmalph orchestrates two autonomous AI development systems:
 
 - **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** — Structured planning through Analysis, Planning, and Solutioning phases
 - **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (bash-driven, fresh AI instances, TDD methodology)
-- **bmalph** — The glue: CLI commands, state management, artifact transition
+- **bmalph** — The glue: slash commands, state management, artifact transition
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ cd my-project
 bmalph init --name my-project
 # Use /bmalph slash command in Claude Code to navigate phases
 # ... work through BMAD phases 1-3 ...
-bmalph implement
+# Use /bmalph-implement to transition and start Ralph
 ```
 
 ## Workflow
@@ -82,15 +82,18 @@ Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash comm
 
 ### Step 3: Implement with Ralph (Phase 4)
 
-```bash
-bmalph implement
-```
+Use the `/bmalph-implement` slash command in Claude Code.
 
 This transitions your BMAD artifacts into Ralph's format:
 1. Reads your stories from BMAD output
 2. Generates `.ralph/@fix_plan.md` with ordered tasks
 3. Copies specs to `.ralph/specs/` with changelog tracking
-4. Starts the Ralph autonomous loop
+4. Instructs you to start the Ralph autonomous loop
+
+Then start Ralph:
+```bash
+bash .ralph/ralph_loop.sh
+```
 
 Ralph picks stories one by one, implements with TDD, and commits. The loop stops when all stories are done or the circuit breaker triggers.
 
@@ -99,12 +102,12 @@ Ralph picks stories one by one, implements with TDD, and commits. The loop stops
 bmalph supports iterative development cycles:
 
 ```
-BMAD (Epic 1) → bmalph implement → Ralph works on Epic 1
+BMAD (Epic 1) → /bmalph-implement → Ralph works on Epic 1
      ↓
-BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
+BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 ```
 
-**Smart Merge**: When you run `bmalph implement` again after Ralph has made progress:
+**Smart Merge**: When you run `/bmalph-implement` again after Ralph has made progress:
 - Completed stories (`[x]`) are preserved in the new fix_plan
 - New stories from BMAD are added as pending (`[ ]`)
 
@@ -115,11 +118,6 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | Command | Description |
 |---------|-------------|
 | `bmalph init` | Install BMAD + Ralph into project |
-| `bmalph implement` | Transition planning artifacts → start Ralph loop |
-| `bmalph status` | Show current phase, Ralph progress, and version info |
-| `bmalph upgrade` | Update bundled assets to match current bmalph version |
-| `bmalph doctor` | Check project health and report issues |
-| `bmalph reset [--hard]` | Reset state (--hard removes `_bmad/`, `.ralph/`, artifacts) |
 
 ### Global options
 
@@ -135,6 +133,19 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 |------|-------------|---------|
 | `-n, --name <name>` | Project name | directory name |
 | `-d, --description <desc>` | Project description | (prompted) |
+
+## Slash Commands
+
+All workflow functionality is provided via Claude Code slash commands:
+
+| Command | Description |
+|---------|-------------|
+| `/bmalph` | Navigate BMAD phases |
+| `/bmalph-status` | Show current phase, Ralph progress, version info |
+| `/bmalph-implement` | Transition planning artifacts → prepare Ralph loop |
+| `/bmalph-upgrade` | Update bundled assets to match current bmalph version |
+| `/bmalph-doctor` | Check project health and report issues |
+| `/bmalph-reset` | Reset state (soft or hard reset with confirmation) |
 
 ## Project Structure (after init)
 

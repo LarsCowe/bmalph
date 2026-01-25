@@ -416,16 +416,16 @@ describe("installer", () => {
       expect(content).not.toContain("bmalph plan");
     });
 
-    it("references bmalph status command", async () => {
+    it("references /bmalph-status slash command", async () => {
       await mergeClaudeMd(testDir);
       const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
-      expect(content).toContain("bmalph status");
+      expect(content).toContain("/bmalph-status");
     });
 
-    it("references bmalph implement for transition", async () => {
+    it("references /bmalph-implement for transition", async () => {
       await mergeClaudeMd(testDir);
       const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
-      expect(content).toContain("bmalph implement");
+      expect(content).toContain("/bmalph-implement");
     });
 
     it("documents all 4 phases", async () => {

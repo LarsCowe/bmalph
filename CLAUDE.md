@@ -8,14 +8,14 @@ bmalph orchestrates two autonomous systems:
 
 - **BMAD-METHOD** handles structured planning (Analysis → Planning → Solutioning)
 - **Ralph** handles autonomous implementation (bash loop, fresh AI instances, fix_plan.md driven)
-- **bmalph** provides the glue: CLI commands, state management, phase transitions
+- **bmalph** provides the glue: CLI for init, slash commands for workflow, state management, phase transitions
 
 ## Architecture
 
 ```
 Phases 1-3 (Planning): BMAD agents + workflows (interactive, command-driven)
 Phase 4 (Implementation): Ralph loop (autonomous, bash-driven)
-bmalph: CLI + state + transition logic
+bmalph: CLI (init only) + slash commands (workflow) + state + transition logic
 ```
 
 ### Directory structure after `bmalph init`
@@ -33,27 +33,32 @@ project-root/
 | Command | Action |
 |---------|--------|
 | `bmalph init` | Install BMAD + Ralph, configure project |
-| `bmalph implement` | Transition: BMAD artifacts → Ralph inputs → start loop |
-| `bmalph status` | Show current phase, Ralph progress, version info |
-| `bmalph upgrade` | Update bundled assets to match current bmalph version |
-| `bmalph doctor` | Check project health and report issues |
-| `bmalph reset [--hard]` | Reset state (--hard removes all artifacts) |
+
+## Slash Commands
+
+| Command | Action |
+|---------|--------|
+| `/bmalph-status` | Show current phase, Ralph progress, version info |
+| `/bmalph-implement` | Transition: BMAD artifacts → Ralph inputs |
+| `/bmalph-upgrade` | Update bundled assets to match current bmalph version |
+| `/bmalph-doctor` | Check project health and report issues |
+| `/bmalph-reset` | Reset state (soft or hard with confirmation) |
 
 Phase navigation uses the `/bmalph` slash command in Claude Code.
 
 ## Key Files
 
-- `src/cli.ts` — Commander.js CLI definition
+- `src/cli.ts` — Commander.js CLI definition (init only)
 - `src/installer.ts` — Copies bmad/ and ralph/ into target project
 - `src/transition.ts` — Converts BMAD stories → Ralph @fix_plan.md
-- `src/commands/` — CLI command handlers (init, implement, status, upgrade, doctor, reset)
+- `src/commands/init.ts` — CLI init handler
 - `src/utils/state.ts` — Phase tracking + Ralph status reading
 - `src/utils/json.ts` — Safe JSON file reading with error discrimination
 - `src/utils/validate.ts` — Runtime config/state validation
 - `src/utils/logger.ts` — Debug logging (--verbose)
 - `bmad/` — Bundled BMAD agents and workflows
 - `ralph/` — Bundled Ralph loop and libraries
-- `slash-commands/` — Claude Code slash command templates
+- `slash-commands/` — Claude Code slash command templates (including bmalph-*)
 
 ## Dev Workflow
 
