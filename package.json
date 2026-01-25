@@ -1,6 +1,6 @@
 {
   "name": "bmalph",
-  "version": "0.8.19",
+  "version": "1.0.0",
   "description": "Unified AI Development Framework - BMAD phases with Ralph execution loop for Claude Code",
   "type": "module",
   "bin": {
@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src tests",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepublishOnly": "npm run lint && npm run build && npm test"
   },
   "keywords": [
     "claude",
@@ -21,8 +22,16 @@
     "framework",
     "agents"
   ],
-  "author": "",
+  "author": "Lars Cowe",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LarsCowe/bmalph.git"
+  },
+  "homepage": "https://github.com/LarsCowe/bmalph#readme",
+  "bugs": {
+    "url": "https://github.com/LarsCowe/bmalph/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
   },

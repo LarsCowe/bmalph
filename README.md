@@ -4,11 +4,16 @@
 
 ## What is bmalph?
 
-bmalph orchestrates two autonomous AI development systems:
+bmalph bundles and installs two AI development systems:
 
-- **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** — Structured planning through Analysis, Planning, and Solutioning phases
-- **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (bash-driven, fresh AI instances, TDD methodology)
-- **bmalph** — The glue: slash commands, state management, artifact transition
+- **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** — Planning agents and workflows (Phases 1-3)
+- **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (Phase 4)
+
+bmalph provides:
+- `bmalph init` — Install both systems
+- `bmalph upgrade` — Update to latest versions
+- `bmalph doctor` — Check installation health
+- `/bmalph-implement` — Transition from BMAD to Ralph
 
 ## Prerequisites
 
@@ -138,18 +143,24 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ## Slash Commands
 
-Workflow functionality is provided via Claude Code slash commands:
+bmalph installs 50+ BMAD slash commands. Key commands:
 
 | Command | Description |
 |---------|-------------|
-| `/bmalph` | Navigate BMAD phases |
-| `/bmalph-status` | Show current phase, Ralph progress, version info |
-| `/bmalph-implement` | Transition planning artifacts → prepare Ralph loop |
-| `/bmalph-reset` | Reset state (soft or hard reset with confirmation) |
-| `/bmalph-upgrade` | Instructions to run `bmalph upgrade` CLI |
-| `/bmalph-doctor` | Instructions to run `bmalph doctor` CLI |
+| `/bmalph` | BMAD master agent — navigate phases |
+| `/analyst` | Analyst agent |
+| `/pm` | Product Manager agent |
+| `/architect` | Architect agent |
+| `/create-prd` | Create PRD workflow |
+| `/create-architecture` | Create architecture workflow |
+| `/create-epics-stories` | Create epics and stories |
+| `/bmad-help` | List all BMAD commands |
 
-> **Note**: `/bmalph-upgrade` and `/bmalph-doctor` delegate to CLI commands because they need access to npm package assets.
+For full list, run `/bmad-help` in Claude Code.
+
+### Transition to Ralph
+
+Use `/bmalph-implement` to transition from BMAD planning to Ralph implementation.
 
 ## Project Structure (after init)
 

@@ -69,4 +69,30 @@ describe("CLI entry point", () => {
     expect(stdout).toContain("--name");
     expect(stdout).toContain("--description");
   });
+
+  it("doctor command has help", () => {
+    const { stdout, exitCode } = runCli(["doctor", "--help"]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("doctor");
+  });
+
+  it("upgrade command has help", () => {
+    const { stdout, exitCode } = runCli(["upgrade", "--help"]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("upgrade");
+  });
+
+  it("version matches package.json format", () => {
+    const { stdout } = runCli(["--version"]);
+    const version = stdout.trim();
+    // Should be semver format: major.minor.patch
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    // Should not be 0.8.4 (the old hardcoded version)
+    expect(version).not.toBe("0.8.4");
+  });
+
+  it("description mentions Ralph", () => {
+    const { stdout } = runCli(["--help"]);
+    expect(stdout.toLowerCase()).toContain("ralph");
+  });
 });

@@ -4,18 +4,23 @@ Integration layer between [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-ME
 
 ## What is bmalph?
 
-bmalph orchestrates two autonomous systems:
+bmalph bundles and installs two AI development systems:
 
-- **BMAD-METHOD** handles structured planning (Analysis → Planning → Solutioning)
-- **Ralph** handles autonomous implementation (bash loop, fresh AI instances, fix_plan.md driven)
-- **bmalph** provides the glue: CLI for init, slash commands for workflow, state management, phase transitions
+- **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** — Planning agents and workflows (Phases 1-3)
+- **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (Phase 4)
+
+bmalph provides:
+- `bmalph init` — Install both systems
+- `bmalph upgrade` — Update to latest versions
+- `bmalph doctor` — Check installation health
+- `/bmalph-implement` — Transition from BMAD to Ralph
 
 ## Architecture
 
 ```
 Phases 1-3 (Planning): BMAD agents + workflows (interactive, command-driven)
 Phase 4 (Implementation): Ralph loop (autonomous, bash-driven)
-bmalph: CLI (init only) + slash commands (workflow) + state + transition logic
+bmalph: CLI + transition logic
 ```
 
 ### Directory structure after `bmalph init`
@@ -38,14 +43,24 @@ project-root/
 
 ## Slash Commands
 
-| Command | Action |
-|---------|--------|
-| `/bmalph` | Navigate BMAD phases |
-| `/bmalph-status` | Show current phase, Ralph progress, version info |
-| `/bmalph-implement` | Transition: BMAD artifacts → Ralph inputs |
-| `/bmalph-reset` | Reset state (soft or hard with confirmation) |
-| `/bmalph-upgrade` | Instructions to run `bmalph upgrade` |
-| `/bmalph-doctor` | Instructions to run `bmalph doctor` |
+bmalph installs 50+ BMAD slash commands. Key commands:
+
+| Command | Description |
+|---------|-------------|
+| `/bmalph` | BMAD master agent — navigate phases |
+| `/analyst` | Analyst agent |
+| `/pm` | Product Manager agent |
+| `/architect` | Architect agent |
+| `/create-prd` | Create PRD workflow |
+| `/create-architecture` | Create architecture workflow |
+| `/create-epics-stories` | Create epics and stories |
+| `/bmad-help` | List all BMAD commands |
+
+For full list, run `/bmad-help` in Claude Code.
+
+### Transition to Ralph
+
+Use `/bmalph-implement` to transition from BMAD planning to Ralph implementation.
 
 ## Key Files
 
@@ -61,7 +76,7 @@ project-root/
 - `src/utils/logger.ts` — Debug logging (--verbose)
 - `bmad/` — Bundled BMAD agents and workflows
 - `ralph/` — Bundled Ralph loop and libraries
-- `slash-commands/` — Claude Code slash command templates (including bmalph-*)
+- `slash-commands/` — bmalph and bmalph-implement slash commands
 
 ## Dev Workflow
 

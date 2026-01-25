@@ -3,13 +3,14 @@ import { initCommand } from "./commands/init.js";
 import { upgradeCommand } from "./commands/upgrade.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { setVerbose } from "./utils/logger.js";
+import { getPackageVersion } from "./installer.js";
 
 const program = new Command();
 
 program
   .name("bmalph")
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
-  .version("0.8.4")
+  .version(getPackageVersion())
   .option("--verbose", "Enable debug logging")
   .hook("preAction", () => {
     if (program.opts().verbose) {
