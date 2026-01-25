@@ -126,17 +126,27 @@ For each story in @fix_plan.md:
 5. Mark story as complete in @fix_plan.md
 6. Commit with descriptive conventional commit message
 
+## Specs Reading Strategy
+1. Read .ralph/SPECS_INDEX.md first for a prioritized overview of all spec files
+2. Follow the reading order in SPECS_INDEX.md:
+   - **Critical**: Always read fully (PRD, architecture, stories)
+   - **High**: Read for implementation details (test design, readiness)
+   - **Medium**: Reference as needed (UX specs, sprint plans)
+   - **Low**: Optional background (brainstorming sessions)
+3. For files marked [LARGE], scan headers first and read relevant sections
+
 ## Current Objectives
 1. Read .ralph/PROJECT_CONTEXT.md for project goals, constraints, and scope
-2. Study .ralph/specs/ for BMAD planning output:
+2. Read .ralph/SPECS_INDEX.md for prioritized spec file overview
+3. Study .ralph/specs/ following the reading order in SPECS_INDEX.md:
    - planning-artifacts/: PRD, architecture, epics/stories, test design, UX
    - implementation-artifacts/: sprint plans, detailed stories (if present)
    - brainstorming/: brainstorming sessions (if present)
-3. Check docs/ for project knowledge and research documents (if present)
-4. Review .ralph/@fix_plan.md for current priorities
-5. Implement the highest priority story using TDD
-6. Run tests after each implementation
-7. Update @fix_plan.md with your progress
+4. Check docs/ for project knowledge and research documents (if present)
+5. Review .ralph/@fix_plan.md for current priorities
+6. Implement the highest priority story using TDD
+7. Run tests after each implementation
+8. Update @fix_plan.md with your progress
 
 ## Key Principles
 - ONE story per loop - focus completely on it
@@ -174,6 +184,7 @@ RECOMMENDATION: <one line summary of what to do next>
 4. All requirements from specs/ are implemented
 
 ## File Structure
+- .ralph/SPECS_INDEX.md: Prioritized index of all spec files with reading order
 - .ralph/PROJECT_CONTEXT.md: High-level project goals, constraints, and scope
 - .ralph/specs/: Project specifications (PRD, architecture, stories)
 - .ralph/@fix_plan.md: Prioritized TODO list (one entry per story)

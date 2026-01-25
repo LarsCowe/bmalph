@@ -1671,5 +1671,39 @@ cargo run
         // No changelog is also acceptable if no existing specs
       }
     });
+
+    it("generates SPECS_INDEX.md with prioritized file list", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "_bmad-output/brainstorming"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# Product Requirements\n\nCore product specs.");
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/architecture.md"), "# Architecture\n\nTechnical decisions.");
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+      await writeFile(join(testDir, "_bmad-output/brainstorming/session-1.md"), "# Brainstorm\n\nIdeas.");
+
+      await runTransition(testDir);
+
+      const specsIndex = await readFile(join(testDir, ".ralph/SPECS_INDEX.md"), "utf-8");
+      expect(specsIndex).toContain("# Specs Index");
+      expect(specsIndex).toContain("Critical");
+      expect(specsIndex).toContain("prd.md");
+      expect(specsIndex).toContain("architecture.md");
+      expect(specsIndex).toContain("stories.md");
+      expect(specsIndex).toContain("Low Priority");
+      expect(specsIndex).toContain("session-1.md");
+    });
+
+    it("PROMPT.md includes specs reading strategy", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+
+      await runTransition(testDir);
+
+      const prompt = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(prompt).toContain("Specs Reading Strategy");
+      expect(prompt).toContain("SPECS_INDEX.md");
+      expect(prompt).toContain("Critical");
+    });
   });
 });

@@ -35,6 +35,34 @@ export interface SpecsChange {
   summary?: string;
 }
 
+export type SpecFileType =
+  | "prd"
+  | "architecture"
+  | "stories"
+  | "ux"
+  | "test-design"
+  | "readiness"
+  | "sprint"
+  | "brainstorm"
+  | "other";
+
+export type Priority = "critical" | "high" | "medium" | "low";
+
+export interface SpecFileMetadata {
+  path: string;
+  size: number;
+  type: SpecFileType;
+  priority: Priority;
+  description: string;
+}
+
+export interface SpecsIndex {
+  generatedAt: string;
+  totalFiles: number;
+  totalSizeKb: number;
+  files: SpecFileMetadata[];
+}
+
 export interface TransitionResult {
   storiesCount: number;
   warnings: string[];

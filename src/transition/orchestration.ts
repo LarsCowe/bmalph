@@ -8,6 +8,7 @@ import { detectTechStack, customizeAgentMd } from "./tech-stack.js";
 import { findArtifactsDir, validateArtifacts } from "./artifacts.js";
 import { extractProjectContext, generateProjectContextMd, generatePrompt } from "./context.js";
 import { generateSpecsChangelog, formatChangelog } from "./specs-changelog.js";
+import { generateSpecsIndex, formatSpecsIndexMd } from "./specs-index.js";
 
 export async function runTransition(projectDir: string): Promise<TransitionResult> {
   const artifactsDir = await findArtifactsDir(projectDir);
@@ -85,6 +86,17 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     for (const file of files) {
       await cp(join(artifactsDir, file), join(projectDir, ".ralph/specs", file), { recursive: true });
     }
+  }
+
+  // Generate SPECS_INDEX.md for intelligent spec reading
+  try {
+    const specsIndex = await generateSpecsIndex(specsDir);
+    if (specsIndex.totalFiles > 0) {
+      await writeFile(join(projectDir, ".ralph/SPECS_INDEX.md"), formatSpecsIndexMd(specsIndex));
+      debug(`Generated SPECS_INDEX.md with ${specsIndex.totalFiles} files`);
+    }
+  } catch {
+    debug("Could not generate SPECS_INDEX.md");
   }
 
   // Generate PROJECT_CONTEXT.md from planning artifacts

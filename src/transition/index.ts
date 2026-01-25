@@ -6,6 +6,10 @@ export type {
   FixPlanItem,
   SpecsChange,
   TransitionResult,
+  SpecFileType,
+  Priority,
+  SpecFileMetadata,
+  SpecsIndex,
 } from "./types.js";
 
 // Story parsing
@@ -35,6 +39,15 @@ export {
 
 // Specs changelog
 export { generateSpecsChangelog, formatChangelog } from "./specs-changelog.js";
+
+// Specs index
+export {
+  detectSpecFileType,
+  determinePriority,
+  extractDescription,
+  generateSpecsIndex,
+  formatSpecsIndexMd,
+} from "./specs-index.js";
 
 // Orchestration
 export { runTransition } from "./orchestration.js";
