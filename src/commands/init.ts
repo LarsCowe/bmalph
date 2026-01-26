@@ -45,6 +45,10 @@ async function runInit(options: InitOptions): Promise<void> {
   let description = options.description;
 
   if (!name || !description) {
+    // Derive default name from directory, with fallback for edge cases
+    const dirName = projectDir.split(/[/\\]/).pop();
+    const defaultName = dirName && dirName.trim() ? dirName : "my-project";
+
     const answers = await inquirer.prompt([
       ...(name
         ? []
@@ -53,7 +57,7 @@ async function runInit(options: InitOptions): Promise<void> {
               type: "input" as const,
               name: "name",
               message: "Project name:",
-              default: projectDir.split(/[/\\]/).pop(),
+              default: defaultName,
             },
           ]),
       ...(description
@@ -71,13 +75,18 @@ async function runInit(options: InitOptions): Promise<void> {
     description = description ?? answers.description;
   }
 
+  // Validate project name is non-empty
+  if (!name || name.trim() === "") {
+    throw new Error("Project name cannot be empty. Please provide a valid project name.");
+  }
+
   console.log(chalk.blue("\nInstalling BMAD + Ralph..."));
 
   await installProject(projectDir);
 
   const bundledVersions = getBundledVersions();
   const config: BmalphConfig = {
-    name: name!,
+    name: name.trim(),
     description: description ?? "",
     createdAt: new Date().toISOString(),
     upstreamVersions: bundledVersions,

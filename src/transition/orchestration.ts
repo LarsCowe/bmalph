@@ -21,9 +21,9 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
 
   // Find and parse stories file
   const files = await readdir(artifactsDir);
-  const STORIES_PATTERN = /^(epics[-_]?(and[-_]?)?)?stor(y|ies)([-_]\d+)?\.md$/i;
+  const storiesPattern = /^(epics[-_]?(and[-_]?)?)?stor(y|ies)([-_]\d+)?\.md$/i;
   const storiesFile = files.find(
-    (f) => STORIES_PATTERN.test(f) || /epic/i.test(f),
+    (f) => storiesPattern.test(f) || /epic/i.test(f),
   );
 
   if (!storiesFile) {

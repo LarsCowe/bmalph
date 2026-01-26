@@ -9,8 +9,14 @@ const __dirname = dirname(__filename);
 
 export function getPackageVersion(): string {
   const pkgPath = join(__dirname, "..", "package.json");
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-  return pkg.version;
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    return pkg.version;
+  } catch (err) {
+    throw new Error(
+      `Failed to read package.json at ${pkgPath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 export interface BundledVersions {
@@ -20,11 +26,23 @@ export interface BundledVersions {
 
 export function getBundledVersions(): BundledVersions {
   const versionsPath = join(__dirname, "..", "bundled-versions.json");
-  const versions = JSON.parse(readFileSync(versionsPath, "utf-8"));
-  return {
-    bmadCommit: versions.bmadCommit,
-    ralphCommit: versions.ralphCommit,
-  };
+  try {
+    const versions = JSON.parse(readFileSync(versionsPath, "utf-8"));
+    if (!versions || typeof versions.bmadCommit !== "string" || typeof versions.ralphCommit !== "string") {
+      throw new Error("Invalid bundled-versions.json structure: missing bmadCommit or ralphCommit");
+    }
+    return {
+      bmadCommit: versions.bmadCommit,
+      ralphCommit: versions.ralphCommit,
+    };
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Invalid bundled-versions.json")) {
+      throw err;
+    }
+    throw new Error(
+      `Failed to read bundled-versions.json at ${versionsPath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 export function getBmadDir(): string {
@@ -213,7 +231,9 @@ async function generateManifests(projectDir: string): Promise<void> {
 
   // Validate headers match (warn if mismatch but continue)
   if (header && bmmHeader && header !== bmmHeader) {
-    debug(`Warning: CSV header mismatch - core: "${header.slice(0, 50)}...", bmm: "${bmmHeader.slice(0, 50)}..."`);
+    // Log to stderr so it's visible even without --verbose
+    console.error(`Warning: CSV header mismatch detected. BMAD modules may have incompatible formats.`);
+    debug(`CSV header mismatch details - core: "${header.slice(0, 50)}...", bmm: "${bmmHeader.slice(0, 50)}..."`);
   }
 
   const coreData = coreLines.slice(1).filter((l) => l.trim());
@@ -236,8 +256,13 @@ async function updateGitignore(projectDir: string): Promise<void> {
     // File doesn't exist, start fresh
   }
 
+  // Split into lines for exact comparison (avoid substring matching issues)
+  const existingLines = new Set(
+    existing.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+  );
+
   const entries = [".ralph/logs/", "_bmad-output/"];
-  const newEntries = entries.filter((e) => !existing.includes(e));
+  const newEntries = entries.filter((e) => !existingLines.has(e));
 
   if (newEntries.length === 0) return;
 

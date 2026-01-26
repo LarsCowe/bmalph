@@ -1,6 +1,7 @@
 import { readFile, readdir } from "fs/promises";
 import { join } from "path";
 import type { SpecsChange } from "./types.js";
+import { debug } from "../utils/logger.js";
 
 async function getFileListRecursive(dir: string): Promise<string[]> {
   const files: string[] = [];
@@ -59,7 +60,10 @@ export async function generateSpecsChangelog(
       changes.push({ file: normalizedFile, status: "added" });
     } else {
       // Compare content
-      const oldContent = await readFile(join(oldSpecsDir, file), "utf-8").catch(() => "");
+      const oldContent = await readFile(join(oldSpecsDir, file), "utf-8").catch((err) => {
+        debug(`Could not read old spec file ${file}: ${err instanceof Error ? err.message : String(err)}`);
+        return "";
+      });
       const newContent = await readFile(join(newSourceDir, file), "utf-8");
       if (oldContent !== newContent) {
         changes.push({

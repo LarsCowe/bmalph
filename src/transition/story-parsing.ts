@@ -79,6 +79,11 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
       const id = storyMatch[1];
       const title = storyMatch[2].trim();
 
+      // Validate story ID format (should be like "1.1", "2.3", etc.)
+      if (!/^\d+\.\d+$/.test(id)) {
+        warnings.push(`Story "${title}" has malformed ID "${id}" (expected format: N.M)`);
+      }
+
       // Collect all body lines until next heading
       const bodyLines: string[] = [];
       for (let j = i + 1; j < lines.length; j++) {

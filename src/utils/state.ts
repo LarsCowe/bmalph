@@ -1,7 +1,7 @@
 import { writeFile, mkdir, rename } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
-import { validateState, validateRalphLoopStatus, type RalphLoopStatus } from "./validate.js";
+import { validateState, validateRalphLoopStatus } from "./validate.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -35,7 +35,8 @@ export async function readState(projectDir: string): Promise<BmalphState | null>
 export async function writeState(projectDir: string, state: BmalphState): Promise<void> {
   await mkdir(join(projectDir, STATE_DIR), { recursive: true });
   const target = join(projectDir, STATE_DIR, "current-phase.json");
-  const tmp = target + ".tmp";
+  // Use randomized tmp name to prevent race conditions during concurrent writes
+  const tmp = `${target}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
   await writeFile(tmp, JSON.stringify(state, null, 2) + "\n");
   await rename(tmp, target);
 }

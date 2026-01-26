@@ -33,4 +33,20 @@ describe("config", () => {
 
     expect(result).toEqual(config);
   });
+
+  it("creates bmalph directory if it does not exist", async () => {
+    // Remove the directory created in beforeEach
+    await rm(join(testDir, "bmalph"), { recursive: true, force: true });
+
+    const config: BmalphConfig = {
+      name: "new-project",
+      description: "Should create directory",
+      createdAt: "2025-01-01T00:00:00.000Z",
+    };
+
+    await writeConfig(testDir, config);
+    const result = await readConfig(testDir);
+
+    expect(result).toEqual(config);
+  });
 });

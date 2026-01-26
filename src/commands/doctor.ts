@@ -9,9 +9,6 @@ import {
   validateCircuitBreakerState,
   validateRalphSession,
   validateRalphApiStatus,
-  type CircuitBreakerState,
-  type RalphSession,
-  type RalphApiStatus,
 } from "../utils/validate.js";
 
 interface CheckResult {
@@ -195,7 +192,11 @@ async function checkGitignore(projectDir: string): Promise<CheckResult> {
   const required = [".ralph/logs/", "_bmad-output/"];
   try {
     const content = await readFile(join(projectDir, ".gitignore"), "utf-8");
-    const missing = required.filter((e) => !content.includes(e));
+    // Use line-by-line comparison to avoid substring matching issues
+    const existingLines = new Set(
+      content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+    );
+    const missing = required.filter((e) => !existingLines.has(e));
     if (missing.length === 0) {
       return { label, passed: true };
     }
@@ -265,8 +266,13 @@ async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
     }
     // OPEN state is a failure
     return { label, passed: false, detail: `OPEN - ${state.reason ?? "stagnation detected"}` };
-  } catch {
-    return { label, passed: true, detail: "not running" };
+  } catch (err) {
+    // Distinguish between "file not found" and "corrupt file"
+    if (err instanceof Error && err.message.includes("ENOENT")) {
+      return { label, passed: true, detail: "not running" };
+    }
+    // Parse or validation error - warn about corrupt state
+    return { label, passed: false, detail: "corrupt state file" };
   }
 }
 
@@ -283,6 +289,10 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
     const createdAt = new Date(session.created_at);
     const now = new Date();
     const ageMs = now.getTime() - createdAt.getTime();
+    // Handle negative age (future timestamp) gracefully
+    if (ageMs < 0) {
+      return { label, passed: false, detail: "invalid timestamp (future)" };
+    }
     const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
     const ageMinutes = Math.floor((ageMs % (1000 * 60 * 60)) / (1000 * 60));
     const ageStr = ageHours > 0 ? `${ageHours}h${ageMinutes}m` : `${ageMinutes}m`;
@@ -292,8 +302,13 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
       return { label, passed: false, detail: `${ageStr} old (max 24h)` };
     }
     return { label, passed: true, detail: ageStr };
-  } catch {
-    return { label, passed: true, detail: "no active session" };
+  } catch (err) {
+    // Distinguish between "file not found" and "corrupt file"
+    if (err instanceof Error && err.message.includes("ENOENT")) {
+      return { label, passed: true, detail: "no active session" };
+    }
+    // Parse or validation error - warn about corrupt state
+    return { label, passed: false, detail: "corrupt session file" };
   }
 }
 
@@ -306,6 +321,12 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
     const status = validateRalphApiStatus(parsed);
     const calls = status.calls_made_this_hour;
     const max = status.max_calls_per_hour;
+
+    // Avoid division by zero
+    if (max <= 0) {
+      return { label, passed: true, detail: `${calls}/unlimited` };
+    }
+
     const percentage = (calls / max) * 100;
 
     // Warn if approaching limit (> 90%)
@@ -313,8 +334,13 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
       return { label, passed: false, detail: `${calls}/${max} (approaching limit)` };
     }
     return { label, passed: true, detail: `${calls}/${max}` };
-  } catch {
-    return { label, passed: true, detail: "not running" };
+  } catch (err) {
+    // Distinguish between "file not found" and "corrupt file"
+    if (err instanceof Error && err.message.includes("ENOENT")) {
+      return { label, passed: true, detail: "not running" };
+    }
+    // Parse or validation error - warn about corrupt state
+    return { label, passed: false, detail: "corrupt status file" };
   }
 }
 

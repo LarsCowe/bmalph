@@ -1,4 +1,4 @@
-import { writeFile } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
 import { validateConfig } from "./validate.js";
@@ -24,5 +24,6 @@ export async function readConfig(projectDir: string): Promise<BmalphConfig | nul
 }
 
 export async function writeConfig(projectDir: string, config: BmalphConfig): Promise<void> {
+  await mkdir(join(projectDir, "bmalph"), { recursive: true });
   await writeFile(join(projectDir, CONFIG_FILE), JSON.stringify(config, null, 2) + "\n");
 }

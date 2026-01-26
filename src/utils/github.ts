@@ -99,7 +99,7 @@ interface GitHubCommitResponse {
 
 function classifyError(
   status: number,
-  headers: { get: (key: string) => string | null },
+  headers: Headers,
 ): GitHubErrorType {
   if (status === 404) {
     return "not-found";
@@ -152,12 +152,35 @@ export async function fetchLatestCommit(
       };
     }
 
-    const data = (await response.json()) as GitHubCommitResponse;
+    const data = (await response.json()) as unknown;
+
+    // Validate response structure before accessing nested properties
+    if (
+      !data ||
+      typeof data !== "object" ||
+      !("sha" in data) ||
+      typeof (data as GitHubCommitResponse).sha !== "string" ||
+      !("commit" in data) ||
+      !(data as GitHubCommitResponse).commit ||
+      typeof (data as GitHubCommitResponse).commit?.message !== "string" ||
+      !(data as GitHubCommitResponse).commit?.author ||
+      typeof (data as GitHubCommitResponse).commit?.author?.date !== "string"
+    ) {
+      return {
+        success: false,
+        error: {
+          type: "api-error",
+          message: "Invalid response structure from GitHub API",
+        },
+      };
+    }
+
+    const validData = data as GitHubCommitResponse;
     const commitInfo: CommitInfo = {
-      sha: data.sha,
-      shortSha: data.sha.slice(0, 8),
-      message: data.commit.message,
-      date: data.commit.author.date,
+      sha: validData.sha,
+      shortSha: validData.sha.slice(0, 8),
+      message: validData.commit.message,
+      date: validData.commit.author.date,
     };
 
     // Cache successful result
