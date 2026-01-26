@@ -46,17 +46,17 @@ describe("CLI entry point", () => {
     expect(stdout).toContain("init");
   });
 
-  it("registers init, upgrade, doctor commands (not implement, reset, status)", () => {
+  it("registers init, upgrade, doctor, status commands (not implement, reset)", () => {
     const { stdout } = runCli(["--help"]);
     const commandsSection = stdout.split("Commands:")[1] ?? "";
     expect(commandsSection).toContain("init");
     expect(commandsSection).toContain("upgrade");
     expect(commandsSection).toContain("doctor");
+    expect(commandsSection).toContain("status");
     expect(commandsSection).toContain("help");
     // These commands are slash commands only, not CLI
     expect(commandsSection).not.toContain("implement");
     expect(commandsSection).not.toContain("reset");
-    expect(commandsSection).not.toContain("status");
   });
 
   it("accepts --verbose flag", () => {
@@ -80,6 +80,13 @@ describe("CLI entry point", () => {
     const { stdout, exitCode } = runCli(["upgrade", "--help"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("upgrade");
+  });
+
+  it("status command has help", () => {
+    const { stdout, exitCode } = runCli(["status", "--help"]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("status");
+    expect(stdout).toContain("--json");
   });
 
   it("version matches package.json format", () => {

@@ -3,6 +3,7 @@ import { initCommand } from "./commands/init.js";
 import { upgradeCommand } from "./commands/upgrade.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { checkUpdatesCommand } from "./commands/check-updates.js";
+import { statusCommand } from "./commands/status.js";
 import { setVerbose } from "./utils/logger.js";
 import { getPackageVersion } from "./installer.js";
 
@@ -50,5 +51,11 @@ program
   .description("Check if bundled BMAD/Ralph versions are up to date with upstream")
   .option("--json", "Output as JSON")
   .action(checkUpdatesCommand);
+
+program
+  .command("status")
+  .description("Show current project status and phase")
+  .option("--json", "Output as JSON")
+  .action(statusCommand);
 
 program.parse();
