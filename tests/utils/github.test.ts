@@ -172,6 +172,111 @@ describe("github utilities", () => {
       ralphCommit: "019b8c73",
     };
 
+    describe("SHA comparison accuracy", () => {
+      it("reports outdated when bundled is prefix of latest (false positive case)", async () => {
+        // Bug: startsWith would incorrectly mark this as up-to-date
+        // bundled="abc1" is a prefix of latest="abc12345", but they're different commits!
+        const shortBundled: BundledVersions = {
+          bmadCommit: "abc1",
+          ralphCommit: "def1",
+        };
+
+        global.fetch = vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                sha: "abc12345abcdef12", // shortSha = "abc12345"
+                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
+              }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                sha: "def12345abcdef12", // shortSha = "def12345"
+                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
+              }),
+          });
+
+        const result = await checkUpstream(shortBundled);
+
+        // These should be OUTDATED, not up-to-date
+        expect(result.bmad?.isUpToDate).toBe(false);
+        expect(result.ralph?.isUpToDate).toBe(false);
+      });
+
+      it("reports outdated when latest is prefix of bundled", async () => {
+        // Another edge case: what if somehow bundled is longer?
+        const longBundled: BundledVersions = {
+          bmadCommit: "abc12345",
+          ralphCommit: "def12345",
+        };
+
+        global.fetch = vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                sha: "abc1xxxxabcdef12", // shortSha = "abc1xxxx" - different!
+                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
+              }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                sha: "def1xxxxabcdef12", // shortSha = "def1xxxx" - different!
+                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
+              }),
+          });
+
+        const result = await checkUpstream(longBundled);
+
+        expect(result.bmad?.isUpToDate).toBe(false);
+        expect(result.ralph?.isUpToDate).toBe(false);
+      });
+
+      it("reports up-to-date only when SHAs match exactly", async () => {
+        const exactBundled: BundledVersions = {
+          bmadCommit: "abc12345",
+          ralphCommit: "def12345",
+        };
+
+        global.fetch = vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                sha: "abc12345abcdef12", // shortSha = "abc12345" - exact match!
+                commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
+              }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                sha: "def12345abcdef12", // shortSha = "def12345" - exact match!
+                commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
+              }),
+          });
+
+        const result = await checkUpstream(exactBundled);
+
+        expect(result.bmad?.isUpToDate).toBe(true);
+        expect(result.ralph?.isUpToDate).toBe(true);
+      });
+    });
+
     it("checks both repos and returns combined result", async () => {
       global.fetch = vi
         .fn()

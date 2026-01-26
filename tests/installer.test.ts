@@ -303,6 +303,75 @@ describe("installer", () => {
     });
   });
 
+  describe("error handling", { timeout: 30000 }, () => {
+    it("validates source directories exist before copying", async () => {
+      // copyBundledAssets validates bmad, ralph, and slash-commands dirs
+      // We can't easily test missing source dirs since they're bundled,
+      // but we can verify the function completes successfully with valid dirs
+      await expect(copyBundledAssets(testDir)).resolves.not.toThrow();
+    });
+
+    it("CSV validation code path executes without error when files exist", async () => {
+      // This verifies the validation doesn't break normal operation
+      await copyBundledAssets(testDir);
+
+      // Verify the CSV files exist and manifests were generated
+      await expect(access(join(testDir, "_bmad/core/module-help.csv"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, "_bmad/bmm/module-help.csv"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, "_bmad/_config/task-manifest.csv"))).resolves.toBeUndefined();
+    });
+  });
+
+  describe("version marker handling", { timeout: 30000 }, () => {
+    it("replaces existing version marker correctly", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+      expect(content).toMatch(/# bmalph-version: \d+\.\d+\.\d+/);
+
+      // Run again to verify replacement works
+      await copyBundledAssets(testDir);
+      const content2 = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+
+      // Should still have exactly one version marker
+      const matches = content2.match(/# bmalph-version:/g);
+      expect(matches).toHaveLength(1);
+    });
+
+    it("handles version marker with empty value (edge case)", async () => {
+      await installProject(testDir);
+
+      // Manually corrupt the version marker to have empty value
+      let content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+      content = content.replace(/# bmalph-version: .+/, "# bmalph-version:");
+      await writeFile(join(testDir, ".ralph/ralph_loop.sh"), content);
+
+      // Run copyBundledAssets - should properly replace the corrupted marker
+      await copyBundledAssets(testDir);
+      const updated = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+
+      // Should have proper version now
+      expect(updated).toMatch(/# bmalph-version: \d+\.\d+\.\d+/);
+      // Should NOT have the corrupted empty marker
+      expect(updated).not.toContain("# bmalph-version:\n");
+    });
+
+    it("handles version marker at end of file without newline", async () => {
+      await installProject(testDir);
+
+      // Modify to have marker at EOF without newline
+      let content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+      content = content.trimEnd() + "\n# bmalph-version: 1.0.0";  // No trailing newline
+      await writeFile(join(testDir, ".ralph/ralph_loop.sh"), content);
+
+      // Run copyBundledAssets
+      await copyBundledAssets(testDir);
+      const updated = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+
+      // Should have proper version
+      expect(updated).toMatch(/# bmalph-version: \d+\.\d+\.\d+/);
+    });
+  });
+
   describe("bundled asset validation", { timeout: 30000 }, () => {
     it("ralph_loop.sh starts with shebang", async () => {
       await installProject(testDir);

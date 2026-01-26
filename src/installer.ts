@@ -2,6 +2,7 @@ import { cp, mkdir, readFile, readdir, writeFile, access } from "fs/promises";
 import { readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
+import { debug } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -119,8 +120,9 @@ modules:
   // Add version marker to ralph_loop.sh
   const loopContent = await readFile(join(ralphDir, "ralph_loop.sh"), "utf-8");
   const markerLine = `# bmalph-version: ${getPackageVersion()}`;
+  // Use .* to handle empty version (edge case) and EOF without newline
   const markedContent = loopContent.includes("# bmalph-version:")
-    ? loopContent.replace(/# bmalph-version: .+/, markerLine)
+    ? loopContent.replace(/# bmalph-version:.*/, markerLine)
     : loopContent.replace(/^(#!.+\r?\n)/, `$1${markerLine}\n`);
   await writeFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
@@ -186,6 +188,19 @@ async function generateManifests(projectDir: string): Promise<void> {
   const coreHelpPath = join(projectDir, "_bmad/core/module-help.csv");
   const bmmHelpPath = join(projectDir, "_bmad/bmm/module-help.csv");
 
+  // Validate CSV files exist before reading
+  try {
+    await access(coreHelpPath);
+  } catch {
+    throw new Error(`Core module-help.csv not found at ${coreHelpPath}. BMAD installation may be incomplete.`);
+  }
+
+  try {
+    await access(bmmHelpPath);
+  } catch {
+    throw new Error(`BMM module-help.csv not found at ${bmmHelpPath}. BMAD installation may be incomplete.`);
+  }
+
   const coreContent = await readFile(coreHelpPath, "utf-8");
   const bmmContent = await readFile(bmmHelpPath, "utf-8");
 
@@ -194,6 +209,13 @@ async function generateManifests(projectDir: string): Promise<void> {
   const bmmLines = bmmContent.trimEnd().split(/\r?\n/);
 
   const header = coreLines[0];
+  const bmmHeader = bmmLines[0];
+
+  // Validate headers match (warn if mismatch but continue)
+  if (header && bmmHeader && header !== bmmHeader) {
+    debug(`Warning: CSV header mismatch - core: "${header.slice(0, 50)}...", bmm: "${bmmHeader.slice(0, 50)}..."`);
+  }
+
   const coreData = coreLines.slice(1).filter((l) => l.trim());
   const bmmData = bmmLines.slice(1).filter((l) => l.trim());
 

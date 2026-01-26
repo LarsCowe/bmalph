@@ -8,7 +8,7 @@ export function extractSection(content: string, headingPattern: RegExp, maxLengt
   const headingLevelMatch = match[0].match(/^(#{1,6})\s/);
   const level = headingLevelMatch ? headingLevelMatch[1].length : 2;
 
-  const startIndex = match.index! + match[0].length;
+  const startIndex = (match.index ?? 0) + match[0].length;
   const rest = content.slice(startIndex);
 
   // Find next heading of same or higher level

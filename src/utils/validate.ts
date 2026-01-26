@@ -76,3 +76,123 @@ export function validateState(data: unknown): BmalphState {
     lastUpdated: data.lastUpdated,
   };
 }
+
+// Circuit breaker state (from .ralph/.circuit_breaker_state)
+const CIRCUIT_BREAKER_STATES = ["CLOSED", "HALF_OPEN", "OPEN"] as const;
+
+export interface CircuitBreakerState {
+  state: "CLOSED" | "HALF_OPEN" | "OPEN";
+  consecutive_no_progress: number;
+  reason?: string;
+}
+
+export function validateCircuitBreakerState(data: unknown): CircuitBreakerState {
+  assertObject(data, "circuitBreakerState");
+
+  if (typeof data.state !== "string" || !CIRCUIT_BREAKER_STATES.includes(data.state as typeof CIRCUIT_BREAKER_STATES[number])) {
+    throw new Error(`circuitBreakerState.state must be one of: ${CIRCUIT_BREAKER_STATES.join(", ")}`);
+  }
+
+  if (typeof data.consecutive_no_progress !== "number") {
+    throw new Error("circuitBreakerState.consecutive_no_progress must be a number");
+  }
+
+  const reason = typeof data.reason === "string" ? data.reason : undefined;
+
+  return {
+    state: data.state as CircuitBreakerState["state"],
+    consecutive_no_progress: data.consecutive_no_progress,
+    reason,
+  };
+}
+
+// Ralph session (from .ralph/.ralph_session)
+export interface RalphSession {
+  session_id: string;
+  created_at: string;
+  last_used?: string;
+}
+
+export function validateRalphSession(data: unknown): RalphSession {
+  assertObject(data, "ralphSession");
+
+  if (typeof data.session_id !== "string") {
+    throw new Error("ralphSession.session_id must be a string");
+  }
+
+  if (typeof data.created_at !== "string") {
+    throw new Error("ralphSession.created_at must be a string");
+  }
+
+  const last_used = typeof data.last_used === "string" ? data.last_used : undefined;
+
+  return {
+    session_id: data.session_id,
+    created_at: data.created_at,
+    last_used,
+  };
+}
+
+// Ralph API status (from .ralph/status.json - API call tracking)
+export interface RalphApiStatus {
+  calls_made_this_hour: number;
+  max_calls_per_hour: number;
+  status?: string;
+}
+
+export function validateRalphApiStatus(data: unknown): RalphApiStatus {
+  assertObject(data, "ralphApiStatus");
+
+  if (typeof data.calls_made_this_hour !== "number") {
+    throw new Error("ralphApiStatus.calls_made_this_hour must be a number");
+  }
+
+  if (typeof data.max_calls_per_hour !== "number") {
+    throw new Error("ralphApiStatus.max_calls_per_hour must be a number");
+  }
+
+  const status = typeof data.status === "string" ? data.status : undefined;
+
+  return {
+    calls_made_this_hour: data.calls_made_this_hour,
+    max_calls_per_hour: data.max_calls_per_hour,
+    status,
+  };
+}
+
+// Ralph loop status (from state.ts - loop progress tracking)
+const RALPH_LOOP_STATUSES = ["running", "blocked", "completed", "not_started"] as const;
+
+export interface RalphLoopStatus {
+  loopCount: number;
+  status: "running" | "blocked" | "completed" | "not_started";
+  tasksCompleted: number;
+  tasksTotal: number;
+}
+
+export function validateRalphLoopStatus(data: unknown): RalphLoopStatus {
+  assertObject(data, "ralphLoopStatus");
+
+  if (typeof data.loopCount !== "number") {
+    throw new Error("ralphLoopStatus.loopCount must be a number");
+  }
+
+  if (typeof data.status !== "string" || !RALPH_LOOP_STATUSES.includes(data.status as typeof RALPH_LOOP_STATUSES[number])) {
+    throw new Error(`ralphLoopStatus.status must be one of: ${RALPH_LOOP_STATUSES.join(", ")}`);
+  }
+
+  if (typeof data.tasksCompleted !== "number") {
+    throw new Error("ralphLoopStatus.tasksCompleted must be a number");
+  }
+
+  if (typeof data.tasksTotal !== "number") {
+    throw new Error("ralphLoopStatus.tasksTotal must be a number");
+  }
+
+  return {
+    loopCount: data.loopCount,
+    status: data.status as RalphLoopStatus["status"],
+    tasksCompleted: data.tasksCompleted,
+    tasksTotal: data.tasksTotal,
+  };
+}

@@ -1,7 +1,7 @@
 import { writeFile, mkdir, rename } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
-import { validateState } from "./validate.js";
+import { validateState, validateRalphLoopStatus, type RalphLoopStatus } from "./validate.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -102,10 +102,22 @@ export interface RalphStatus {
   tasksTotal: number;
 }
 
+const DEFAULT_RALPH_STATUS: RalphStatus = {
+  loopCount: 0,
+  status: "not_started",
+  tasksCompleted: 0,
+  tasksTotal: 0,
+};
+
 export async function readRalphStatus(projectDir: string): Promise<RalphStatus> {
-  const data = await readJsonFile<RalphStatus>(join(projectDir, ".ralph/status.json"));
+  const data = await readJsonFile<unknown>(join(projectDir, ".ralph/status.json"));
   if (data === null) {
-    return { loopCount: 0, status: "not_started", tasksCompleted: 0, tasksTotal: 0 };
+    return DEFAULT_RALPH_STATUS;
   }
-  return data;
+  try {
+    return validateRalphLoopStatus(data);
+  } catch {
+    // Return defaults if validation fails (corrupted/malformed file)
+    return DEFAULT_RALPH_STATUS;
+  }
 }

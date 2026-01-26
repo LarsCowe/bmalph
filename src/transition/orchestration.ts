@@ -1,8 +1,9 @@
 import { readFile, writeFile, readdir, cp, mkdir, access } from "fs/promises";
 import { join } from "path";
 import { debug } from "../utils/logger.js";
+import { readConfig } from "../utils/config.js";
 import type { TransitionResult } from "./types.js";
-import { parseStories } from "./story-parsing.js";
+import { parseStoriesWithWarnings } from "./story-parsing.js";
 import { generateFixPlan, parseFixPlan, mergeFixPlanProgress } from "./fix-plan.js";
 import { detectTechStack, customizeAgentMd } from "./tech-stack.js";
 import { findArtifactsDir, validateArtifacts } from "./artifacts.js";
@@ -34,7 +35,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   debug(`Using stories file: ${storiesFile}`);
 
   const storiesContent = await readFile(join(artifactsDir, storiesFile), "utf-8");
-  const stories = parseStories(storiesContent);
+  const { stories, warnings: parseWarnings } = parseStoriesWithWarnings(storiesContent);
 
   if (stories.length === 0) {
     throw new Error("No stories parsed from the epics file. Ensure stories follow the format: ### Story N.M: Title");
@@ -76,11 +77,18 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
+  let bmadOutputExists = false;
   try {
     await access(bmadOutputDir);
+    bmadOutputExists = true;
+  } catch {
+    // _bmad-output doesn't exist, will fall back to artifactsDir
+  }
+
+  if (bmadOutputExists) {
     await cp(bmadOutputDir, join(projectDir, ".ralph/specs"), { recursive: true });
     debug("Copied _bmad-output/ to .ralph/specs/");
-  } catch {
+  } else {
     // Fall back to just artifactsDir if _bmad-output root doesn't exist
     await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
     for (const file of files) {
@@ -114,11 +122,13 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
 
   let projectName = "project";
   try {
-    const configContent = await readFile(join(projectDir, "bmalph/config.json"), "utf-8");
-    const config = JSON.parse(configContent);
-    projectName = config.name || projectName;
+    const config = await readConfig(projectDir);
+    if (config?.name) {
+      projectName = config.name;
+    }
   } catch {
-    // Use default name
+    // Invalid config, use default project name
+    debug("Could not read config for project name, using default");
   }
 
   if (artifactContents.size > 0) {
@@ -162,7 +172,8 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   // Validate artifacts and collect warnings
-  const warnings = await validateArtifacts(files, artifactsDir);
+  const artifactWarnings = await validateArtifacts(files, artifactsDir);
+  const warnings = [...parseWarnings, ...artifactWarnings];
 
   return { storiesCount: stories.length, warnings, fixPlanPreserved };
 }

@@ -210,8 +210,10 @@ export async function checkUpstream(
   ]);
 
   if (bmadResult.success) {
-    const isUpToDate = bmadResult.data.shortSha.startsWith(bundled.bmadCommit) ||
-      bundled.bmadCommit.startsWith(bmadResult.data.shortSha);
+    // Compare normalized 8-char SHAs for exact equality
+    const latestNormalized = bmadResult.data.shortSha.slice(0, 8);
+    const bundledNormalized = bundled.bmadCommit.slice(0, 8);
+    const isUpToDate = latestNormalized === bundledNormalized;
     bmadStatus = {
       bundledSha: bundled.bmadCommit,
       latestSha: bmadResult.data.shortSha,
@@ -223,8 +225,10 @@ export async function checkUpstream(
   }
 
   if (ralphResult.success) {
-    const isUpToDate = ralphResult.data.shortSha.startsWith(bundled.ralphCommit) ||
-      bundled.ralphCommit.startsWith(ralphResult.data.shortSha);
+    // Compare normalized 8-char SHAs for exact equality
+    const latestNormalized = ralphResult.data.shortSha.slice(0, 8);
+    const bundledNormalized = bundled.ralphCommit.slice(0, 8);
+    const isUpToDate = latestNormalized === bundledNormalized;
     ralphStatus = {
       bundledSha: bundled.ralphCommit,
       latestSha: ralphResult.data.shortSha,

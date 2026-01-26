@@ -1,5 +1,10 @@
 import type { Story } from "./types.js";
 
+export interface ParseStoriesResult {
+  stories: Story[];
+  warnings: string[];
+}
+
 function isGivenLine(line: string): boolean {
   return /^\*?\*?Given\*?\*?\s/.test(line.trim());
 }
@@ -39,7 +44,12 @@ function parseAcBlocks(lines: string[]): string[] {
 }
 
 export function parseStories(content: string): Story[] {
+  return parseStoriesWithWarnings(content).stories;
+}
+
+export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
   const stories: Story[] = [];
+  const warnings: string[] = [];
   let currentEpic = "";
   let currentEpicDescription = "";
 
@@ -98,6 +108,21 @@ export function parseStories(content: string): Story[] {
       const acLines = acStartIndex > -1 ? bodyLines.slice(acStartIndex) : [];
       const acceptanceCriteria = parseAcBlocks(acLines);
 
+      // Warn about stories with missing acceptance criteria
+      if (acceptanceCriteria.length === 0) {
+        warnings.push(`Story ${id}: "${title}" has no acceptance criteria`);
+      }
+
+      // Warn about stories without a description
+      if (descLines.length === 0) {
+        warnings.push(`Story ${id}: "${title}" has no description`);
+      }
+
+      // Warn about stories not assigned to an epic
+      if (!currentEpic) {
+        warnings.push(`Story ${id}: "${title}" is not under an epic`);
+      }
+
       stories.push({
         epic: currentEpic,
         epicDescription: currentEpicDescription,
@@ -109,5 +134,5 @@ export function parseStories(content: string): Story[] {
     }
   }
 
-  return stories;
+  return { stories, warnings };
 }

@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { validateConfig, validateState } from "../../src/utils/validate.js";
+import {
+  validateConfig,
+  validateState,
+  validateCircuitBreakerState,
+  validateRalphSession,
+  validateRalphApiStatus,
+  validateRalphLoopStatus,
+} from "../../src/utils/validate.js";
 
 describe("validateConfig", () => {
   it("accepts a valid config", () => {
@@ -144,5 +151,145 @@ describe("validateState", () => {
       const data = { currentPhase: 1, status, startedAt: "x", lastUpdated: "y" };
       expect(validateState(data).status).toBe(status);
     }
+  });
+});
+
+describe("validateCircuitBreakerState", () => {
+  it("accepts valid CLOSED state", () => {
+    const data = { state: "CLOSED", consecutive_no_progress: 0 };
+    const result = validateCircuitBreakerState(data);
+    expect(result.state).toBe("CLOSED");
+    expect(result.consecutive_no_progress).toBe(0);
+  });
+
+  it("accepts valid HALF_OPEN state", () => {
+    const data = { state: "HALF_OPEN", consecutive_no_progress: 3 };
+    const result = validateCircuitBreakerState(data);
+    expect(result.state).toBe("HALF_OPEN");
+  });
+
+  it("accepts valid OPEN state with reason", () => {
+    const data = { state: "OPEN", consecutive_no_progress: 5, reason: "stagnation detected" };
+    const result = validateCircuitBreakerState(data);
+    expect(result.state).toBe("OPEN");
+    expect(result.reason).toBe("stagnation detected");
+  });
+
+  it("throws when state is invalid", () => {
+    const data = { state: "INVALID", consecutive_no_progress: 0 };
+    expect(() => validateCircuitBreakerState(data)).toThrow(/state/i);
+  });
+
+  it("throws when consecutive_no_progress is not a number", () => {
+    const data = { state: "CLOSED", consecutive_no_progress: "0" };
+    expect(() => validateCircuitBreakerState(data)).toThrow(/consecutive_no_progress/i);
+  });
+
+  it("throws when data is not an object", () => {
+    expect(() => validateCircuitBreakerState(null)).toThrow();
+    expect(() => validateCircuitBreakerState("string")).toThrow();
+  });
+});
+
+describe("validateRalphSession", () => {
+  it("accepts valid session", () => {
+    const data = {
+      session_id: "abc123",
+      created_at: "2025-01-01T00:00:00.000Z",
+    };
+    const result = validateRalphSession(data);
+    expect(result.session_id).toBe("abc123");
+    expect(result.created_at).toBe("2025-01-01T00:00:00.000Z");
+  });
+
+  it("accepts session with last_used", () => {
+    const data = {
+      session_id: "abc123",
+      created_at: "2025-01-01T00:00:00.000Z",
+      last_used: "2025-01-01T01:00:00.000Z",
+    };
+    const result = validateRalphSession(data);
+    expect(result.last_used).toBe("2025-01-01T01:00:00.000Z");
+  });
+
+  it("throws when session_id is not a string", () => {
+    const data = { session_id: 123, created_at: "2025-01-01T00:00:00.000Z" };
+    expect(() => validateRalphSession(data)).toThrow(/session_id/i);
+  });
+
+  it("throws when created_at is not a string", () => {
+    const data = { session_id: "abc", created_at: 12345 };
+    expect(() => validateRalphSession(data)).toThrow(/created_at/i);
+  });
+
+  it("allows empty session_id", () => {
+    const data = { session_id: "", created_at: "2025-01-01T00:00:00.000Z" };
+    const result = validateRalphSession(data);
+    expect(result.session_id).toBe("");
+  });
+});
+
+describe("validateRalphApiStatus", () => {
+  it("accepts valid API status", () => {
+    const data = { calls_made_this_hour: 10, max_calls_per_hour: 100 };
+    const result = validateRalphApiStatus(data);
+    expect(result.calls_made_this_hour).toBe(10);
+    expect(result.max_calls_per_hour).toBe(100);
+  });
+
+  it("accepts status field when present", () => {
+    const data = { calls_made_this_hour: 10, max_calls_per_hour: 100, status: "running" };
+    const result = validateRalphApiStatus(data);
+    expect(result.status).toBe("running");
+  });
+
+  it("throws when calls_made_this_hour is not a number", () => {
+    const data = { calls_made_this_hour: "10", max_calls_per_hour: 100 };
+    expect(() => validateRalphApiStatus(data)).toThrow(/calls_made_this_hour/i);
+  });
+
+  it("throws when max_calls_per_hour is not a number", () => {
+    const data = { calls_made_this_hour: 10, max_calls_per_hour: "100" };
+    expect(() => validateRalphApiStatus(data)).toThrow(/max_calls_per_hour/i);
+  });
+});
+
+describe("validateRalphLoopStatus", () => {
+  it("accepts valid loop status", () => {
+    const data = {
+      loopCount: 5,
+      status: "running",
+      tasksCompleted: 3,
+      tasksTotal: 10,
+    };
+    const result = validateRalphLoopStatus(data);
+    expect(result).toEqual(data);
+  });
+
+  it("accepts all valid status values", () => {
+    for (const status of ["running", "blocked", "completed", "not_started"]) {
+      const data = { loopCount: 0, status, tasksCompleted: 0, tasksTotal: 0 };
+      expect(validateRalphLoopStatus(data).status).toBe(status);
+    }
+  });
+
+  it("throws when loopCount is not a number", () => {
+    const data = { loopCount: "5", status: "running", tasksCompleted: 0, tasksTotal: 0 };
+    expect(() => validateRalphLoopStatus(data)).toThrow(/loopCount/i);
+  });
+
+  it("throws when status is invalid", () => {
+    const data = { loopCount: 0, status: "invalid", tasksCompleted: 0, tasksTotal: 0 };
+    expect(() => validateRalphLoopStatus(data)).toThrow(/status/i);
+  });
+
+  it("throws when tasksCompleted is not a number", () => {
+    const data = { loopCount: 0, status: "running", tasksCompleted: "0", tasksTotal: 0 };
+    expect(() => validateRalphLoopStatus(data)).toThrow(/tasksCompleted/i);
+  });
+
+  it("throws when tasksTotal is not a number", () => {
+    const data = { loopCount: 0, status: "running", tasksCompleted: 0, tasksTotal: "10" };
+    expect(() => validateRalphLoopStatus(data)).toThrow(/tasksTotal/i);
   });
 });

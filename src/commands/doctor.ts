@@ -5,6 +5,14 @@ import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
 import { getBundledVersions } from "../installer.js";
 import { checkUpstream, type GitHubError } from "../utils/github.js";
+import {
+  validateCircuitBreakerState,
+  validateRalphSession,
+  validateRalphApiStatus,
+  type CircuitBreakerState,
+  type RalphSession,
+  type RalphApiStatus,
+} from "../utils/validate.js";
 
 interface CheckResult {
   label: string;
@@ -242,18 +250,13 @@ async function checkUpstreamVersions(projectDir: string): Promise<CheckResult> {
   }
 }
 
-interface CircuitBreakerState {
-  state: "CLOSED" | "HALF_OPEN" | "OPEN";
-  consecutive_no_progress: number;
-  reason?: string;
-}
-
 async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
   const label = "circuit breaker";
   const statePath = join(projectDir, ".ralph/.circuit_breaker_state");
   try {
     const content = await readFile(statePath, "utf-8");
-    const state = JSON.parse(content) as CircuitBreakerState;
+    const parsed = JSON.parse(content);
+    const state = validateCircuitBreakerState(parsed);
     if (state.state === "CLOSED") {
       return { label, passed: true, detail: `CLOSED (${state.consecutive_no_progress} loops without progress)` };
     }
@@ -267,18 +270,13 @@ async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
   }
 }
 
-interface RalphSession {
-  session_id: string;
-  created_at: string;
-  last_used?: string;
-}
-
 async function checkRalphSession(projectDir: string): Promise<CheckResult> {
   const label = "Ralph session";
   const sessionPath = join(projectDir, ".ralph/.ralph_session");
   try {
     const content = await readFile(sessionPath, "utf-8");
-    const session = JSON.parse(content) as RalphSession;
+    const parsed = JSON.parse(content);
+    const session = validateRalphSession(parsed);
     if (!session.session_id || session.session_id === "") {
       return { label, passed: true, detail: "no active session" };
     }
@@ -299,18 +297,13 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
   }
 }
 
-interface RalphStatus {
-  calls_made_this_hour: number;
-  max_calls_per_hour: number;
-  status?: string;
-}
-
 async function checkApiCalls(projectDir: string): Promise<CheckResult> {
   const label = "API calls this hour";
   const statusPath = join(projectDir, ".ralph/status.json");
   try {
     const content = await readFile(statusPath, "utf-8");
-    const status = JSON.parse(content) as RalphStatus;
+    const parsed = JSON.parse(content);
+    const status = validateRalphApiStatus(parsed);
     const calls = status.calls_made_this_hour;
     const max = status.max_calls_per_hour;
     const percentage = (calls / max) * 100;

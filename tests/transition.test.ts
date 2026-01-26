@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile, readFile, access } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { parseStories, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, parseFixPlan, mergeFixPlanProgress, generateSpecsChangelog, formatChangelog, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
+import { parseStories, parseStoriesWithWarnings, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, parseFixPlan, mergeFixPlanProgress, generateSpecsChangelog, formatChangelog, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
 
 describe("transition", () => {
   describe("parseStories", () => {
@@ -327,6 +327,68 @@ As a user, I want to view my profile.
     });
   });
 
+  describe("parseStoriesWithWarnings", () => {
+    it("returns warnings for stories without acceptance criteria", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Login
+
+As a user, I want to log in.
+`;
+      const { stories, warnings } = parseStoriesWithWarnings(content);
+
+      expect(stories).toHaveLength(1);
+      expect(warnings).toContain('Story 1.1: "Login" has no acceptance criteria');
+    });
+
+    it("returns warnings for stories without description", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Empty
+
+**Given** some condition
+**When** action occurs
+**Then** result happens
+`;
+      const { stories, warnings } = parseStoriesWithWarnings(content);
+
+      expect(stories).toHaveLength(1);
+      expect(warnings).toContain('Story 1.1: "Empty" has no description');
+    });
+
+    it("returns warnings for stories not under an epic", () => {
+      const content = `### Story 1.1: Orphan
+
+Description here.
+
+**Given** condition
+**When** action
+**Then** result
+`;
+      const { stories, warnings } = parseStoriesWithWarnings(content);
+
+      expect(stories).toHaveLength(1);
+      expect(warnings).toContain('Story 1.1: "Orphan" is not under an epic');
+    });
+
+    it("returns no warnings for well-formed stories", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Login
+
+As a user, I want to log in.
+
+**Given** valid credentials
+**When** user submits
+**Then** access granted
+`;
+      const { stories, warnings } = parseStoriesWithWarnings(content);
+
+      expect(stories).toHaveLength(1);
+      expect(warnings).toHaveLength(0);
+    });
+  });
+
   describe("generateFixPlan", () => {
     it("generates markdown with stories grouped by epic", () => {
       const stories: Story[] = [
@@ -480,7 +542,7 @@ As a user, I want to view my profile.
       await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test-project", level: 2 }),
+        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" }),
       );
     });
 
@@ -1057,7 +1119,7 @@ cargo run
       await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test-project", level: 2 }),
+        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" }),
       );
     });
 
@@ -1605,7 +1667,7 @@ cargo run
       await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test-project", level: 2 }),
+        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" }),
       );
     });
 
