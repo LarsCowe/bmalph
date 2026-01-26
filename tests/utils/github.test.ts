@@ -615,4 +615,115 @@ describe("GitHubClient class", () => {
       expect(client.getCacheStats().size).toBe(1);
     });
   });
+
+  describe("cache size limit", () => {
+    it("enforces max cache size with default limit of 100", async () => {
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: `sha${Math.random()}12345678`,
+              commit: {
+                message: "test",
+                author: { date: "2024-01-15T10:30:00Z" },
+              },
+            }),
+        }),
+      );
+
+      const client = new GitHubClient();
+
+      // Add 110 different repos to cache
+      for (let i = 0; i < 110; i++) {
+        await client.fetchLatestCommit({
+          owner: `owner${i}`,
+          repo: `repo${i}`,
+          branch: "main",
+        });
+      }
+
+      // Cache should not exceed 100 entries
+      expect(client.getCacheStats().size).toBeLessThanOrEqual(100);
+    });
+
+    it("accepts custom max cache size", async () => {
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: `sha${Math.random()}12345678`,
+              commit: {
+                message: "test",
+                author: { date: "2024-01-15T10:30:00Z" },
+              },
+            }),
+        }),
+      );
+
+      const client = new GitHubClient({ maxCacheSize: 5 });
+
+      // Add 10 different repos to cache
+      for (let i = 0; i < 10; i++) {
+        await client.fetchLatestCommit({
+          owner: `owner${i}`,
+          repo: `repo${i}`,
+          branch: "main",
+        });
+      }
+
+      // Cache should not exceed 5 entries
+      expect(client.getCacheStats().size).toBeLessThanOrEqual(5);
+    });
+
+    it("evicts entries when cache is full (LRU behavior)", async () => {
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: `sha${Math.random()}12345678`,
+              commit: {
+                message: "test",
+                author: { date: "2024-01-15T10:30:00Z" },
+              },
+            }),
+        }),
+      );
+
+      const client = new GitHubClient({ maxCacheSize: 3 });
+
+      const repo1 = { owner: "owner1", repo: "repo1", branch: "main" };
+      const repo2 = { owner: "owner2", repo: "repo2", branch: "main" };
+      const repo3 = { owner: "owner3", repo: "repo3", branch: "main" };
+      const repo4 = { owner: "owner4", repo: "repo4", branch: "main" };
+
+      // Fill cache
+      await client.fetchLatestCommit(repo1);
+      await client.fetchLatestCommit(repo2);
+      await client.fetchLatestCommit(repo3);
+
+      expect(client.getCacheStats().size).toBe(3);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+
+      // Add repo4, should evict one of the existing entries
+      await client.fetchLatestCommit(repo4);
+      expect(client.getCacheStats().size).toBe(3); // Size stays at max
+      expect(global.fetch).toHaveBeenCalledTimes(4); // New fetch for repo4
+
+      // At least one of the original repos should be evicted
+      // Try accessing all original repos and count how many need refetching
+      await client.fetchLatestCommit(repo1);
+      await client.fetchLatestCommit(repo2);
+      await client.fetchLatestCommit(repo3);
+
+      // At least one should have required a refetch (was evicted)
+      const totalFetches = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+      expect(totalFetches).toBeGreaterThanOrEqual(5); // 4 + at least 1 evicted
+    });
+  });
 });

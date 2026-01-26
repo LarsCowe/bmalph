@@ -46,10 +46,12 @@ interface FetchOptions {
 interface CacheEntry {
   data: CommitInfo;
   timestamp: number;
+  lastAccessed: number;
 }
 
 interface GitHubClientOptions {
   cacheTtlMs?: number;
+  maxCacheSize?: number;
 }
 
 interface CacheStats {
@@ -70,6 +72,7 @@ const RALPH_REPO: RepoInfo = {
 
 const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_MAX_CACHE_SIZE = 100;
 
 interface GitHubCommitResponse {
   sha: string;
@@ -112,9 +115,11 @@ function generateCompareUrl(
 export class GitHubClient {
   private cache = new Map<string, CacheEntry>();
   private cacheTtlMs: number;
+  private maxCacheSize: number;
 
   constructor(options: GitHubClientOptions = {}) {
     this.cacheTtlMs = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+    this.maxCacheSize = options.maxCacheSize ?? DEFAULT_MAX_CACHE_SIZE;
   }
 
   clearCache(): void {
@@ -133,6 +138,8 @@ export class GitHubClient {
     const key = this.getCacheKey(repo);
     const entry = this.cache.get(key);
     if (entry && Date.now() - entry.timestamp < this.cacheTtlMs) {
+      // Update lastAccessed for LRU tracking
+      entry.lastAccessed = Date.now();
       return entry.data;
     }
     return null;
@@ -140,7 +147,26 @@ export class GitHubClient {
 
   private setCachedResult(repo: RepoInfo, data: CommitInfo): void {
     const key = this.getCacheKey(repo);
-    this.cache.set(key, { data, timestamp: Date.now() });
+    const now = Date.now();
+
+    // Evict oldest entry if cache is at max size (LRU eviction)
+    if (this.cache.size >= this.maxCacheSize && !this.cache.has(key)) {
+      let oldestKey: string | null = null;
+      let oldestTime = Infinity;
+
+      for (const [k, v] of this.cache.entries()) {
+        if (v.lastAccessed < oldestTime) {
+          oldestTime = v.lastAccessed;
+          oldestKey = k;
+        }
+      }
+
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
+    this.cache.set(key, { data, timestamp: now, lastAccessed: now });
   }
 
   async fetchLatestCommit(

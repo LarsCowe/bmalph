@@ -43,7 +43,6 @@ describe("doctor command", () => {
   let originalCwd: string;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     testDir = join(tmpdir(), `bmalph-doctor-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -53,14 +52,12 @@ describe("doctor command", () => {
     vi.resetModules();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    processExitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
   });
 
   afterEach(async () => {
     process.chdir(originalCwd);
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
-    processExitSpy.mockRestore();
     vi.restoreAllMocks();
     try {
       await rm(testDir, { recursive: true, force: true });
@@ -524,17 +521,101 @@ describe("doctor command", () => {
   });
 
   describe("error handling", () => {
-    it("catches and reports unexpected errors", async () => {
+    it("catches and reports unexpected errors without crashing", async () => {
       // Mock readJsonFile to throw unexpected error
       vi.doMock("../../src/utils/json.js", () => ({
         readJsonFile: vi.fn().mockRejectedValue(new Error("Unexpected error")),
       }));
 
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+
+      // Should complete without throwing an unhandled exception
+      await expect(runDoctor()).resolves.not.toThrow();
+
+      // Unmock for subsequent tests
+      vi.doUnmock("../../src/utils/json.js");
+    });
+  });
+
+  describe("exit code behavior", () => {
+    let originalExitCode: number | undefined;
+
+    beforeEach(() => {
+      // Reset modules to ensure clean state for exit code tests
+      vi.resetModules();
+      // Save and reset process.exitCode
+      originalExitCode = process.exitCode;
+      process.exitCode = undefined;
+    });
+
+    afterEach(() => {
+      // Restore original exit code
+      process.exitCode = originalExitCode;
+    });
+
+    it("sets exitCode to 1 when checks fail", async () => {
+      // Empty project - most checks will fail
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: null,
+        ralph: null,
+        errors: [{ type: "network", message: "offline", repo: "bmad" }],
+      });
+
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
 
-      // Should still complete without crashing
-      expect(processExitSpy).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("does not set exitCode to 1 when all checks pass", async () => {
+      await setupFullProject();
+      const { getPackageVersion } = await import("../../src/installer.js");
+      const version = getPackageVersion();
+      await writeFile(
+        join(testDir, ".ralph/ralph_loop.sh"),
+        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`,
+      );
+
+      // Mock checkUpstream to return success
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: {
+          bundledSha: TEST_BMAD_COMMIT,
+          latestSha: TEST_BMAD_COMMIT,
+          isUpToDate: true,
+          compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
+        },
+        ralph: {
+          bundledSha: TEST_RALPH_COMMIT,
+          latestSha: TEST_RALPH_COMMIT,
+          isUpToDate: true,
+          compareUrl: "https://github.com/snarktank/ralph/compare/...",
+        },
+        errors: [],
+      });
+
+      const { doctorCommand } = await import("../../src/commands/doctor.js");
+      await doctorCommand();
+
+      // Should NOT set exit code when all checks pass
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("does not set exitCode in JSON mode even when checks fail", async () => {
+      // Empty project - most checks will fail
+      const { checkUpstream } = await import("../../src/utils/github.js");
+      vi.mocked(checkUpstream).mockResolvedValue({
+        bmad: null,
+        ralph: null,
+        errors: [{ type: "network", message: "offline", repo: "bmad" }],
+      });
+
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      await runDoctor({ json: true });
+
+      // JSON mode should not set exit code - let the caller decide based on output
+      expect(process.exitCode).toBeUndefined();
     });
   });
 

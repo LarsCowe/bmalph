@@ -173,4 +173,72 @@ describe("init command", () => {
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("dry-run");
   });
+
+  it("rejects invalid project names with reserved Windows name", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    vi.mocked(isInitialized).mockResolvedValue(false);
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "CON", description: "A project" });
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("reserved"));
+    expect(process.exitCode).toBe(1);
+
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  it("rejects project names with invalid filesystem characters", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    vi.mocked(isInitialized).mockResolvedValue(false);
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my/project", description: "A project" });
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("invalid character"));
+    expect(process.exitCode).toBe(1);
+
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  it("rejects project names that are too long", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    vi.mocked(isInitialized).mockResolvedValue(false);
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "a".repeat(101), description: "A project" });
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("100 characters"));
+    expect(process.exitCode).toBe(1);
+
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  it("rejects empty project names", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    vi.mocked(isInitialized).mockResolvedValue(false);
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "", description: "A project" });
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("empty"));
+    expect(process.exitCode).toBe(1);
+
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
 });

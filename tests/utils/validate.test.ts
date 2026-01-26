@@ -6,6 +6,7 @@ import {
   validateRalphSession,
   validateRalphApiStatus,
   validateRalphLoopStatus,
+  validateProjectName,
 } from "../../src/utils/validate.js";
 
 describe("validateConfig", () => {
@@ -291,5 +292,82 @@ describe("validateRalphLoopStatus", () => {
   it("throws when tasksTotal is not a number", () => {
     const data = { loopCount: 0, status: "running", tasksCompleted: 0, tasksTotal: "10" };
     expect(() => validateRalphLoopStatus(data)).toThrow(/tasksTotal/i);
+  });
+});
+
+describe("validateProjectName", () => {
+  it("accepts valid project names", () => {
+    expect(validateProjectName("my-project")).toBe("my-project");
+    expect(validateProjectName("MyProject")).toBe("MyProject");
+    expect(validateProjectName("project_123")).toBe("project_123");
+    expect(validateProjectName("a")).toBe("a");
+  });
+
+  it("throws when name is empty", () => {
+    expect(() => validateProjectName("")).toThrow(/empty/i);
+  });
+
+  it("throws when name is only whitespace", () => {
+    expect(() => validateProjectName("   ")).toThrow(/empty/i);
+    expect(() => validateProjectName("\t")).toThrow(/empty/i);
+  });
+
+  it("throws when name exceeds max length", () => {
+    const longName = "a".repeat(101);
+    expect(() => validateProjectName(longName)).toThrow(/100 characters/i);
+  });
+
+  it("accepts name at max length boundary", () => {
+    const maxName = "a".repeat(100);
+    expect(validateProjectName(maxName)).toBe(maxName);
+  });
+
+  it("throws when name contains invalid filesystem characters", () => {
+    const invalidChars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
+    for (const char of invalidChars) {
+      expect(() => validateProjectName(`project${char}name`)).toThrow(/invalid character/i);
+    }
+  });
+
+  it("throws for Windows reserved names", () => {
+    const reservedNames = [
+      "CON", "PRN", "AUX", "NUL",
+      "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+      "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    for (const name of reservedNames) {
+      expect(() => validateProjectName(name)).toThrow(/reserved/i);
+    }
+  });
+
+  it("throws for Windows reserved names case-insensitively", () => {
+    expect(() => validateProjectName("con")).toThrow(/reserved/i);
+    expect(() => validateProjectName("Con")).toThrow(/reserved/i);
+    expect(() => validateProjectName("CON")).toThrow(/reserved/i);
+    expect(() => validateProjectName("nul")).toThrow(/reserved/i);
+    expect(() => validateProjectName("com1")).toThrow(/reserved/i);
+    expect(() => validateProjectName("lpt9")).toThrow(/reserved/i);
+  });
+
+  it("accepts names that contain reserved names as substrings", () => {
+    expect(validateProjectName("icon")).toBe("icon");
+    expect(validateProjectName("conway")).toBe("conway");
+    expect(validateProjectName("my-aux-project")).toBe("my-aux-project");
+    expect(validateProjectName("com10")).toBe("com10");
+  });
+
+  it("throws when name starts or ends with space", () => {
+    expect(() => validateProjectName(" project")).toThrow(/whitespace/i);
+    expect(() => validateProjectName("project ")).toThrow(/whitespace/i);
+  });
+
+  it("throws when name starts or ends with dot", () => {
+    expect(() => validateProjectName(".project")).toThrow(/dot/i);
+    expect(() => validateProjectName("project.")).toThrow(/dot/i);
+  });
+
+  it("accepts names with dots in the middle", () => {
+    expect(validateProjectName("my.project")).toBe("my.project");
+    expect(validateProjectName("v1.0.0")).toBe("v1.0.0");
   });
 });

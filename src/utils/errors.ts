@@ -46,3 +46,31 @@ export function formatError(error: unknown): string {
 export function formatErrorMessage(prefix: string, error: unknown): string {
   return `${prefix}: ${formatError(error)}`;
 }
+
+/**
+ * Wrap an async command function with standard error handling.
+ *
+ * Catches any errors, prints them in red to stderr, and sets process.exitCode to 1.
+ * Uses process.exitCode instead of process.exit() to allow graceful cleanup.
+ *
+ * @param fn - Async function to execute
+ * @returns Promise that resolves when the function completes (or error is handled)
+ *
+ * @example
+ * ```ts
+ * export async function myCommand(options: MyOptions): Promise<void> {
+ *   await withErrorHandling(() => runMyCommand(options));
+ * }
+ * ```
+ */
+export async function withErrorHandling(fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    const message = formatError(err);
+    // Import chalk dynamically to avoid circular dependencies
+    const chalk = await import("chalk");
+    console.error(chalk.default.red(`Error: ${message}`));
+    process.exitCode = 1;
+  }
+}

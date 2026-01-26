@@ -24,15 +24,25 @@ interface DoctorOptions {
 
 export async function doctorCommand(options: DoctorOptions = {}): Promise<void> {
   try {
-    await runDoctor(options);
+    const { failed } = await runDoctor(options);
+    // Set exit code to 1 if checks failed (but not in JSON mode - let caller handle)
+    // Use process.exitCode instead of process.exit() to allow graceful cleanup
+    if (!options.json && failed > 0) {
+      process.exitCode = 1;
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(chalk.red(`Error: ${message}`));
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
-export async function runDoctor(options: DoctorOptions = {}): Promise<void> {
+interface DoctorResult {
+  passed: number;
+  failed: number;
+}
+
+export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
   const projectDir = process.cwd();
   const results: CheckResult[] = [];
 
@@ -135,7 +145,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<void> {
       },
     };
     console.log(JSON.stringify(output, null, 2));
-    return;
+    return { passed, failed };
   }
 
   console.log(chalk.bold("bmalph doctor\n"));
@@ -156,6 +166,8 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<void> {
   } else {
     console.log(`${chalk.green(`${passed} passed`)}, ${chalk.red(`${failed} failed`)}`);
   }
+
+  return { passed, failed };
 }
 
 async function checkBashAvailable(): Promise<boolean> {
@@ -319,7 +331,7 @@ async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
     };
   } catch (err) {
     // Distinguish between "file not found" and "corrupt file"
-    if (err instanceof Error && err.message.includes("ENOENT")) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return { label, passed: true, detail: "not running" };
     }
     // Parse or validation error - warn about corrupt state
@@ -355,7 +367,7 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
     return { label, passed: true, detail: ageStr };
   } catch (err) {
     // Distinguish between "file not found" and "corrupt file"
-    if (err instanceof Error && err.message.includes("ENOENT")) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return { label, passed: true, detail: "no active session" };
     }
     // Parse or validation error - warn about corrupt state
@@ -387,7 +399,7 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
     return { label, passed: true, detail: `${calls}/${max}` };
   } catch (err) {
     // Distinguish between "file not found" and "corrupt file"
-    if (err instanceof Error && err.message.includes("ENOENT")) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return { label, passed: true, detail: "not running" };
     }
     // Parse or validation error - warn about corrupt state

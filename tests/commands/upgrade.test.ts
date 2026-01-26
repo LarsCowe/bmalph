@@ -21,12 +21,11 @@ vi.mock("../../src/installer.js", () => ({
 describe("upgrade command", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let processExitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    processExitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    process.exitCode = undefined;
     vi.resetModules();
     vi.clearAllMocks();
   });
@@ -34,7 +33,7 @@ describe("upgrade command", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
-    processExitSpy.mockRestore();
+    process.exitCode = undefined;
     vi.restoreAllMocks();
   });
 
@@ -190,15 +189,17 @@ describe("upgrade command", () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Copy failed"));
     });
 
-    it("exits with code 1 on error", async () => {
+    it("sets exitCode to 1 on error", async () => {
       const { isInitialized, copyBundledAssets } = await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockRejectedValue(new Error("Copy failed"));
 
+      process.exitCode = undefined;
+
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({});
 
-      expect(processExitSpy).toHaveBeenCalledWith(1);
+      expect(process.exitCode).toBe(1);
     });
   });
 

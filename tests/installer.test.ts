@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { installProject, copyBundledAssets, mergeClaudeMd, isInitialized } from "../src/installer.js";
+import { installProject, copyBundledAssets, mergeClaudeMd, isInitialized, previewInstall, previewUpgrade } from "../src/installer.js";
 import { mkdir, rm, access, readFile, writeFile, readdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -557,6 +557,115 @@ describe("installer", () => {
       expect(content).toContain("/dev");
       expect(content).toContain("/ux-designer");
       expect(content).toContain("/tea");
+    });
+  });
+
+  describe("previewInstall", () => {
+    it("returns wouldCreate for new project", async () => {
+      const result = await previewInstall(testDir);
+
+      expect(result.wouldCreate).toContain("bmalph/state/");
+      expect(result.wouldCreate).toContain(".ralph/specs/");
+      expect(result.wouldCreate).toContain(".ralph/logs/");
+      expect(result.wouldCreate).toContain("_bmad/");
+      expect(result.wouldCreate).toContain(".claude/commands/");
+      expect(result.wouldCreate).toContain(".ralph/PROMPT.md");
+      expect(result.wouldCreate).toContain("bmalph/config.json");
+      expect(result.wouldCreate).toContain(".gitignore");
+      expect(result.wouldCreate).toContain("CLAUDE.md");
+    });
+
+    it("returns wouldModify for existing directories", async () => {
+      // Create some existing directories
+      await mkdir(join(testDir, "_bmad"), { recursive: true });
+      await mkdir(join(testDir, ".claude/commands"), { recursive: true });
+
+      const result = await previewInstall(testDir);
+
+      expect(result.wouldModify).toContain("_bmad/");
+      expect(result.wouldModify).toContain(".claude/commands/");
+      expect(result.wouldCreate).not.toContain("_bmad/");
+      expect(result.wouldCreate).not.toContain(".claude/commands/");
+    });
+
+    it("returns wouldModify for existing template files", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/PROMPT.md"), "existing content");
+      await writeFile(join(testDir, ".ralph/@AGENT.md"), "existing content");
+
+      const result = await previewInstall(testDir);
+
+      expect(result.wouldModify).toContain(".ralph/PROMPT.md");
+      expect(result.wouldModify).toContain(".ralph/@AGENT.md");
+    });
+
+    it("returns wouldModify for existing .gitignore", async () => {
+      await writeFile(join(testDir, ".gitignore"), "node_modules/");
+
+      const result = await previewInstall(testDir);
+
+      expect(result.wouldModify).toContain(".gitignore");
+      expect(result.wouldCreate).not.toContain(".gitignore");
+    });
+
+    it("returns wouldModify for existing CLAUDE.md without integration", async () => {
+      await writeFile(join(testDir, "CLAUDE.md"), "# My Project");
+
+      const result = await previewInstall(testDir);
+
+      expect(result.wouldModify).toContain("CLAUDE.md");
+      expect(result.wouldSkip).not.toContain("CLAUDE.md (already integrated)");
+    });
+
+    it("returns wouldSkip for CLAUDE.md with existing integration", async () => {
+      await writeFile(join(testDir, "CLAUDE.md"), "# My Project\n## BMAD-METHOD Integration\nContent");
+
+      const result = await previewInstall(testDir);
+
+      expect(result.wouldSkip).toContain("CLAUDE.md (already integrated)");
+      expect(result.wouldModify).not.toContain("CLAUDE.md");
+      expect(result.wouldCreate).not.toContain("CLAUDE.md");
+    });
+
+    it("does not include non-template files in wouldModify when they exist", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash");
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await writeFile(join(testDir, "bmalph/config.json"), "{}");
+
+      const result = await previewInstall(testDir);
+
+      // Non-template files should not appear in wouldModify
+      expect(result.wouldModify).not.toContain(".ralph/ralph_loop.sh");
+      expect(result.wouldModify).not.toContain("bmalph/config.json");
+    });
+  });
+
+  describe("previewUpgrade", () => {
+    it("returns all bundled asset paths that would be updated", async () => {
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldUpdate).toContain("_bmad/");
+      expect(result.wouldUpdate).toContain(".ralph/ralph_loop.sh");
+      expect(result.wouldUpdate).toContain(".ralph/ralph_import.sh");
+      expect(result.wouldUpdate).toContain(".ralph/ralph_monitor.sh");
+      expect(result.wouldUpdate).toContain(".ralph/lib/");
+      expect(result.wouldUpdate).toContain(".ralph/PROMPT.md");
+      expect(result.wouldUpdate).toContain(".ralph/@AGENT.md");
+      expect(result.wouldUpdate).toContain(".ralph/RALPH-REFERENCE.md");
+      expect(result.wouldUpdate).toContain(".claude/commands/");
+      expect(result.wouldUpdate).toContain(".gitignore");
+    });
+
+    it("returns consistent results regardless of project state", async () => {
+      // Empty project
+      const result1 = await previewUpgrade(testDir);
+
+      // Initialized project
+      await installProject(testDir);
+      const result2 = await previewUpgrade(testDir);
+
+      expect(result1.wouldUpdate).toEqual(result2.wouldUpdate);
     });
   });
 });

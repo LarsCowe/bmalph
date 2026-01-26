@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { formatError, formatErrorMessage } from "../../src/utils/errors.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { formatError, formatErrorMessage, withErrorHandling } from "../../src/utils/errors.js";
 
 describe("errors", () => {
   describe("formatError", () => {
@@ -52,6 +52,59 @@ describe("errors", () => {
       expect(formatErrorMessage("Task failed", 500)).toBe(
         "Task failed: 500"
       );
+    });
+  });
+
+  describe("withErrorHandling", () => {
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      process.exitCode = undefined;
+    });
+
+    afterEach(() => {
+      consoleSpy.mockRestore();
+      process.exitCode = undefined;
+    });
+
+    it("executes the async function successfully", async () => {
+      const fn = vi.fn().mockResolvedValue(undefined);
+
+      await withErrorHandling(fn);
+
+      expect(fn).toHaveBeenCalled();
+      expect(consoleSpy).not.toHaveBeenCalled();
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("catches errors and prints formatted message", async () => {
+      const fn = vi.fn().mockRejectedValue(new Error("Something failed"));
+
+      await withErrorHandling(fn);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Something failed"));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("handles non-Error thrown values", async () => {
+      const fn = vi.fn().mockRejectedValue("string error");
+
+      await withErrorHandling(fn);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("string error"));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("returns a promise that resolves", async () => {
+      const fn = vi.fn().mockResolvedValue(undefined);
+
+      const result = withErrorHandling(fn);
+
+      // Should return a promise
+      expect(result).toBeInstanceOf(Promise);
+      await result;
+      expect(fn).toHaveBeenCalled();
     });
   });
 });

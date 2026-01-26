@@ -38,12 +38,11 @@ import type { CheckUpstreamResult } from "../../src/utils/github.js";
 
 describe("check-updates command", () => {
   let consoleSpy: MockInstance;
-  let exitSpy: MockInstance;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
-    exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
@@ -75,7 +74,7 @@ describe("check-updates command", () => {
     expect(output).toContain("up to date");
     expect(output).toContain("Ralph");
     expect(output).toContain("All repositories are up to date");
-    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("shows commits behind with compare URL", async () => {
@@ -154,7 +153,7 @@ describe("check-updates command", () => {
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("Could not check");
     expect(output).toContain("network");
-    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("handles rate limit gracefully", async () => {
@@ -173,7 +172,7 @@ describe("check-updates command", () => {
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("Could not check");
     expect(output).toContain("rate");
-    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("outputs JSON with errors when both repos fail", async () => {
@@ -241,5 +240,18 @@ describe("check-updates command", () => {
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("2 repositories have updates available");
+  });
+
+  it("handles getBundledVersions() error gracefully", async () => {
+    const { getBundledVersions } = await import("../../src/installer.js");
+    vi.mocked(getBundledVersions).mockImplementation(() => {
+      throw new Error("Failed to read bundled-versions.json at /path/to/file: ENOENT");
+    });
+
+    await checkUpdatesCommand({});
+
+    const errorOutput = vi.mocked(console.error).mock.calls.map((c) => c[0]).join("\n");
+    expect(errorOutput).toContain("Failed to read bundled-versions.json");
+    expect(process.exitCode).toBe(1);
   });
 });

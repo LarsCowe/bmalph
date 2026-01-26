@@ -59,7 +59,7 @@ describe("bmalph doctor e2e", { timeout: 60000 }, () => {
 
     const result = await runDoctor(project.path);
 
-    expect(result.exitCode).toBe(0); // Doctor always exits 0
+    expect(result.exitCode).toBe(1); // Doctor exits 1 when checks fail
     expectDoctorCheckFailed(result.stdout, "bmalph/config.json exists and valid");
   });
 
@@ -73,7 +73,7 @@ describe("bmalph doctor e2e", { timeout: 60000 }, () => {
 
     const result = await runDoctor(project.path);
 
-    expect(result.exitCode).toBe(0); // Doctor always exits 0
+    expect(result.exitCode).toBe(1); // Doctor exits 1 when checks fail
     expectDoctorCheckFailed(result.stdout, "_bmad/ directory present");
   });
 
@@ -87,18 +87,18 @@ describe("bmalph doctor e2e", { timeout: 60000 }, () => {
 
     const result = await runDoctor(project.path);
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(1); // Doctor exits 1 when checks fail
     expectDoctorCheckFailed(result.stdout, "ralph_loop.sh present and has content");
   });
 
-  it("always exits with code 0 even when checks fail", async () => {
+  it("exits with code 1 when checks fail on uninitialized project", async () => {
     project = await createTestProject();
 
     // Run doctor on empty project (nothing initialized)
     const result = await runDoctor(project.path);
 
-    // Should still exit 0 - doctor reports, doesn't fail
-    expect(result.exitCode).toBe(0);
+    // Should exit 1 - doctor reports failures with proper exit code
+    expect(result.exitCode).toBe(1);
 
     // Multiple checks should fail
     expectDoctorCheckFailed(result.stdout, "bmalph/config.json exists and valid");

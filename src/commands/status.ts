@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { readConfig } from "../utils/config.js";
 import { readState, readRalphStatus, getPhaseLabel, getPhaseInfo } from "../utils/state.js";
+import { withErrorHandling } from "../utils/errors.js";
 
 interface StatusOptions {
   json?: boolean;
@@ -20,13 +21,7 @@ interface StatusOutput {
 }
 
 export async function statusCommand(options: StatusOptions = {}): Promise<void> {
-  try {
-    await runStatus(options);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`Error: ${message}`));
-    process.exit(1);
-  }
+  await withErrorHandling(() => runStatus(options));
 }
 
 export async function runStatus(options: StatusOptions = {}): Promise<void> {

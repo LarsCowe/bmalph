@@ -1,20 +1,30 @@
 import type { Story } from "./types.js";
 
+// Cached regex patterns for performance (compiled once at module load)
+const GIVEN_LINE_PATTERN = /^\*?\*?Given\*?\*?\s/;
+const GWT_LINE_PATTERN = /^\*?\*?(Given|When|Then)\*?\*?\s/;
+const BOLD_PATTERN = /\*\*/g;
+const EPIC_HEADER_PATTERN = /^##\s+Epic\s+\d+:\s+(.+)/;
+const HEADING_PATTERN = /^#{2,3}\s/;
+const STORY_HEADER_PATTERN = /^###\s+Story\s+([\d.]+):\s+(.+)/;
+const STORY_ID_PATTERN = /^\d+\.\d+$/;
+const AC_HEADING_PATTERN = /^\*?\*?Acceptance Criteria\*?\*?:?/i;
+
 export interface ParseStoriesResult {
   stories: Story[];
   warnings: string[];
 }
 
 function isGivenLine(line: string): boolean {
-  return /^\*?\*?Given\*?\*?\s/.test(line.trim());
+  return GIVEN_LINE_PATTERN.test(line.trim());
 }
 
 function isGwtLine(line: string): boolean {
-  return /^\*?\*?(Given|When|Then)\*?\*?\s/.test(line.trim());
+  return GWT_LINE_PATTERN.test(line.trim());
 }
 
 function stripBold(text: string): string {
-  return text.replace(/\*\*/g, "");
+  return text.replace(BOLD_PATTERN, "");
 }
 
 function parseAcBlocks(lines: string[]): string[] {
@@ -59,13 +69,13 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
     const line = lines[i];
 
     // Match Epic headers: ## Epic N: Title
-    const epicMatch = line.match(/^##\s+Epic\s+\d+:\s+(.+)/);
+    const epicMatch = line.match(EPIC_HEADER_PATTERN);
     if (epicMatch) {
       currentEpic = epicMatch[1].trim();
       // Collect max 2 non-empty lines between epic header and first story/next heading
       const descLines: string[] = [];
       for (let j = i + 1; j < lines.length && descLines.length < 2; j++) {
-        if (lines[j].match(/^#{2,3}\s/)) break;
+        if (HEADING_PATTERN.test(lines[j])) break;
         const trimmed = lines[j].trim();
         if (trimmed) descLines.push(trimmed);
       }
@@ -74,26 +84,26 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
     }
 
     // Match Story headers: ### Story N.M: Title
-    const storyMatch = line.match(/^###\s+Story\s+([\d.]+):\s+(.+)/);
+    const storyMatch = line.match(STORY_HEADER_PATTERN);
     if (storyMatch) {
       const id = storyMatch[1];
       const title = storyMatch[2].trim();
 
       // Validate story ID format (should be like "1.1", "2.3", etc.)
-      if (!/^\d+\.\d+$/.test(id)) {
+      if (!STORY_ID_PATTERN.test(id)) {
         warnings.push(`Story "${title}" has malformed ID "${id}" (expected format: N.M)`);
       }
 
       // Collect all body lines until next heading
       const bodyLines: string[] = [];
       for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j].match(/^#{2,3}\s/)) break;
+        if (HEADING_PATTERN.test(lines[j])) break;
         bodyLines.push(lines[j]);
       }
 
       // Find where AC starts: either "**Acceptance Criteria:**" heading or first Given line
       let acStartIndex = bodyLines.findIndex((l) =>
-        /^\*?\*?Acceptance Criteria\*?\*?:?/i.test(l.trim()),
+        AC_HEADING_PATTERN.test(l.trim()),
       );
 
       if (acStartIndex === -1) {

@@ -3,6 +3,18 @@ import type { BmalphState } from "./state.js";
 
 const VALID_STATUSES = ["planning", "implementing", "completed"] as const;
 
+// Invalid filesystem characters (Windows + POSIX)
+const INVALID_FS_CHARS = /[<>:"/\\|?*]/;
+
+// Windows reserved names (case-insensitive, exact match only)
+const WINDOWS_RESERVED_NAMES = new Set([
+  "con", "prn", "aux", "nul",
+  "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+  "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+]);
+
+const MAX_PROJECT_NAME_LENGTH = 100;
+
 function assertObject(data: unknown, label: string): asserts data is Record<string, unknown> {
   if (data === null || data === undefined || typeof data !== "object" || Array.isArray(data)) {
     throw new Error(`${label}: expected an object`);
@@ -195,4 +207,53 @@ export function validateRalphLoopStatus(data: unknown): RalphLoopStatus {
     tasksCompleted: data.tasksCompleted,
     tasksTotal: data.tasksTotal,
   };
+}
+
+/**
+ * Validates a project name for filesystem safety.
+ * Checks for:
+ * - Empty names
+ * - Max length (100 characters)
+ * - Invalid filesystem characters (< > : " / \ | ? *)
+ * - Windows reserved names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+ * - Leading/trailing whitespace or dots
+ *
+ * @param name - The project name to validate
+ * @returns The validated name (unchanged if valid)
+ * @throws Error if the name is invalid
+ */
+export function validateProjectName(name: string): string {
+  const trimmed = name.trim();
+
+  // Check for empty name
+  if (trimmed.length === 0) {
+    throw new Error("Project name cannot be empty");
+  }
+
+  // Check for leading/trailing whitespace (original had whitespace that was trimmed)
+  if (name !== trimmed) {
+    throw new Error("Project name cannot start or end with whitespace");
+  }
+
+  // Check max length
+  if (name.length > MAX_PROJECT_NAME_LENGTH) {
+    throw new Error(`Project name cannot exceed ${MAX_PROJECT_NAME_LENGTH} characters`);
+  }
+
+  // Check for invalid filesystem characters
+  if (INVALID_FS_CHARS.test(name)) {
+    throw new Error("Project name contains invalid character (< > : \" / \\ | ? * are not allowed)");
+  }
+
+  // Check for Windows reserved names (case-insensitive, exact match)
+  if (WINDOWS_RESERVED_NAMES.has(name.toLowerCase())) {
+    throw new Error(`Project name "${name}" is a reserved Windows filename`);
+  }
+
+  // Check for leading/trailing dots
+  if (name.startsWith(".") || name.endsWith(".")) {
+    throw new Error("Project name cannot start or end with a dot");
+  }
+
+  return name;
 }

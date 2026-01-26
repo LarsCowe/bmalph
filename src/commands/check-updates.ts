@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { getBundledVersions } from "../installer.js";
 import { checkUpstream, type UpstreamStatus, type GitHubError } from "../utils/github.js";
+import { withErrorHandling } from "../utils/errors.js";
 
 interface CheckUpdatesOptions {
   json?: boolean;
@@ -14,6 +15,10 @@ interface JsonOutput {
 }
 
 export async function checkUpdatesCommand(options: CheckUpdatesOptions = {}): Promise<void> {
+  await withErrorHandling(() => runCheckUpdates(options));
+}
+
+async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
   const bundled = getBundledVersions();
 
   if (!options.json) {

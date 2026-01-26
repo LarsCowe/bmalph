@@ -1,19 +1,14 @@
 import chalk from "chalk";
 import { isInitialized, copyBundledAssets, mergeClaudeMd, previewUpgrade } from "../installer.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
+import { withErrorHandling } from "../utils/errors.js";
 
 interface UpgradeOptions {
   dryRun?: boolean;
 }
 
 export async function upgradeCommand(options: UpgradeOptions = {}): Promise<void> {
-  try {
-    await runUpgrade(options);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`Error: ${message}`));
-    process.exit(1);
-  }
+  await withErrorHandling(() => runUpgrade(options));
 }
 
 async function runUpgrade(options: UpgradeOptions): Promise<void> {

@@ -3,6 +3,8 @@ import inquirer from "inquirer";
 import { writeConfig, type BmalphConfig } from "../utils/config.js";
 import { installProject, mergeClaudeMd, isInitialized, previewInstall, getBundledVersions } from "../installer.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
+import { validateProjectName } from "../utils/validate.js";
+import { withErrorHandling } from "../utils/errors.js";
 
 interface InitOptions {
   name?: string;
@@ -11,13 +13,7 @@ interface InitOptions {
 }
 
 export async function initCommand(options: InitOptions): Promise<void> {
-  try {
-    await runInit(options);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`Error: ${message}`));
-    process.exit(1);
-  }
+  await withErrorHandling(() => runInit(options));
 }
 
 async function runInit(options: InitOptions): Promise<void> {
@@ -75,10 +71,11 @@ async function runInit(options: InitOptions): Promise<void> {
     description = description ?? answers.description;
   }
 
-  // Validate project name is non-empty
-  if (!name || name.trim() === "") {
-    throw new Error("Project name cannot be empty. Please provide a valid project name.");
+  // Validate project name (filesystem safety, reserved names, etc.)
+  if (!name) {
+    throw new Error("Project name cannot be empty");
   }
+  const validatedName = validateProjectName(name);
 
   console.log(chalk.blue("\nInstalling BMAD + Ralph..."));
 
@@ -86,7 +83,7 @@ async function runInit(options: InitOptions): Promise<void> {
 
   const bundledVersions = getBundledVersions();
   const config: BmalphConfig = {
-    name: name.trim(),
+    name: validatedName,
     description: description ?? "",
     createdAt: new Date().toISOString(),
     upstreamVersions: bundledVersions,
