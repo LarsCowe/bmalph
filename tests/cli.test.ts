@@ -105,8 +105,10 @@ describe("CLI entry point", () => {
     // Without --no-color, output may contain ANSI escape codes (in TTY)
     // With --no-color, output should never contain ANSI codes
     const { stdout } = runCli(["--no-color", "--help"]);
-    // ANSI escape codes start with \x1b[ or \u001b[
+    // ANSI escape codes start with ESC[ (hex 1b, dec 27)
+    // eslint-disable-next-line no-control-regex
     expect(stdout).not.toMatch(/\x1b\[/);
+    // eslint-disable-next-line no-control-regex
     expect(stdout).not.toMatch(/\u001b\[/);
   });
 });

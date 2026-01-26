@@ -789,8 +789,10 @@ describe("doctor command", () => {
       await runDoctor({ json: true });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
-      // Should not contain ANSI escape codes
+      // Should not contain ANSI escape codes (ESC[)
+      // eslint-disable-next-line no-control-regex
       expect(output).not.toMatch(/\x1b\[/);
+      // eslint-disable-next-line no-control-regex
       expect(output).not.toMatch(/\u001b\[/);
     });
   });

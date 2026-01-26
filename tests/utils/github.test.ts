@@ -16,6 +16,7 @@ import {
   fetchLatestCommit,
   checkUpstream,
   clearCache,
+  GitHubClient,
   type RepoInfo,
 } from "../../src/utils/github.js";
 import type { BundledVersions } from "../../src/installer.js";
@@ -431,6 +432,187 @@ describe("github utilities", () => {
         expect(result.error.type).toBe("api-error");
         expect(result.error.status).toBe(500);
       }
+    });
+  });
+});
+
+describe("GitHubClient class", () => {
+  let originalFetch: typeof global.fetch;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.clearAllMocks();
+  });
+
+  const bmadRepo: RepoInfo = {
+    owner: "bmad-code-org",
+    repo: "BMAD-METHOD",
+    branch: "main",
+  };
+
+  const mockSuccessResponse = {
+    sha: "abc123def456789",
+    commit: {
+      message: "feat: test commit",
+      author: { date: "2024-01-15T10:30:00Z" },
+    },
+  };
+
+  describe("instance isolation", () => {
+    it("each instance has its own independent cache", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      const client1 = new GitHubClient();
+      const client2 = new GitHubClient();
+
+      // Fetch with client1
+      await client1.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Client2 should not use client1's cache
+      await client2.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Client1's cache still works
+      await client1.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2); // No new call
+    });
+
+    it("clearing one client cache does not affect another", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      const client1 = new GitHubClient();
+      const client2 = new GitHubClient();
+
+      // Populate both caches
+      await client1.fetchLatestCommit(bmadRepo);
+      await client2.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Clear only client1's cache
+      client1.clearCache();
+
+      // Client2's cache should still work
+      await client2.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2); // No new call
+
+      // Client1 should fetch again
+      await client1.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("custom cache TTL", () => {
+    it("accepts custom cache TTL in constructor", async () => {
+      const client = new GitHubClient({ cacheTtlMs: 100 });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      // First call
+      await client.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Immediate second call uses cache
+      await client.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Wait for cache to expire
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Should fetch again after TTL expired
+      await client.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("fetchLatestCommit", () => {
+    it("returns success with commit info", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      const client = new GitHubClient();
+      const result = await client.fetchLatestCommit(bmadRepo);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sha).toBe("abc123def456789");
+        expect(result.data.shortSha).toBe("abc123de");
+      }
+    });
+
+    it("handles network errors", async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error("Connection refused"));
+
+      const client = new GitHubClient();
+      const result = await client.fetchLatestCommit(bmadRepo);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.type).toBe("network");
+        expect(result.error.message).toContain("Connection refused");
+      }
+    });
+  });
+
+  describe("checkUpstream", () => {
+    it("uses instance cache for repeated calls", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      const bundled: BundledVersions = {
+        bmadCommit: "abc123de",
+        ralphCommit: "abc123de",
+      };
+
+      const client = new GitHubClient();
+
+      // First call
+      await client.checkUpstream(bundled);
+      expect(global.fetch).toHaveBeenCalledTimes(2); // BMAD + Ralph
+
+      // Second call should use cache
+      await client.checkUpstream(bundled);
+      expect(global.fetch).toHaveBeenCalledTimes(2); // No additional calls
+    });
+  });
+
+  describe("getCacheStats", () => {
+    it("returns cache size", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      const client = new GitHubClient();
+
+      expect(client.getCacheStats().size).toBe(0);
+
+      await client.fetchLatestCommit(bmadRepo);
+
+      expect(client.getCacheStats().size).toBe(1);
     });
   });
 });
