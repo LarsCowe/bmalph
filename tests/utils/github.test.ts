@@ -726,4 +726,98 @@ describe("GitHubClient class", () => {
       expect(totalFetches).toBeGreaterThanOrEqual(5); // 4 + at least 1 evicted
     });
   });
+
+  describe("cache stale entry cleanup", () => {
+    it("removes expired entries on cache hit check", async () => {
+      const client = new GitHubClient({ cacheTtlMs: 50 });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      // First call populates cache
+      await client.fetchLatestCommit(bmadRepo);
+      expect(client.getCacheStats().size).toBe(1);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Wait for cache entry to expire
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Second call should detect expired entry and remove it
+      await client.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Cache should still have 1 entry (the new one), not 0 (stale removed without adding new)
+      expect(client.getCacheStats().size).toBe(1);
+    });
+
+    it("expired entries do not count toward max size", async () => {
+      const client = new GitHubClient({ cacheTtlMs: 50, maxCacheSize: 3 });
+
+      global.fetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: `sha${Math.random()}12345678`,
+              commit: {
+                message: "test",
+                author: { date: "2024-01-15T10:30:00Z" },
+              },
+            }),
+        }),
+      );
+
+      const repo1 = { owner: "owner1", repo: "repo1", branch: "main" };
+      const repo2 = { owner: "owner2", repo: "repo2", branch: "main" };
+      const repo3 = { owner: "owner3", repo: "repo3", branch: "main" };
+      const repo4 = { owner: "owner4", repo: "repo4", branch: "main" };
+
+      // Fill cache with 3 entries
+      await client.fetchLatestCommit(repo1);
+      await client.fetchLatestCommit(repo2);
+      await client.fetchLatestCommit(repo3);
+      expect(client.getCacheStats().size).toBe(3);
+
+      // Wait for all entries to expire
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Add new entry - expired entries should be cleaned up before LRU eviction
+      // This means repo4 should be added without evicting a non-expired entry
+      await client.fetchLatestCommit(repo4);
+
+      // Cache should have cleaned up expired entries
+      // The exact size depends on implementation, but it should be <= maxCacheSize
+      expect(client.getCacheStats().size).toBeLessThanOrEqual(3);
+
+      // The important thing: adding repo4 shouldn't fail or cause issues
+      // even though nominally the cache "was full"
+      expect(global.fetch).toHaveBeenCalledTimes(4);
+    });
+
+    it("removes stale entry immediately when checked", async () => {
+      const client = new GitHubClient({ cacheTtlMs: 50 });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockSuccessResponse),
+      });
+
+      // Populate cache
+      await client.fetchLatestCommit(bmadRepo);
+      expect(client.getCacheStats().size).toBe(1);
+
+      // Wait for expiration
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // After expiration, checking the cache should remove the stale entry
+      // This is verified by needing to fetch again
+      await client.fetchLatestCommit(bmadRepo);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+  });
 });

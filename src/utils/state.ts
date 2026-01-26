@@ -1,5 +1,6 @@
-import { writeFile, mkdir, rename } from "fs/promises";
+import { writeFile, mkdir, rename, unlink } from "fs/promises";
 import { join } from "path";
+import { randomUUID } from "crypto";
 import { readJsonFile } from "./json.js";
 import { validateState, validateRalphLoopStatus } from "./validate.js";
 
@@ -35,10 +36,21 @@ export async function readState(projectDir: string): Promise<BmalphState | null>
 export async function writeState(projectDir: string, state: BmalphState): Promise<void> {
   await mkdir(join(projectDir, STATE_DIR), { recursive: true });
   const target = join(projectDir, STATE_DIR, "current-phase.json");
-  // Use randomized tmp name to prevent race conditions during concurrent writes
-  const tmp = `${target}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
-  await writeFile(tmp, JSON.stringify(state, null, 2) + "\n");
-  await rename(tmp, target);
+  // Use UUID for temp filename to prevent race conditions during concurrent writes
+  const tmp = `${target}.${randomUUID()}.tmp`;
+  try {
+    // Use exclusive write flag to fail if file already exists (collision detection)
+    await writeFile(tmp, JSON.stringify(state, null, 2) + "\n", { flag: "wx" });
+    await rename(tmp, target);
+  } catch (err) {
+    // Clean up temp file on failure
+    try {
+      await unlink(tmp);
+    } catch {
+      // Ignore cleanup errors (file may not exist)
+    }
+    throw err;
+  }
 }
 
 export function getPhaseLabel(phase: number): string {

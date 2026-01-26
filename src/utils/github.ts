@@ -137,19 +137,31 @@ export class GitHubClient {
   private getCachedResult(repo: RepoInfo): CommitInfo | null {
     const key = this.getCacheKey(repo);
     const entry = this.cache.get(key);
-    if (entry && Date.now() - entry.timestamp < this.cacheTtlMs) {
-      // Update lastAccessed for LRU tracking
-      entry.lastAccessed = Date.now();
-      return entry.data;
+    if (!entry) {
+      return null;
     }
-    return null;
+    // Remove stale entry immediately instead of leaving it in cache
+    if (Date.now() - entry.timestamp >= this.cacheTtlMs) {
+      this.cache.delete(key);
+      return null;
+    }
+    // Update lastAccessed for LRU tracking
+    entry.lastAccessed = Date.now();
+    return entry.data;
   }
 
   private setCachedResult(repo: RepoInfo, data: CommitInfo): void {
     const key = this.getCacheKey(repo);
     const now = Date.now();
 
-    // Evict oldest entry if cache is at max size (LRU eviction)
+    // Clean up expired entries before checking size (prevents stale entries from occupying space)
+    for (const [k, v] of this.cache.entries()) {
+      if (now - v.timestamp >= this.cacheTtlMs) {
+        this.cache.delete(k);
+      }
+    }
+
+    // Evict oldest entry if cache is still at max size after cleanup (LRU eviction)
     if (this.cache.size >= this.maxCacheSize && !this.cache.has(key)) {
       let oldestKey: string | null = null;
       let oldestTime = Infinity;

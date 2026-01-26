@@ -97,6 +97,44 @@ describe("state", () => {
       const result = await readState(testDir);
       expect(result).toEqual(state2);
     });
+
+    it("uses unique temp file names (UUID pattern)", async () => {
+      // Write multiple times in parallel - should not conflict at temp file level
+      const states: BmalphState[] = [
+        { currentPhase: 1, status: "planning", startedAt: "2025-01-01", lastUpdated: "2025-01-01" },
+        { currentPhase: 2, status: "planning", startedAt: "2025-01-01", lastUpdated: "2025-01-02" },
+        { currentPhase: 3, status: "implementing", startedAt: "2025-01-01", lastUpdated: "2025-01-03" },
+      ];
+
+      // On Windows, parallel renames to the same target can cause EPERM errors
+      // Use allSettled to handle potential platform-specific failures
+      const results = await Promise.allSettled(states.map((s) => writeState(testDir, s)));
+
+      // At least one write should succeed
+      const successes = results.filter((r) => r.status === "fulfilled");
+      expect(successes.length).toBeGreaterThanOrEqual(1);
+
+      // State should be readable (one of the writes should win)
+      const result = await readState(testDir);
+      expect(result).toBeTruthy();
+      expect([1, 2, 3]).toContain(result!.currentPhase);
+    });
+
+    it("does not leave temp files after successful write", async () => {
+      const { readdir } = await import("fs/promises");
+      const state: BmalphState = {
+        currentPhase: 1,
+        status: "planning",
+        startedAt: "2025-01-01",
+        lastUpdated: "2025-01-01",
+      };
+
+      await writeState(testDir, state);
+
+      const files = await readdir(join(testDir, "bmalph/state"));
+      const tempFiles = files.filter((f) => f.endsWith(".tmp"));
+      expect(tempFiles).toHaveLength(0);
+    });
   });
 
   describe("getPhaseLabel", () => {

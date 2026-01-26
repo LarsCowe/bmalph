@@ -688,6 +688,39 @@ describe("doctor command", () => {
         expect(output).toContain("circuit breaker");
         expect(output).toContain("not running");
       });
+
+      it("handles corrupt circuit breaker JSON (parse error)", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/.circuit_breaker_state"),
+          "{ invalid json syntax",
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("circuit breaker");
+        expect(output).toContain("corrupt state file");
+      });
+
+      it("handles invalid state value (not CLOSED/HALF_OPEN/OPEN)", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/.circuit_breaker_state"),
+          JSON.stringify({
+            state: "INVALID_STATE",
+            consecutive_no_progress: 0,
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("circuit breaker");
+        expect(output).toContain("corrupt state file");
+      });
     });
 
     describe("session age check", () => {
@@ -742,6 +775,42 @@ describe("doctor command", () => {
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("session");
         // Session older than 24h should be flagged
+      });
+
+      it("handles corrupt ralph session JSON (parse error)", async () => {
+        await setupFullProject();
+        await writeFile(
+          join(testDir, ".ralph/.ralph_session"),
+          "not valid json {{{",
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("session");
+        expect(output).toContain("corrupt session file");
+      });
+
+      it("handles future created_at timestamp", async () => {
+        await setupFullProject();
+        const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h in the future
+        await writeFile(
+          join(testDir, ".ralph/.ralph_session"),
+          JSON.stringify({
+            session_id: "ralph-12345",
+            created_at: futureDate.toISOString(),
+            last_used: new Date().toISOString(),
+          }),
+        );
+
+        const { doctorCommand } = await import("../../src/commands/doctor.js");
+        await doctorCommand();
+
+        const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+        expect(output).toContain("session");
+        expect(output).toContain("invalid timestamp");
+        expect(output).toContain("future");
       });
     });
 
