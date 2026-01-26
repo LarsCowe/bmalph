@@ -95,4 +95,18 @@ describe("CLI entry point", () => {
     const { stdout } = runCli(["--help"]);
     expect(stdout.toLowerCase()).toContain("ralph");
   });
+
+  it("accepts --no-color flag", () => {
+    const { stdout } = runCli(["--help"]);
+    expect(stdout).toContain("--no-color");
+  });
+
+  it("--no-color flag disables colored output", () => {
+    // Without --no-color, output may contain ANSI escape codes (in TTY)
+    // With --no-color, output should never contain ANSI codes
+    const { stdout } = runCli(["--no-color", "--help"]);
+    // ANSI escape codes start with \x1b[ or \u001b[
+    expect(stdout).not.toMatch(/\x1b\[/);
+    expect(stdout).not.toMatch(/\u001b\[/);
+  });
 });

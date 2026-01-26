@@ -720,6 +720,81 @@ describe("doctor command", () => {
     });
   });
 
+  describe("JSON output", () => {
+    it("outputs valid JSON when json flag is true", async () => {
+      await setupFullProject();
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      await runDoctor({ json: true });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      // Should be valid JSON
+      const parsed = JSON.parse(output);
+      expect(parsed).toHaveProperty("results");
+      expect(parsed).toHaveProperty("summary");
+    });
+
+    it("JSON output contains check results with expected shape", async () => {
+      await setupFullProject();
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      await runDoctor({ json: true });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const parsed = JSON.parse(output);
+
+      expect(Array.isArray(parsed.results)).toBe(true);
+      expect(parsed.results.length).toBeGreaterThan(0);
+
+      // Each result should have label and passed
+      for (const result of parsed.results) {
+        expect(result).toHaveProperty("label");
+        expect(result).toHaveProperty("passed");
+        expect(typeof result.passed).toBe("boolean");
+      }
+    });
+
+    it("JSON output includes summary counts", async () => {
+      await setupFullProject();
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      await runDoctor({ json: true });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const parsed = JSON.parse(output);
+
+      expect(parsed.summary).toHaveProperty("passed");
+      expect(parsed.summary).toHaveProperty("failed");
+      expect(parsed.summary).toHaveProperty("total");
+      expect(typeof parsed.summary.passed).toBe("number");
+      expect(typeof parsed.summary.failed).toBe("number");
+      expect(typeof parsed.summary.total).toBe("number");
+    });
+
+    it("JSON output includes hints when checks fail", async () => {
+      // Empty project - most checks will fail
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      await runDoctor({ json: true });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const parsed = JSON.parse(output);
+
+      // Find a failed check that should have a hint
+      const failedWithHint = parsed.results.find(
+        (r: { passed: boolean; hint?: string }) => !r.passed && r.hint
+      );
+      expect(failedWithHint).toBeDefined();
+    });
+
+    it("does not output colored text in JSON mode", async () => {
+      await setupFullProject();
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      await runDoctor({ json: true });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      // Should not contain ANSI escape codes
+      expect(output).not.toMatch(/\x1b\[/);
+      expect(output).not.toMatch(/\u001b\[/);
+    });
+  });
+
   describe("upstream GitHub status check", () => {
     it("shows status when both repos are up to date", async () => {
       await setupFullProject();

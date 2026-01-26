@@ -13,9 +13,15 @@ program
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
   .version(getPackageVersion())
   .option("--verbose", "Enable debug logging")
+  .option("--no-color", "Disable colored output")
   .hook("preAction", () => {
-    if (program.opts().verbose) {
+    const opts = program.opts();
+    if (opts.verbose) {
       setVerbose(true);
+    }
+    if (opts.color === false) {
+      // Disable chalk colors by setting FORCE_COLOR environment variable
+      process.env.FORCE_COLOR = "0";
     }
   });
 
@@ -33,7 +39,11 @@ program
   .option("--dry-run", "Preview changes without writing files")
   .action(upgradeCommand);
 
-program.command("doctor").description("Check installation health").action(doctorCommand);
+program
+  .command("doctor")
+  .description("Check installation health")
+  .option("--json", "Output as JSON")
+  .action(doctorCommand);
 
 program
   .command("check-updates")

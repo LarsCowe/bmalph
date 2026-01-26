@@ -1,6 +1,6 @@
 {
   "name": "bmalph",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "description": "Unified AI Development Framework - BMAD phases with Ralph execution loop for Claude Code",
   "type": "module",
   "bin": {
@@ -12,6 +12,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
+    "test:coverage": "vitest run --coverage",
+    "test:all": "npm run test && npm run test:e2e",
+    "check": "npm run lint && npm run build && npm test",
+    "dev": "tsc --watch",
     "lint": "eslint src tests",
     "format": "prettier --write .",
     "prepublishOnly": "npm run lint && npm run build && npm test",
@@ -52,6 +56,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^25.0.10",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
