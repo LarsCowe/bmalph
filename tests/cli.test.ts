@@ -118,4 +118,20 @@ describe("CLI entry point", () => {
     // eslint-disable-next-line no-control-regex
     expect(stdout).not.toMatch(/\u001b\[/);
   });
+
+  it("accepts --quiet flag", () => {
+    const { stdout } = runCli(["--help"]);
+    expect(stdout).toContain("--quiet");
+  });
+
+  it("accepts -C/--project-dir option", () => {
+    const { stdout } = runCli(["--help"]);
+    expect(stdout).toContain("--project-dir");
+    expect(stdout).toContain("-C");
+  });
+
+  it("upgrade accepts --force flag", () => {
+    const { stdout } = runCli(["upgrade", "--help"]);
+    expect(stdout).toContain("--force");
+  });
 });

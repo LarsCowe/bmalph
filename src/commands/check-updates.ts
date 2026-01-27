@@ -52,7 +52,9 @@ async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
     } else {
       updatesCount++;
       console.log(
-        chalk.yellow(`  ! BMAD-METHOD: updates available (${result.bmad.bundledSha} → ${result.bmad.latestSha})`),
+        chalk.yellow(
+          `  ! BMAD-METHOD: updates available (${result.bmad.bundledSha} → ${result.bmad.latestSha})`
+        )
       );
       console.log(chalk.dim(`    → ${result.bmad.compareUrl}`));
     }
@@ -69,7 +71,9 @@ async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
     } else {
       updatesCount++;
       console.log(
-        chalk.yellow(`  ! Ralph: updates available (${result.ralph.bundledSha} → ${result.ralph.latestSha})`),
+        chalk.yellow(
+          `  ! Ralph: updates available (${result.ralph.bundledSha} → ${result.ralph.latestSha})`
+        )
       );
       console.log(chalk.dim(`    → ${result.ralph.compareUrl}`));
     }

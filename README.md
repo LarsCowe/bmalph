@@ -10,6 +10,7 @@ bmalph bundles and installs two AI development systems:
 - **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (Phase 4)
 
 bmalph provides:
+
 - `bmalph init` — Install both systems
 - `bmalph upgrade` — Update to latest versions
 - `bmalph doctor` — Check installation health
@@ -47,6 +48,7 @@ bmalph init
 ```
 
 This installs:
+
 - `_bmad/` — BMAD agents and workflows
 - `.ralph/` — Ralph loop, libs, templates
 - `bmalph/` — State management (config.json)
@@ -57,13 +59,14 @@ This installs:
 
 Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash command to see your current phase, available commands, and advance phases.
 
-| Phase | Agent | Commands |
-|-------|-------|----------|
-| 1 Analysis | Analyst | BP, MR, DR, TR, CB, VB |
-| 2 Planning | PM (John) | CP, VP, CU, VU |
+| Phase         | Agent     | Commands               |
+| ------------- | --------- | ---------------------- |
+| 1 Analysis    | Analyst   | BP, MR, DR, TR, CB, VB |
+| 2 Planning    | PM (John) | CP, VP, CU, VU         |
 | 3 Solutioning | Architect | CA, VA, CE, VE, TD, IR |
 
 **Phase 1 — Analysis**
+
 - `BP` Brainstorm Project — guided facilitation through brainstorming techniques
 - `MR` Market Research — market analysis, competitive landscape, customer needs
 - `DR` Domain Research — industry domain deep dive
@@ -72,12 +75,14 @@ Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash comm
 - `VB` Validate Brief — validates product brief completeness
 
 **Phase 2 — Planning**
+
 - `CP` Create PRD — expert led facilitation to produce your PRD (required)
 - `VP` Validate PRD — validate PRD is comprehensive and cohesive
 - `CU` Create UX — guidance through realizing the plan for your UX
 - `VU` Validate UX — validates UX design deliverables
 
 **Phase 3 — Solutioning**
+
 - `CA` Create Architecture — guided workflow to document technical decisions (required)
 - `VA` Validate Architecture — validates architecture completeness
 - `CE` Create Epics and Stories — create the epics and stories listing (required)
@@ -90,12 +95,14 @@ Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash comm
 Use the `/bmalph-implement` slash command in Claude Code.
 
 This transitions your BMAD artifacts into Ralph's format:
+
 1. Reads your stories from BMAD output
 2. Generates `.ralph/@fix_plan.md` with ordered tasks
 3. Copies specs to `.ralph/specs/` with changelog tracking
 4. Instructs you to start the Ralph autonomous loop
 
 Then start Ralph:
+
 ```bash
 bash .ralph/ralph_loop.sh
 ```
@@ -113,6 +120,7 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 ```
 
 **Smart Merge**: When you run `/bmalph-implement` again after Ralph has made progress:
+
 - Completed stories (`[x]`) are preserved in the new fix_plan
 - New stories from BMAD are added as pending (`[ ]`)
 
@@ -120,41 +128,41 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ## CLI Reference
 
-| Command | Description |
-|---------|-------------|
-| `bmalph init` | Install BMAD + Ralph into project |
+| Command          | Description                              |
+| ---------------- | ---------------------------------------- |
+| `bmalph init`    | Install BMAD + Ralph into project        |
 | `bmalph upgrade` | Update bundled assets to current version |
-| `bmalph doctor` | Check installation health |
+| `bmalph doctor`  | Check installation health                |
 
 ### Global options
 
-| Flag | Description |
-|------|-------------|
+| Flag        | Description          |
+| ----------- | -------------------- |
 | `--verbose` | Enable debug logging |
-| `--version` | Show version |
-| `--help` | Show help |
+| `--version` | Show version         |
+| `--help`    | Show help            |
 
 ### init options
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-n, --name <name>` | Project name | directory name |
-| `-d, --description <desc>` | Project description | (prompted) |
+| Flag                       | Description         | Default        |
+| -------------------------- | ------------------- | -------------- |
+| `-n, --name <name>`        | Project name        | directory name |
+| `-d, --description <desc>` | Project description | (prompted)     |
 
 ## Slash Commands
 
 bmalph installs 50+ BMAD slash commands. Key commands:
 
-| Command | Description |
-|---------|-------------|
-| `/bmalph` | BMAD master agent — navigate phases |
-| `/analyst` | Analyst agent |
-| `/pm` | Product Manager agent |
-| `/architect` | Architect agent |
-| `/create-prd` | Create PRD workflow |
-| `/create-architecture` | Create architecture workflow |
-| `/create-epics-stories` | Create epics and stories |
-| `/bmad-help` | List all BMAD commands |
+| Command                 | Description                         |
+| ----------------------- | ----------------------------------- |
+| `/bmalph`               | BMAD master agent — navigate phases |
+| `/analyst`              | Analyst agent                       |
+| `/pm`                   | Product Manager agent               |
+| `/architect`            | Architect agent                     |
+| `/create-prd`           | Create PRD workflow                 |
+| `/create-architecture`  | Create architecture workflow        |
+| `/create-epics-stories` | Create epics and stories            |
+| `/bmad-help`            | List all BMAD commands              |
 
 For full list, run `/bmad-help` in Claude Code.
 
@@ -206,11 +214,116 @@ Ralph is a bash loop that spawns fresh Claude Code instances:
 4. Move to the next story
 
 Safety mechanisms:
+
 - **Circuit breaker** — prevents infinite loops on failing stories
 - **Response analyzer** — detects stuck or repeating outputs
 - **Completion** — loop exits when all `@fix_plan.md` items are checked off
 
 Press `Ctrl+C` to stop the loop at any time.
+
+## Troubleshooting
+
+### Windows: Bash Not Found
+
+Ralph requires bash to run. On Windows, install one of:
+
+**Git Bash (Recommended)**
+```bash
+# Install Git for Windows from https://git-scm.com/downloads
+# Git Bash is included and works well with bmalph
+```
+
+**WSL (Windows Subsystem for Linux)**
+```powershell
+# In PowerShell as Administrator
+wsl --install
+# Then restart and run bmalph from WSL terminal
+```
+
+### Permission Denied
+
+If you get permission errors:
+
+```bash
+# Unix/Mac: Make ralph_loop.sh executable
+chmod +x .ralph/ralph_loop.sh
+
+# Check file ownership
+ls -la .ralph/
+```
+
+### Common Errors
+
+| Error | Solution |
+|-------|----------|
+| `bmalph is not initialized` | Run `bmalph init` first |
+| `No stories found` | Create stories in Phase 3 with `/create-epics-stories` |
+| `Circuit breaker OPEN` | Ralph detected stagnation. Check `.ralph/logs/` for details |
+| `Version mismatch` | Run `bmalph upgrade` to update assets |
+
+### Reset Installation
+
+If something goes wrong, you can manually reset:
+
+```bash
+# Remove bmalph directories (preserves your project code)
+rm -rf _bmad .ralph bmalph .claude/commands/bmalph*.md
+
+# Reinitialize
+bmalph init
+```
+
+## Quick Examples
+
+### Initialize a new project
+```bash
+# Interactive mode (prompts for name/description)
+bmalph init
+
+# Non-interactive mode
+bmalph init --name my-app --description "My awesome app"
+
+# Preview what would be created
+bmalph init --dry-run
+```
+
+### Check installation health
+```bash
+# Human-readable output
+bmalph doctor
+
+# JSON output for scripting
+bmalph doctor --json
+```
+
+### Update bundled assets
+```bash
+# Update BMAD and Ralph to latest bundled versions
+bmalph upgrade
+
+# Preview changes first
+bmalph upgrade --dry-run
+```
+
+### After init: Next steps
+```bash
+# 1. Open Claude Code in your project
+claude
+
+# 2. Use the /bmalph slash command to start
+#    This shows your current phase and available commands
+
+# 3. Follow the BMAD workflow:
+#    Phase 1: /analyst → create product brief
+#    Phase 2: /pm → create PRD
+#    Phase 3: /architect → create architecture and stories
+
+# 4. Transition to Ralph
+#    Use /bmalph-implement to generate @fix_plan.md
+
+# 5. Start autonomous implementation
+bash .ralph/ralph_loop.sh
+```
 
 ## License
 

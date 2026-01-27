@@ -10,12 +10,35 @@ import {
   validateRalphSession,
   validateRalphApiStatus,
 } from "../utils/validate.js";
+import {
+  SESSION_AGE_WARNING_MS,
+  API_USAGE_WARNING_PERCENT,
+} from "../utils/constants.js";
 
-interface CheckResult {
+/**
+ * Result of a single doctor check.
+ */
+export interface CheckResult {
   label: string;
   passed: boolean;
   detail?: string;
   hint?: string;
+}
+
+/**
+ * Function signature for doctor checks.
+ * Takes a project directory and returns a check result.
+ */
+export type CheckFunction = (projectDir: string) => Promise<CheckResult>;
+
+/**
+ * Definition of a single doctor check in the registry.
+ */
+export interface CheckDefinition {
+  /** Unique identifier for the check */
+  id: string;
+  /** The check function to execute */
+  run: CheckFunction;
 }
 
 interface DoctorOptions {
@@ -44,87 +67,11 @@ interface DoctorResult {
 
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
   const projectDir = process.cwd();
-  const results: CheckResult[] = [];
 
-  // 1. Node version
-  const major = parseInt(process.versions.node.split(".")[0]);
-  results.push({
-    label: "Node version >= 20",
-    passed: major >= 20,
-    detail: major >= 20 ? `v${process.versions.node}` : `got v${process.versions.node}`,
-    hint: major >= 20 ? undefined : "Install Node.js 20+ from nodejs.org or run: nvm install 20",
-  });
-
-  // 2. bash available
-  const bashAvailable = await checkBashAvailable();
-  results.push({
-    label: "bash available",
-    passed: bashAvailable,
-    detail: bashAvailable ? undefined : "bash not found in PATH",
-    hint: bashAvailable ? undefined : process.platform === "win32"
-      ? "Install Git Bash or WSL: https://git-scm.com/downloads"
-      : "Install bash via your package manager (apt, brew, etc.)",
-  });
-
-  // 3. config.json exists and valid
-  const configResult = await checkConfig(projectDir);
-  results.push(configResult);
-
-  // 4. _bmad/ directory with expected structure
-  const bmadResult = await checkDir(join(projectDir, "_bmad"), "_bmad/ directory present", "Run: bmalph init");
-  results.push(bmadResult);
-
-  // 5. .ralph/ralph_loop.sh present and has content
-  const loopResult = await checkFileHasContent(
-    join(projectDir, ".ralph/ralph_loop.sh"),
-    "ralph_loop.sh present and has content",
-    "Run: bmalph upgrade",
+  // Run all checks from the registry
+  const results: CheckResult[] = await Promise.all(
+    CHECK_REGISTRY.map((check) => check.run(projectDir))
   );
-  results.push(loopResult);
-
-  // 6. .ralph/lib/ present
-  const libResult = await checkDir(join(projectDir, ".ralph/lib"), ".ralph/lib/ directory present", "Run: bmalph upgrade");
-  results.push(libResult);
-
-  // 7. .claude/commands/bmalph.md present
-  const slashResult = await checkFileExists(
-    join(projectDir, ".claude/commands/bmalph.md"),
-    ".claude/commands/bmalph.md present",
-    "Run: bmalph init",
-  );
-  results.push(slashResult);
-
-  // 8. CLAUDE.md contains BMAD snippet
-  const claudeMdResult = await checkClaudeMd(projectDir);
-  results.push(claudeMdResult);
-
-  // 9. .gitignore has required entries
-  const gitignoreResult = await checkGitignore(projectDir);
-  results.push(gitignoreResult);
-
-  // 10. Version marker check
-  const versionResult = await checkVersionMarker(projectDir);
-  results.push(versionResult);
-
-  // 11. Upstream versions check
-  const upstreamResult = await checkUpstreamVersions(projectDir);
-  results.push(upstreamResult);
-
-  // 12. Ralph Health: Circuit breaker status
-  const circuitBreakerResult = await checkCircuitBreaker(projectDir);
-  results.push(circuitBreakerResult);
-
-  // 13. Ralph Health: Session age
-  const sessionResult = await checkRalphSession(projectDir);
-  results.push(sessionResult);
-
-  // 14. Ralph Health: API calls this hour
-  const apiCallsResult = await checkApiCalls(projectDir);
-  results.push(apiCallsResult);
-
-  // 15. Upstream GitHub status (never fails doctor)
-  const upstreamGitHubResult = await checkUpstreamGitHub();
-  results.push(upstreamGitHubResult);
 
   // Output
   const passed = results.filter((r) => r.passed).length;
@@ -181,6 +128,62 @@ async function checkBashAvailable(): Promise<boolean> {
   }
 }
 
+// =============================================================================
+// Check functions - each conforms to CheckFunction signature
+// =============================================================================
+
+async function checkNodeVersion(_projectDir: string): Promise<CheckResult> {
+  const major = parseInt(process.versions.node.split(".")[0]);
+  return {
+    label: "Node version >= 20",
+    passed: major >= 20,
+    detail: major >= 20 ? `v${process.versions.node}` : `got v${process.versions.node}`,
+    hint: major >= 20 ? undefined : "Install Node.js 20+ from nodejs.org or run: nvm install 20",
+  };
+}
+
+async function checkBash(_projectDir: string): Promise<CheckResult> {
+  const bashAvailable = await checkBashAvailable();
+  return {
+    label: "bash available",
+    passed: bashAvailable,
+    detail: bashAvailable ? undefined : "bash not found in PATH",
+    hint: bashAvailable
+      ? undefined
+      : process.platform === "win32"
+        ? "Install Git Bash or WSL: https://git-scm.com/downloads"
+        : "Install bash via your package manager (apt, brew, etc.)",
+  };
+}
+
+async function checkBmadDir(projectDir: string): Promise<CheckResult> {
+  return checkDir(join(projectDir, "_bmad"), "_bmad/ directory present", "Run: bmalph init");
+}
+
+async function checkRalphLoop(projectDir: string): Promise<CheckResult> {
+  return checkFileHasContent(
+    join(projectDir, ".ralph/ralph_loop.sh"),
+    "ralph_loop.sh present and has content",
+    "Run: bmalph upgrade"
+  );
+}
+
+async function checkRalphLib(projectDir: string): Promise<CheckResult> {
+  return checkDir(
+    join(projectDir, ".ralph/lib"),
+    ".ralph/lib/ directory present",
+    "Run: bmalph upgrade"
+  );
+}
+
+async function checkSlashCommand(projectDir: string): Promise<CheckResult> {
+  return checkFileExists(
+    join(projectDir, ".claude/commands/bmalph.md"),
+    ".claude/commands/bmalph.md present",
+    "Run: bmalph init"
+  );
+}
+
 async function checkConfig(projectDir: string): Promise<CheckResult> {
   const label = "bmalph/config.json exists and valid";
   const hint = "Run: bmalph init";
@@ -206,7 +209,11 @@ async function checkDir(dirPath: string, label: string, hint?: string): Promise<
   }
 }
 
-async function checkFileExists(filePath: string, label: string, hint?: string): Promise<CheckResult> {
+async function checkFileExists(
+  filePath: string,
+  label: string,
+  hint?: string
+): Promise<CheckResult> {
   try {
     await access(filePath);
     return { label, passed: true };
@@ -215,7 +222,11 @@ async function checkFileExists(filePath: string, label: string, hint?: string): 
   }
 }
 
-async function checkFileHasContent(filePath: string, label: string, hint?: string): Promise<CheckResult> {
+async function checkFileHasContent(
+  filePath: string,
+  label: string,
+  hint?: string
+): Promise<CheckResult> {
   try {
     const content = await readFile(filePath, "utf-8");
     return { label, passed: content.trim().length > 0 };
@@ -245,7 +256,10 @@ async function checkGitignore(projectDir: string): Promise<CheckResult> {
     const content = await readFile(join(projectDir, ".gitignore"), "utf-8");
     // Use line-by-line comparison to avoid substring matching issues
     const existingLines = new Set(
-      content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+      content
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
     );
     const missing = required.filter((e) => !existingLines.has(e));
     if (missing.length === 0) {
@@ -258,7 +272,12 @@ async function checkGitignore(projectDir: string): Promise<CheckResult> {
       hint: `Add to .gitignore: ${missing.join(" ")}`,
     };
   } catch {
-    return { label, passed: false, detail: ".gitignore not found", hint: "Create .gitignore with: .ralph/logs/ _bmad-output/" };
+    return {
+      label,
+      passed: false,
+      detail: ".gitignore not found",
+      hint: "Create .gitignore with: .ralph/logs/ _bmad-output/",
+    };
   }
 }
 
@@ -276,7 +295,12 @@ async function checkVersionMarker(projectDir: string): Promise<CheckResult> {
     if (match[1].trim() === current) {
       return { label, passed: true, detail: `v${current}` };
     }
-    return { label, passed: false, detail: `installed: ${match[1].trim()}, current: ${current}`, hint };
+    return {
+      label,
+      passed: false,
+      detail: `installed: ${match[1].trim()}, current: ${current}`,
+      hint,
+    };
   } catch {
     return { label, passed: true, detail: "no marker found" };
   }
@@ -298,11 +322,17 @@ async function checkUpstreamVersions(projectDir: string): Promise<CheckResult> {
     const bmadMatch = bmadCommit === bundled.bmadCommit;
     const ralphMatch = ralphCommit === bundled.ralphCommit;
     if (bmadMatch && ralphMatch) {
-      return { label, passed: true, detail: `BMAD:${bmadCommit.slice(0, 8)}, Ralph:${ralphCommit.slice(0, 8)}` };
+      return {
+        label,
+        passed: true,
+        detail: `BMAD:${bmadCommit.slice(0, 8)}, Ralph:${ralphCommit.slice(0, 8)}`,
+      };
     }
     const mismatches: string[] = [];
-    if (!bmadMatch) mismatches.push(`BMAD:${bmadCommit.slice(0, 8)}→${bundled.bmadCommit.slice(0, 8)}`);
-    if (!ralphMatch) mismatches.push(`Ralph:${ralphCommit.slice(0, 8)}→${bundled.ralphCommit.slice(0, 8)}`);
+    if (!bmadMatch)
+      mismatches.push(`BMAD:${bmadCommit.slice(0, 8)}→${bundled.bmadCommit.slice(0, 8)}`);
+    if (!ralphMatch)
+      mismatches.push(`Ralph:${ralphCommit.slice(0, 8)}→${bundled.ralphCommit.slice(0, 8)}`);
     return { label, passed: false, detail: `outdated: ${mismatches.join(", ")}`, hint };
   } catch {
     return { label, passed: false, detail: "error reading versions", hint };
@@ -317,7 +347,11 @@ async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
     const parsed = JSON.parse(content);
     const state = validateCircuitBreakerState(parsed);
     if (state.state === "CLOSED") {
-      return { label, passed: true, detail: `CLOSED (${state.consecutive_no_progress} loops without progress)` };
+      return {
+        label,
+        passed: true,
+        detail: `CLOSED (${state.consecutive_no_progress} loops without progress)`,
+      };
     }
     if (state.state === "HALF_OPEN") {
       return { label, passed: true, detail: `HALF_OPEN - monitoring` };
@@ -335,7 +369,12 @@ async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
       return { label, passed: true, detail: "not running" };
     }
     // Parse or validation error - warn about corrupt state
-    return { label, passed: false, detail: "corrupt state file", hint: "Delete .ralph/.circuit_breaker_state and restart Ralph" };
+    return {
+      label,
+      passed: false,
+      detail: "corrupt state file",
+      hint: "Delete .ralph/.circuit_breaker_state and restart Ralph",
+    };
   }
 }
 
@@ -354,15 +393,26 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
     const ageMs = now.getTime() - createdAt.getTime();
     // Handle negative age (future timestamp) gracefully
     if (ageMs < 0) {
-      return { label, passed: false, detail: "invalid timestamp (future)", hint: "Delete .ralph/.ralph_session to reset" };
+      return {
+        label,
+        passed: false,
+        detail: "invalid timestamp (future)",
+        hint: "Delete .ralph/.ralph_session to reset",
+      };
     }
     const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
     const ageMinutes = Math.floor((ageMs % (1000 * 60 * 60)) / (1000 * 60));
     const ageStr = ageHours > 0 ? `${ageHours}h${ageMinutes}m` : `${ageMinutes}m`;
 
-    // Warn if session is older than 24 hours
-    if (ageHours >= 24) {
-      return { label, passed: false, detail: `${ageStr} old (max 24h)`, hint: "Session is stale. Start a fresh Ralph session" };
+    // Warn if session is older than threshold
+    const maxAgeHours = Math.floor(SESSION_AGE_WARNING_MS / (1000 * 60 * 60));
+    if (ageMs >= SESSION_AGE_WARNING_MS) {
+      return {
+        label,
+        passed: false,
+        detail: `${ageStr} old (max ${maxAgeHours}h)`,
+        hint: "Session is stale. Start a fresh Ralph session",
+      };
     }
     return { label, passed: true, detail: ageStr };
   } catch (err) {
@@ -371,7 +421,12 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
       return { label, passed: true, detail: "no active session" };
     }
     // Parse or validation error - warn about corrupt state
-    return { label, passed: false, detail: "corrupt session file", hint: "Delete .ralph/.ralph_session to reset" };
+    return {
+      label,
+      passed: false,
+      detail: "corrupt session file",
+      hint: "Delete .ralph/.ralph_session to reset",
+    };
   }
 }
 
@@ -392,9 +447,14 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
 
     const percentage = (calls / max) * 100;
 
-    // Warn if approaching limit (> 90%)
-    if (percentage >= 90) {
-      return { label, passed: false, detail: `${calls}/${max} (approaching limit)`, hint: "Wait for rate limit reset or increase API quota" };
+    // Warn if approaching limit
+    if (percentage >= API_USAGE_WARNING_PERCENT) {
+      return {
+        label,
+        passed: false,
+        detail: `${calls}/${max} (approaching limit)`,
+        hint: "Wait for rate limit reset or increase API quota",
+      };
     }
     return { label, passed: true, detail: `${calls}/${max}` };
   } catch (err) {
@@ -403,11 +463,16 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
       return { label, passed: true, detail: "not running" };
     }
     // Parse or validation error - warn about corrupt state
-    return { label, passed: false, detail: "corrupt status file", hint: "Delete .ralph/status.json to reset" };
+    return {
+      label,
+      passed: false,
+      detail: "corrupt status file",
+      hint: "Delete .ralph/status.json to reset",
+    };
   }
 }
 
-async function checkUpstreamGitHub(): Promise<CheckResult> {
+async function checkUpstreamGitHubStatus(_projectDir: string): Promise<CheckResult> {
   const label = "upstream status";
   try {
     const bundled = getBundledVersions();
@@ -442,3 +507,29 @@ function getSkipReason(errors: GitHubError[]): string {
   if (types.has("timeout")) return "timeout";
   return "error";
 }
+
+// =============================================================================
+// Check Registry - defines all checks in execution order
+// =============================================================================
+
+/**
+ * Registry of all doctor checks in execution order.
+ * Each check has a unique ID and a run function that takes a project directory.
+ */
+export const CHECK_REGISTRY: CheckDefinition[] = [
+  { id: "node-version", run: checkNodeVersion },
+  { id: "bash-available", run: checkBash },
+  { id: "config-valid", run: checkConfig },
+  { id: "bmad-dir", run: checkBmadDir },
+  { id: "ralph-loop", run: checkRalphLoop },
+  { id: "ralph-lib", run: checkRalphLib },
+  { id: "slash-command", run: checkSlashCommand },
+  { id: "claude-md", run: checkClaudeMd },
+  { id: "gitignore", run: checkGitignore },
+  { id: "version-marker", run: checkVersionMarker },
+  { id: "upstream-versions", run: checkUpstreamVersions },
+  { id: "circuit-breaker", run: checkCircuitBreaker },
+  { id: "ralph-session", run: checkRalphSession },
+  { id: "api-calls", run: checkApiCalls },
+  { id: "upstream-github", run: checkUpstreamGitHubStatus },
+];

@@ -23,6 +23,34 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run fmt:check
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Test coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        if: matrix.node-version == 22
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+      - name: Validate npm package
+        run: npm pack --dry-run

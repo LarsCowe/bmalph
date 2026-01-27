@@ -29,7 +29,16 @@ export function generateFixPlan(stories: Story[]): string {
     }
   }
 
-  lines.push("", "## Completed", "", "## Notes", "- Follow TDD methodology (red-green-refactor)", "- One story per Ralph loop iteration", "- Update this file after completing each story", "");
+  lines.push(
+    "",
+    "## Completed",
+    "",
+    "## Notes",
+    "- Follow TDD methodology (red-green-refactor)",
+    "- One story per Ralph loop iteration",
+    "- Update this file after completing each story",
+    ""
+  );
 
   return lines.join("\n");
 }
@@ -52,15 +61,12 @@ export function parseFixPlan(content: string): FixPlanItem[] {
   return items;
 }
 
-export function mergeFixPlanProgress(
-  newFixPlan: string,
-  completedIds: Set<string>,
-): string {
+export function mergeFixPlanProgress(newFixPlan: string, completedIds: Set<string>): string {
   // Replace [ ] with [x] for completed story IDs
   return newFixPlan.replace(
     /^(\s*-\s*)\[ \](\s*Story\s+(\d+\.\d+):)/gm,
     (match, prefix, suffix, id) => {
       return completedIds.has(id) ? `${prefix}[x]${suffix}` : match;
-    },
+    }
   );
 }

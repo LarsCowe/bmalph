@@ -15,6 +15,8 @@ program
   .version(getPackageVersion())
   .option("--verbose", "Enable debug logging")
   .option("--no-color", "Disable colored output")
+  .option("--quiet", "Suppress non-essential output")
+  .option("-C, --project-dir <path>", "Run in specified directory")
   .hook("preAction", () => {
     const opts = program.opts();
     if (opts.verbose) {
@@ -38,6 +40,7 @@ program
   .command("upgrade")
   .description("Update bundled assets to current version")
   .option("--dry-run", "Preview changes without writing files")
+  .option("--force", "Skip confirmation prompts")
   .action(upgradeCommand);
 
 program

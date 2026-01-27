@@ -14,7 +14,7 @@ export function getPackageVersion(): string {
     return pkg.version;
   } catch (err) {
     throw new Error(
-      `Failed to read package.json at ${pkgPath}: ${err instanceof Error ? err.message : String(err)}`,
+      `Failed to read package.json at ${pkgPath}: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }
@@ -28,7 +28,11 @@ export function getBundledVersions(): BundledVersions {
   const versionsPath = join(__dirname, "..", "bundled-versions.json");
   try {
     const versions = JSON.parse(readFileSync(versionsPath, "utf-8"));
-    if (!versions || typeof versions.bmadCommit !== "string" || typeof versions.ralphCommit !== "string") {
+    if (
+      !versions ||
+      typeof versions.bmadCommit !== "string" ||
+      typeof versions.ralphCommit !== "string"
+    ) {
       throw new Error("Invalid bundled-versions.json structure: missing bmadCommit or ralphCommit");
     }
     return {
@@ -40,7 +44,7 @@ export function getBundledVersions(): BundledVersions {
       throw err;
     }
     throw new Error(
-      `Failed to read bundled-versions.json at ${versionsPath}: ${err instanceof Error ? err.message : String(err)}`,
+      `Failed to read bundled-versions.json at ${versionsPath}: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }
@@ -90,7 +94,9 @@ export async function copyBundledAssets(projectDir: string): Promise<UpgradeResu
   try {
     await access(slashCommandsDir);
   } catch {
-    throw new Error(`Slash commands directory not found at ${slashCommandsDir}. Package may be corrupted.`);
+    throw new Error(
+      `Slash commands directory not found at ${slashCommandsDir}. Package may be corrupted.`
+    );
   }
 
   // Copy BMAD files → _bmad/
@@ -116,23 +122,14 @@ implementation_artifacts: _bmad-output/implementation-artifacts
 project_knowledge: docs
 modules:
   - bmm
-`,
+`
   );
 
   // Copy Ralph templates → .ralph/
   await mkdir(join(projectDir, ".ralph"), { recursive: true });
-  await cp(
-    join(ralphDir, "templates/PROMPT.md"),
-    join(projectDir, ".ralph/PROMPT.md"),
-  );
-  await cp(
-    join(ralphDir, "templates/AGENT.md"),
-    join(projectDir, ".ralph/@AGENT.md"),
-  );
-  await cp(
-    join(ralphDir, "RALPH-REFERENCE.md"),
-    join(projectDir, ".ralph/RALPH-REFERENCE.md"),
-  );
+  await cp(join(ralphDir, "templates/PROMPT.md"), join(projectDir, ".ralph/PROMPT.md"));
+  await cp(join(ralphDir, "templates/AGENT.md"), join(projectDir, ".ralph/@AGENT.md"));
+  await cp(join(ralphDir, "RALPH-REFERENCE.md"), join(projectDir, ".ralph/RALPH-REFERENCE.md"));
 
   // Copy Ralph loop and lib → .ralph/
   // Add version marker to ralph_loop.sh
@@ -210,13 +207,17 @@ async function generateManifests(projectDir: string): Promise<void> {
   try {
     await access(coreHelpPath);
   } catch {
-    throw new Error(`Core module-help.csv not found at ${coreHelpPath}. BMAD installation may be incomplete.`);
+    throw new Error(
+      `Core module-help.csv not found at ${coreHelpPath}. BMAD installation may be incomplete.`
+    );
   }
 
   try {
     await access(bmmHelpPath);
   } catch {
-    throw new Error(`BMM module-help.csv not found at ${bmmHelpPath}. BMAD installation may be incomplete.`);
+    throw new Error(
+      `BMM module-help.csv not found at ${bmmHelpPath}. BMAD installation may be incomplete.`
+    );
   }
 
   const coreContent = await readFile(coreHelpPath, "utf-8");
@@ -232,8 +233,12 @@ async function generateManifests(projectDir: string): Promise<void> {
   // Validate headers match (warn if mismatch but continue)
   if (header && bmmHeader && header !== bmmHeader) {
     // Log to stderr so it's visible even without --verbose
-    console.error(`Warning: CSV header mismatch detected. BMAD modules may have incompatible formats.`);
-    debug(`CSV header mismatch details - core: "${header.slice(0, 50)}...", bmm: "${bmmHeader.slice(0, 50)}..."`);
+    console.error(
+      `Warning: CSV header mismatch detected. BMAD modules may have incompatible formats.`
+    );
+    debug(
+      `CSV header mismatch details - core: "${header.slice(0, 50)}...", bmm: "${bmmHeader.slice(0, 50)}..."`
+    );
   }
 
   const coreData = coreLines.slice(1).filter((l) => l.trim());
@@ -258,7 +263,10 @@ async function updateGitignore(projectDir: string): Promise<void> {
 
   // Split into lines for exact comparison (avoid substring matching issues)
   const existingLines = new Set(
-    existing.split(/\r?\n/).map((line) => line.trim()).filter(Boolean),
+    existing
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
   );
 
   const entries = [".ralph/logs/", "_bmad-output/"];

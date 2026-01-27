@@ -1,6 +1,7 @@
 import type { ProjectContext } from "./types.js";
+import { SECTION_EXTRACT_MAX_LENGTH } from "../utils/constants.js";
 
-export function extractSection(content: string, headingPattern: RegExp, maxLength = 500): string {
+export function extractSection(content: string, headingPattern: RegExp, maxLength = SECTION_EXTRACT_MAX_LENGTH): string {
   const match = headingPattern.exec(content);
   if (!match) return "";
 

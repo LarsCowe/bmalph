@@ -71,9 +71,8 @@ describe("upgrade command", () => {
 
   describe("when initialized", () => {
     it("calls copyBundledAssets", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/", ".ralph/ralph_loop.sh"],
@@ -87,9 +86,8 @@ describe("upgrade command", () => {
     });
 
     it("calls mergeClaudeMd", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
@@ -103,9 +101,8 @@ describe("upgrade command", () => {
     });
 
     it("displays upgrading message", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
@@ -119,9 +116,8 @@ describe("upgrade command", () => {
     });
 
     it("displays updated paths", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/", ".ralph/ralph_loop.sh", ".claude/commands/"],
@@ -138,9 +134,8 @@ describe("upgrade command", () => {
     });
 
     it("displays preserved paths", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
@@ -161,9 +156,8 @@ describe("upgrade command", () => {
     });
 
     it("displays completion message", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
@@ -205,9 +199,8 @@ describe("upgrade command", () => {
 
   describe("dry-run mode", () => {
     it("does not call copyBundledAssets in dry-run mode", async () => {
-      const { isInitialized, copyBundledAssets, previewUpgrade } = await import(
-        "../../src/installer.js"
-      );
+      const { isInitialized, copyBundledAssets, previewUpgrade } =
+        await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(previewUpgrade).mockResolvedValue({
         wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],

@@ -20,10 +20,7 @@ export interface CliOptions {
 /**
  * Run the bmalph CLI as a subprocess
  */
-export async function runCli(
-  args: string[],
-  options: CliOptions = {},
-): Promise<CliResult> {
+export async function runCli(args: string[], options: CliOptions = {}): Promise<CliResult> {
   const { cwd = process.cwd(), env = {}, timeout = 30000 } = options;
 
   return new Promise((resolve, reject) => {
@@ -67,7 +64,7 @@ export async function runCli(
 export async function runInit(
   cwd: string,
   name = "test-project",
-  description = "E2E test project",
+  description = "E2E test project"
 ): Promise<CliResult> {
   return runCli(["init", "-n", name, "-d", description], { cwd });
 }

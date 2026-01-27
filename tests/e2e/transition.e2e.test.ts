@@ -86,10 +86,7 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
     const artifactsDir = join(projectPath, "_bmad-output/planning-artifacts");
     await mkdir(artifactsDir, { recursive: true });
 
-    await writeFile(
-      join(artifactsDir, "epics-and-stories.md"),
-      SAMPLE_EPICS_STORIES,
-    );
+    await writeFile(join(artifactsDir, "epics-and-stories.md"), SAMPLE_EPICS_STORIES);
     await writeFile(join(artifactsDir, "architecture.md"), SAMPLE_ARCHITECTURE);
     await writeFile(join(artifactsDir, "prd.md"), SAMPLE_PRD);
   }
@@ -106,18 +103,9 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
 
     // Fix plan should be created
     await expectFileExists(join(project.path, ".ralph/@fix_plan.md"));
-    await expectFileContains(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "Story 1.1",
-    );
-    await expectFileContains(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "Story 1.2",
-    );
-    await expectFileContains(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "Story 2.1",
-    );
+    await expectFileContains(join(project.path, ".ralph/@fix_plan.md"), "Story 1.1");
+    await expectFileContains(join(project.path, ".ralph/@fix_plan.md"), "Story 1.2");
+    await expectFileContains(join(project.path, ".ralph/@fix_plan.md"), "Story 2.1");
   });
 
   it("generates fix_plan with correct checkbox format", async () => {
@@ -128,10 +116,7 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
 
     await runTransition(project.path);
 
-    const fixPlan = await readFile(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "utf-8",
-    );
+    const fixPlan = await readFile(join(project.path, ".ralph/@fix_plan.md"), "utf-8");
 
     // Should have unchecked checkboxes
     expect(fixPlan).toContain("- [ ] Story 1.1:");
@@ -188,14 +173,10 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
 
     // Artifacts should be copied to specs (preserving structure)
     await expectFileExists(
-      join(project.path, ".ralph/specs/planning-artifacts/epics-and-stories.md"),
+      join(project.path, ".ralph/specs/planning-artifacts/epics-and-stories.md")
     );
-    await expectFileExists(
-      join(project.path, ".ralph/specs/planning-artifacts/architecture.md"),
-    );
-    await expectFileExists(
-      join(project.path, ".ralph/specs/planning-artifacts/prd.md"),
-    );
+    await expectFileExists(join(project.path, ".ralph/specs/planning-artifacts/architecture.md"));
+    await expectFileExists(join(project.path, ".ralph/specs/planning-artifacts/prd.md"));
   });
 
   it("generates PROJECT_CONTEXT.md from artifacts", async () => {
@@ -216,9 +197,7 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
 
     // Don't create any artifacts
 
-    await expect(runTransition(project.path)).rejects.toThrow(
-      /No BMAD artifacts found/,
-    );
+    await expect(runTransition(project.path)).rejects.toThrow(/No BMAD artifacts found/);
   });
 
   it("throws error when no stories file exists", async () => {
@@ -231,9 +210,7 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
     await mkdir(artifactsDir, { recursive: true });
     await writeFile(join(artifactsDir, "prd.md"), SAMPLE_PRD);
 
-    await expect(runTransition(project.path)).rejects.toThrow(
-      /No epics\/stories file found/,
-    );
+    await expect(runTransition(project.path)).rejects.toThrow(/No epics\/stories file found/);
   });
 
   it("generates SPECS_CHANGELOG.md when updating specs", async () => {
@@ -249,7 +226,7 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
     const artifactsDir = join(project.path, "_bmad-output/planning-artifacts");
     await writeFile(
       join(artifactsDir, "prd.md"),
-      SAMPLE_PRD + "\n\n## New Section\n\nAdded content.",
+      SAMPLE_PRD + "\n\n## New Section\n\nAdded content."
     );
 
     // Second transition
@@ -259,7 +236,7 @@ describe("bmalph transition e2e", { timeout: 60000 }, () => {
     // At minimum, specs should be updated
     await expectFileContains(
       join(project.path, ".ralph/specs/planning-artifacts/prd.md"),
-      "New Section",
+      "New Section"
     );
   });
 });

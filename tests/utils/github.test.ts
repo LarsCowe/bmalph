@@ -75,7 +75,7 @@ describe("github utilities", () => {
             Accept: "application/vnd.github.v3+json",
             "User-Agent": "bmalph-cli",
           }),
-        }),
+        })
       );
     });
 
@@ -132,7 +132,7 @@ describe("github utilities", () => {
           new Promise((_, reject) => {
             // Simulate AbortController abort
             setTimeout(() => reject(new DOMException("Aborted", "AbortError")), 50);
-          }),
+          })
       );
 
       const result = await fetchLatestCommit(bmadRepo, { timeoutMs: 50 });
@@ -332,12 +332,12 @@ describe("github utilities", () => {
 
       if (result.bmad) {
         expect(result.bmad.compareUrl).toBe(
-          "https://github.com/bmad-code-org/BMAD-METHOD/compare/48881f86...newcommi",
+          "https://github.com/bmad-code-org/BMAD-METHOD/compare/48881f86...newcommi"
         );
       }
       if (result.ralph) {
         expect(result.ralph.compareUrl).toBe(
-          "https://github.com/snarktank/ralph/compare/019b8c73...newcommi",
+          "https://github.com/snarktank/ralph/compare/019b8c73...newcommi"
         );
       }
     });
@@ -630,7 +630,7 @@ describe("GitHubClient class", () => {
                 author: { date: "2024-01-15T10:30:00Z" },
               },
             }),
-        }),
+        })
       );
 
       const client = new GitHubClient();
@@ -661,7 +661,7 @@ describe("GitHubClient class", () => {
                 author: { date: "2024-01-15T10:30:00Z" },
               },
             }),
-        }),
+        })
       );
 
       const client = new GitHubClient({ maxCacheSize: 5 });
@@ -692,7 +692,7 @@ describe("GitHubClient class", () => {
                 author: { date: "2024-01-15T10:30:00Z" },
               },
             }),
-        }),
+        })
       );
 
       const client = new GitHubClient({ maxCacheSize: 3 });
@@ -768,7 +768,7 @@ describe("GitHubClient class", () => {
                 author: { date: "2024-01-15T10:30:00Z" },
               },
             }),
-        }),
+        })
       );
 
       const repo1 = { owner: "owner1", repo: "repo1", branch: "main" };

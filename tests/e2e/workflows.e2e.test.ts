@@ -3,10 +3,7 @@ import { writeFile, readFile } from "fs/promises";
 import { join } from "path";
 import { runInit, runUpgrade, runDoctor } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
-import {
-  expectBmalphInitialized,
-  expectDoctorCheckPassed,
-} from "./helpers/assertions.js";
+import { expectBmalphInitialized, expectDoctorCheckPassed } from "./helpers/assertions.js";
 
 describe("bmalph workflows e2e", { timeout: 60000 }, () => {
   let project: TestProject | null = null;
@@ -59,8 +56,7 @@ describe("bmalph workflows e2e", { timeout: 60000 }, () => {
     await runInit(project.path);
 
     // Step 2: User modifications
-    const fixPlanContent =
-      "# User's Fix Plan\n\n- [ ] Implement feature A\n- [x] Setup database\n";
+    const fixPlanContent = "# User's Fix Plan\n\n- [ ] Implement feature A\n- [x] Setup database\n";
     await writeFile(join(project.path, ".ralph/@fix_plan.md"), fixPlanContent);
 
     // Step 3: Upgrade
@@ -68,10 +64,7 @@ describe("bmalph workflows e2e", { timeout: 60000 }, () => {
     expect(upgradeResult.exitCode).toBe(0);
 
     // Step 4: Verify user data preserved
-    const fixPlanAfter = await readFile(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "utf-8",
-    );
+    const fixPlanAfter = await readFile(join(project.path, ".ralph/@fix_plan.md"), "utf-8");
     expect(fixPlanAfter).toBe(fixPlanContent);
 
     // Project should still be valid
@@ -113,10 +106,7 @@ describe("bmalph workflows e2e", { timeout: 60000 }, () => {
     await runUpgrade(project.path);
 
     // Verify latest user content is preserved
-    const content = await readFile(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "utf-8",
-    );
+    const content = await readFile(join(project.path, ".ralph/@fix_plan.md"), "utf-8");
     expect(content).toBe("Plan v2");
 
     // Final doctor check

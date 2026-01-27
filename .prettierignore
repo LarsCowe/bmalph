@@ -1,0 +1,14 @@
+# Bundled assets (external dependencies)
+bmad/
+ralph/
+slash-commands/
+
+# Build outputs
+dist/
+coverage/
+
+# Node modules
+node_modules/
+
+# References (submodule copies)
+.refs/

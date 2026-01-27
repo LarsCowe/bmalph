@@ -18,19 +18,14 @@ describe("bmalph edge cases e2e", { timeout: 60000 }, () => {
 
   it("handles paths with spaces (Windows)", async () => {
     // Create a directory with spaces in the name
-    const pathWithSpaces = join(
-      tmpdir(),
-      `bmalph test with spaces-${Date.now()}`,
-    );
+    const pathWithSpaces = join(tmpdir(), `bmalph test with spaces-${Date.now()}`);
     await mkdir(pathWithSpaces, { recursive: true });
 
     const project: TestProject = {
       path: pathWithSpaces,
       cleanup: async () => {
         const { rm } = await import("fs/promises");
-        await rm(pathWithSpaces, { recursive: true, force: true }).catch(
-          () => {},
-        );
+        await rm(pathWithSpaces, { recursive: true, force: true }).catch(() => {});
       },
     };
     projects.push(project);
@@ -73,7 +68,7 @@ describe("bmalph edge cases e2e", { timeout: 60000 }, () => {
     const result = await runInit(
       project.path,
       "my-project_v2.0",
-      "Project with special chars: @#$%",
+      "Project with special chars: @#$%"
     );
 
     expect(result.exitCode).toBe(0);
@@ -87,7 +82,7 @@ describe("bmalph edge cases e2e", { timeout: 60000 }, () => {
     const result = await runInit(
       project.path,
       "my-project_v2-beta_test",
-      "Project with dashes and underscores",
+      "Project with dashes and underscores"
     );
 
     expect(result.exitCode).toBe(0);
@@ -101,7 +96,7 @@ describe("bmalph edge cases e2e", { timeout: 60000 }, () => {
     const result = await runInit(
       project.path,
       "unicode-project",
-      "Project with emoji 🚀 and unicode: café résumé",
+      "Project with emoji 🚀 and unicode: café résumé"
     );
 
     expect(result.exitCode).toBe(0);

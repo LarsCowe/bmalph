@@ -3,6 +3,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 vi.mock("chalk", () => ({
   default: {
     dim: (s: string) => `[dim]${s}[/dim]`,
+    blue: (s: string) => `[blue]${s}[/blue]`,
+    yellow: (s: string) => `[yellow]${s}[/yellow]`,
+    red: (s: string) => `[red]${s}[/red]`,
+    green: (s: string) => `[green]${s}[/green]`,
   },
 }));
 
@@ -91,6 +95,60 @@ describe("logger", () => {
       debug("should not appear");
 
       expect(consoleSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("info", () => {
+    it("outputs message with blue color", async () => {
+      const { info } = await import("../../src/utils/logger.js");
+
+      info("info message");
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[blue]"));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("info message"));
+    });
+  });
+
+  describe("warn", () => {
+    it("outputs message with yellow color", async () => {
+      const { warn } = await import("../../src/utils/logger.js");
+
+      warn("warning message");
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[yellow]"));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("warning message"));
+    });
+  });
+
+  describe("error", () => {
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("outputs message with red color to stderr", async () => {
+      const { error } = await import("../../src/utils/logger.js");
+
+      error("error message");
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("[red]"));
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("error message"));
+    });
+  });
+
+  describe("success", () => {
+    it("outputs message with green color", async () => {
+      const { success } = await import("../../src/utils/logger.js");
+
+      success("success message");
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[green]"));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("success message"));
     });
   });
 });

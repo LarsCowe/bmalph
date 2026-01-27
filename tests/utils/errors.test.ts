@@ -43,15 +43,11 @@ describe("errors", () => {
     });
 
     it("works with string errors", () => {
-      expect(formatErrorMessage("Operation failed", "timeout")).toBe(
-        "Operation failed: timeout"
-      );
+      expect(formatErrorMessage("Operation failed", "timeout")).toBe("Operation failed: timeout");
     });
 
     it("works with unknown error types", () => {
-      expect(formatErrorMessage("Task failed", 500)).toBe(
-        "Task failed: 500"
-      );
+      expect(formatErrorMessage("Task failed", 500)).toBe("Task failed: 500");
     });
   });
 

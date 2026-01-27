@@ -130,10 +130,10 @@ npm test
 
 ### What Gets Bundled
 
-| Source | Destination | Contents |
-|--------|-------------|----------|
-| BMAD-METHOD/bmad-agent/ | bmad/ | Agents, workflows, personas, config |
-| Ralph/ | ralph/ | Loop script, libs, templates |
+| Source                  | Destination | Contents                            |
+| ----------------------- | ----------- | ----------------------------------- |
+| BMAD-METHOD/bmad-agent/ | bmad/       | Agents, workflows, personas, config |
+| Ralph/                  | ralph/      | Loop script, libs, templates        |
 
 ## Commit Guidelines
 
@@ -141,14 +141,14 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) with SemVer 
 
 ### Commit Types
 
-| Type | SemVer | Description |
-|------|--------|-------------|
-| `feat` | MINOR | New feature |
-| `fix` | PATCH | Bug fix |
-| `docs` | PATCH | Documentation only |
-| `refactor` | PATCH | Code restructuring |
-| `test` | PATCH | Adding/updating tests |
-| `chore` | PATCH | Maintenance tasks |
+| Type       | SemVer | Description           |
+| ---------- | ------ | --------------------- |
+| `feat`     | MINOR  | New feature           |
+| `fix`      | PATCH  | Bug fix               |
+| `docs`     | PATCH  | Documentation only    |
+| `refactor` | PATCH  | Code restructuring    |
+| `test`     | PATCH  | Adding/updating tests |
+| `chore`    | PATCH  | Maintenance tasks     |
 
 ### Version Bumping
 

@@ -22,7 +22,10 @@ describe("status command", () => {
   let originalCwd: string;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `bmalph-test-status-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testDir = join(
+      tmpdir(),
+      `bmalph-test-status-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     await mkdir(testDir, { recursive: true });
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     originalCwd = process.cwd();
@@ -42,7 +45,7 @@ describe("status command", () => {
     await mkdir(join(testDir, "bmalph"), { recursive: true });
     await writeFile(
       join(testDir, "bmalph/config.json"),
-      JSON.stringify({ name: "test", createdAt: new Date().toISOString() }),
+      JSON.stringify({ name: "test", createdAt: new Date().toISOString() })
     );
   }
 
@@ -55,7 +58,7 @@ describe("status command", () => {
         status: state.status,
         startedAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString(),
-      }),
+      })
     );
   }
 
@@ -73,7 +76,7 @@ describe("status command", () => {
         status: status.status ?? "not_started",
         tasksCompleted: status.tasksCompleted ?? 0,
         tasksTotal: status.tasksTotal ?? 0,
-      }),
+      })
     );
   }
 
@@ -101,7 +104,12 @@ describe("status command", () => {
     it("shows phase 4 with Ralph status when implementing", async () => {
       await setupProject();
       await setupState({ currentPhase: 4, status: "implementing" });
-      await setupRalphStatus({ loopCount: 5, status: "running", tasksCompleted: 3, tasksTotal: 10 });
+      await setupRalphStatus({
+        loopCount: 5,
+        status: "running",
+        tasksCompleted: 3,
+        tasksTotal: 10,
+      });
 
       const { runStatus } = await import("../../src/commands/status.js");
       await runStatus();

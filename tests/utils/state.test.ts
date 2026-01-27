@@ -55,7 +55,7 @@ describe("state", () => {
     it("throws on invalid state structure", async () => {
       await writeFile(
         join(testDir, "bmalph/state/current-phase.json"),
-        JSON.stringify({ currentPhase: "not-a-number" }),
+        JSON.stringify({ currentPhase: "not-a-number" })
       );
       await expect(readState(testDir)).rejects.toThrow();
     });
@@ -103,7 +103,12 @@ describe("state", () => {
       const states: BmalphState[] = [
         { currentPhase: 1, status: "planning", startedAt: "2025-01-01", lastUpdated: "2025-01-01" },
         { currentPhase: 2, status: "planning", startedAt: "2025-01-01", lastUpdated: "2025-01-02" },
-        { currentPhase: 3, status: "implementing", startedAt: "2025-01-01", lastUpdated: "2025-01-03" },
+        {
+          currentPhase: 3,
+          status: "implementing",
+          startedAt: "2025-01-01",
+          lastUpdated: "2025-01-03",
+        },
       ];
 
       // On Windows, parallel renames to the same target can cause EPERM errors
@@ -208,10 +213,7 @@ describe("state", () => {
         tasksCompleted: 3,
         tasksTotal: 10,
       };
-      await writeFile(
-        join(testDir, ".ralph/status.json"),
-        JSON.stringify(statusData),
-      );
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(statusData));
 
       const result = await readRalphStatus(testDir);
       expect(result).toEqual(statusData);

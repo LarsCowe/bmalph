@@ -12,7 +12,10 @@ export function detectTechStack(content: string): TechStack | null {
   const sectionContent = nextHeading > -1 ? rest.slice(0, nextHeading + 1) : rest;
 
   // Detect language/runtime
-  const isNode = /\bnode(?:\.js)?\b/i.test(sectionContent) || /\btypescript\b/i.test(sectionContent) || /\bnpm\b/i.test(sectionContent);
+  const isNode =
+    /\bnode(?:\.js)?\b/i.test(sectionContent) ||
+    /\btypescript\b/i.test(sectionContent) ||
+    /\bnpm\b/i.test(sectionContent);
   const isPython = /\bpython\b/i.test(sectionContent) || /\bpip\b/i.test(sectionContent);
   const isRust = /\brust\b/i.test(sectionContent) || /\bcargo\b/i.test(sectionContent);
   const isGo = /\bgo\b/i.test(sectionContent) || /\bgolang\b/i.test(sectionContent);
@@ -36,15 +39,30 @@ export function detectTechStack(content: string): TechStack | null {
     if (/\bpytest\b/i.test(sectionContent)) testCmd = "pytest";
     else if (/\bunittest\b/i.test(sectionContent)) testCmd = "python -m unittest discover";
 
-    return { setup: "pip install -r requirements.txt", test: testCmd, build: "python -m build", dev: "python -m uvicorn main:app --reload" };
+    return {
+      setup: "pip install -r requirements.txt",
+      test: testCmd,
+      build: "python -m build",
+      dev: "python -m uvicorn main:app --reload",
+    };
   }
 
   if (isRust) {
-    return { setup: "cargo build", test: "cargo test", build: "cargo build --release", dev: "cargo run" };
+    return {
+      setup: "cargo build",
+      test: "cargo test",
+      build: "cargo build --release",
+      dev: "cargo run",
+    };
   }
 
   if (isGo) {
-    return { setup: "go mod download", test: "go test ./...", build: "go build ./...", dev: "go run ." };
+    return {
+      setup: "go mod download",
+      test: "go test ./...",
+      build: "go build ./...",
+      dev: "go run .",
+    };
   }
 
   return null;
@@ -63,7 +81,7 @@ export function customizeAgentMd(template: string, stack: TechStack): string {
     // Replace code block content after the section heading
     const pattern = new RegExp(
       `(## ${heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\n)\`\`\`bash\\n[\\s\\S]*?\`\`\``,
-      "m",
+      "m"
     );
     result = result.replace(pattern, `$1\`\`\`bash\n${command}\n\`\`\``);
   }

@@ -22,9 +22,7 @@ export interface GitHubError {
   status?: number;
 }
 
-export type FetchResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: GitHubError };
+export type FetchResult<T> = { success: true; data: T } | { success: false; error: GitHubError };
 
 export interface UpstreamStatus {
   bundledSha: string;
@@ -84,10 +82,7 @@ interface GitHubCommitResponse {
   };
 }
 
-function classifyError(
-  status: number,
-  headers: Headers,
-): GitHubErrorType {
+function classifyError(status: number, headers: Headers): GitHubErrorType {
   if (status === 404) {
     return "not-found";
   }
@@ -100,11 +95,7 @@ function classifyError(
   return "api-error";
 }
 
-function generateCompareUrl(
-  repo: RepoInfo,
-  bundledSha: string,
-  latestSha: string,
-): string {
+function generateCompareUrl(repo: RepoInfo, bundledSha: string, latestSha: string): string {
   return `https://github.com/${repo.owner}/${repo.repo}/compare/${bundledSha}...${latestSha}`;
 }
 
@@ -183,7 +174,7 @@ export class GitHubClient {
 
   async fetchLatestCommit(
     repo: RepoInfo,
-    options: FetchOptions = {},
+    options: FetchOptions = {}
   ): Promise<FetchResult<CommitInfo>> {
     // Check cache first
     const cached = this.getCachedResult(repo);
@@ -279,9 +270,7 @@ export class GitHubClient {
     }
   }
 
-  async checkUpstream(
-    bundled: BundledVersions,
-  ): Promise<CheckUpstreamResult> {
+  async checkUpstream(bundled: BundledVersions): Promise<CheckUpstreamResult> {
     const errors: GitHubError[] = [];
     let bmadStatus: UpstreamStatus | null = null;
     let ralphStatus: UpstreamStatus | null = null;
@@ -347,7 +336,7 @@ export function clearCache(): void {
  */
 export async function fetchLatestCommit(
   repo: RepoInfo,
-  options: FetchOptions = {},
+  options: FetchOptions = {}
 ): Promise<FetchResult<CommitInfo>> {
   return defaultClient.fetchLatestCommit(repo, options);
 }
@@ -356,8 +345,6 @@ export async function fetchLatestCommit(
  * Check upstream repositories for updates.
  * Uses the default shared client instance.
  */
-export async function checkUpstream(
-  bundled: BundledVersions,
-): Promise<CheckUpstreamResult> {
+export async function checkUpstream(bundled: BundledVersions): Promise<CheckUpstreamResult> {
   return defaultClient.checkUpstream(bundled);
 }

@@ -3,10 +3,7 @@ import { rm } from "fs/promises";
 import { join } from "path";
 import { runInit, runDoctor } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
-import {
-  expectDoctorCheckPassed,
-  expectDoctorCheckFailed,
-} from "./helpers/assertions.js";
+import { expectDoctorCheckPassed, expectDoctorCheckFailed } from "./helpers/assertions.js";
 
 describe("bmalph doctor e2e", { timeout: 60000 }, () => {
   let project: TestProject | null = null;

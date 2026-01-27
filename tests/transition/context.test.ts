@@ -21,9 +21,7 @@ It spans multiple lines.
 Different content here.
 `;
       const result = extractSection(content, /^##\s+Executive Summary/m);
-      expect(result).toBe(
-        "This is the executive summary content.\nIt spans multiple lines."
-      );
+      expect(result).toBe("This is the executive summary content.\nIt spans multiple lines.");
     });
 
     it("respects heading level hierarchy", () => {
@@ -82,9 +80,7 @@ Brief content.
 This is the final section with no following heading.
 `;
       const result = extractSection(content, /^##\s+Last Section/m);
-      expect(result).toBe(
-        "This is the final section with no following heading."
-      );
+      expect(result).toBe("This is the final section with no following heading.");
     });
 
     it("handles h1 headings correctly", () => {
@@ -118,9 +114,7 @@ Our project aims to build a developer CLI tool.
         ],
       ]);
       const context = extractProjectContext(artifacts);
-      expect(context.projectGoals).toContain(
-        "Our project aims to build a developer CLI tool."
-      );
+      expect(context.projectGoals).toContain("Our project aims to build a developer CLI tool.");
     });
 
     it("extracts architecture constraints", () => {

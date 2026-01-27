@@ -2,10 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { runInit, runUpgrade, runUpgradeDryRun } from "./helpers/cli-runner.js";
-import {
-  createTestProject,
-  type TestProject,
-} from "./helpers/project-scaffold.js";
+import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
 import {
   expectBmalphInitialized,
   expectFileExists,
@@ -41,16 +38,17 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
 
     // Verify config exists with our values
     const configBefore = (await expectValidJson(
-      join(project.path, "bmalph/config.json"),
+      join(project.path, "bmalph/config.json")
     )) as Record<string, unknown>;
     expect(configBefore.name).toBe("preserved-name");
 
     await runUpgrade(project.path);
 
     // Config should still have original values
-    const configAfter = (await expectValidJson(
-      join(project.path, "bmalph/config.json"),
-    )) as Record<string, unknown>;
+    const configAfter = (await expectValidJson(join(project.path, "bmalph/config.json"))) as Record<
+      string,
+      unknown
+    >;
     expect(configAfter.name).toBe("preserved-name");
     expect(configAfter.description).toBe("preserved-desc");
   });
@@ -66,10 +64,7 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
 
     await mkdir(join(project.path, ".ralph/specs"), { recursive: true });
     const specsContent = "# Specs changelog\n- Feature A added";
-    await writeFile(
-      join(project.path, ".ralph/specs/changelog.md"),
-      specsContent,
-    );
+    await writeFile(join(project.path, ".ralph/specs/changelog.md"), specsContent);
 
     await mkdir(join(project.path, ".ralph/logs"), { recursive: true });
     const logsContent = "Session log entry";
@@ -78,22 +73,13 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     await runUpgrade(project.path);
 
     // All user files should be preserved
-    const fixPlanAfter = await readFile(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "utf-8",
-    );
+    const fixPlanAfter = await readFile(join(project.path, ".ralph/@fix_plan.md"), "utf-8");
     expect(fixPlanAfter).toBe(fixPlanContent);
 
-    const specsAfter = await readFile(
-      join(project.path, ".ralph/specs/changelog.md"),
-      "utf-8",
-    );
+    const specsAfter = await readFile(join(project.path, ".ralph/specs/changelog.md"), "utf-8");
     expect(specsAfter).toBe(specsContent);
 
-    const logsAfter = await readFile(
-      join(project.path, ".ralph/logs/session.log"),
-      "utf-8",
-    );
+    const logsAfter = await readFile(join(project.path, ".ralph/logs/session.log"), "utf-8");
     expect(logsAfter).toBe(logsContent);
   });
 
@@ -112,10 +98,7 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     await runInit(project.path);
 
     // Get current ralph_loop.sh content
-    const contentBefore = await readFile(
-      join(project.path, ".ralph/ralph_loop.sh"),
-      "utf-8",
-    );
+    const contentBefore = await readFile(join(project.path, ".ralph/ralph_loop.sh"), "utf-8");
 
     const result = await runUpgradeDryRun(project.path);
 
@@ -123,10 +106,7 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     expect(result.stdout).toContain("[dry-run]");
 
     // Content should be unchanged
-    const contentAfter = await readFile(
-      join(project.path, ".ralph/ralph_loop.sh"),
-      "utf-8",
-    );
+    const contentAfter = await readFile(join(project.path, ".ralph/ralph_loop.sh"), "utf-8");
     expect(contentAfter).toBe(contentBefore);
   });
 
@@ -136,10 +116,7 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     await runInit(project.path);
     await runUpgrade(project.path);
 
-    await expectFileContains(
-      join(project.path, ".ralph/ralph_loop.sh"),
-      "# bmalph-version:",
-    );
+    await expectFileContains(join(project.path, ".ralph/ralph_loop.sh"), "# bmalph-version:");
   });
 
   it("upgrade refreshes BMAD agents", async () => {
@@ -150,13 +127,9 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     // Verify agent files exist after upgrade
     await runUpgrade(project.path);
 
-    await expectFileExists(
-      join(project.path, "_bmad/bmm/agents/analyst.agent.yaml"),
-    );
+    await expectFileExists(join(project.path, "_bmad/bmm/agents/analyst.agent.yaml"));
     await expectFileExists(join(project.path, "_bmad/bmm/agents/pm.agent.yaml"));
-    await expectFileExists(
-      join(project.path, "_bmad/bmm/agents/architect.agent.yaml"),
-    );
+    await expectFileExists(join(project.path, "_bmad/bmm/agents/architect.agent.yaml"));
   });
 
   it("multiple upgrades are idempotent", async () => {
@@ -174,10 +147,7 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     await runUpgrade(project.path);
 
     // User file should still be preserved
-    const afterMultiple = await readFile(
-      join(project.path, ".ralph/@fix_plan.md"),
-      "utf-8",
-    );
+    const afterMultiple = await readFile(join(project.path, ".ralph/@fix_plan.md"), "utf-8");
     expect(afterMultiple).toBe(userContent);
 
     // Project should still be valid

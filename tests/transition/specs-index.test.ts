@@ -150,8 +150,14 @@ describe("specs-index", () => {
 
     it("generates index from specs directory", async () => {
       await mkdir(join(testDir, "planning-artifacts"), { recursive: true });
-      await writeFile(join(testDir, "planning-artifacts/prd.md"), "# Product Requirements\n\nContent here.");
-      await writeFile(join(testDir, "planning-artifacts/architecture.md"), "# Architecture\n\nTech details.");
+      await writeFile(
+        join(testDir, "planning-artifacts/prd.md"),
+        "# Product Requirements\n\nContent here."
+      );
+      await writeFile(
+        join(testDir, "planning-artifacts/architecture.md"),
+        "# Architecture\n\nTech details."
+      );
 
       const index = await generateSpecsIndex(testDir);
 
@@ -236,9 +242,27 @@ describe("specs-index", () => {
         totalFiles: 3,
         totalSizeKb: 50,
         files: [
-          { path: "prd.md", size: 15000, type: "prd" as const, priority: "critical" as const, description: "PRD" },
-          { path: "test.md", size: 8000, type: "test-design" as const, priority: "high" as const, description: "Tests" },
-          { path: "notes.md", size: 4000, type: "brainstorm" as const, priority: "low" as const, description: "Notes" },
+          {
+            path: "prd.md",
+            size: 15000,
+            type: "prd" as const,
+            priority: "critical" as const,
+            description: "PRD",
+          },
+          {
+            path: "test.md",
+            size: 8000,
+            type: "test-design" as const,
+            priority: "high" as const,
+            description: "Tests",
+          },
+          {
+            path: "notes.md",
+            size: 4000,
+            type: "brainstorm" as const,
+            priority: "low" as const,
+            description: "Notes",
+          },
         ],
       };
 
@@ -258,7 +282,13 @@ describe("specs-index", () => {
         totalFiles: 1,
         totalSizeKb: 100,
         files: [
-          { path: "ux-specs.md", size: 75000, type: "ux" as const, priority: "medium" as const, description: "UX" },
+          {
+            path: "ux-specs.md",
+            size: 75000,
+            type: "ux" as const,
+            priority: "medium" as const,
+            description: "UX",
+          },
         ],
       };
 
@@ -274,7 +304,13 @@ describe("specs-index", () => {
         totalFiles: 1,
         totalSizeKb: 15,
         files: [
-          { path: "prd.md", size: 15000, type: "prd" as const, priority: "critical" as const, description: "Product requirements for MVP" },
+          {
+            path: "prd.md",
+            size: 15000,
+            type: "prd" as const,
+            priority: "critical" as const,
+            description: "Product requirements for MVP",
+          },
         ],
       };
 
@@ -302,7 +338,13 @@ describe("specs-index", () => {
         totalFiles: 1,
         totalSizeKb: 28,
         files: [
-          { path: "arch.md", size: 28000, type: "architecture" as const, priority: "critical" as const, description: "Arch" },
+          {
+            path: "arch.md",
+            size: 28000,
+            type: "architecture" as const,
+            priority: "critical" as const,
+            description: "Arch",
+          },
         ],
       };
 
@@ -317,9 +359,27 @@ describe("specs-index", () => {
         totalFiles: 3,
         totalSizeKb: 30,
         files: [
-          { path: "prd.md", size: 10000, type: "prd" as const, priority: "critical" as const, description: "PRD" },
-          { path: "arch.md", size: 10000, type: "architecture" as const, priority: "critical" as const, description: "Arch" },
-          { path: "notes.md", size: 10000, type: "brainstorm" as const, priority: "low" as const, description: "Notes" },
+          {
+            path: "prd.md",
+            size: 10000,
+            type: "prd" as const,
+            priority: "critical" as const,
+            description: "PRD",
+          },
+          {
+            path: "arch.md",
+            size: 10000,
+            type: "architecture" as const,
+            priority: "critical" as const,
+            description: "Arch",
+          },
+          {
+            path: "notes.md",
+            size: 10000,
+            type: "brainstorm" as const,
+            priority: "low" as const,
+            description: "Notes",
+          },
         ],
       };
 
@@ -336,7 +396,13 @@ describe("specs-index", () => {
         totalFiles: 1,
         totalSizeKb: 10,
         files: [
-          { path: "prd.md", size: 10000, type: "prd" as const, priority: "critical" as const, description: "PRD" },
+          {
+            path: "prd.md",
+            size: 10000,
+            type: "prd" as const,
+            priority: "critical" as const,
+            description: "PRD",
+          },
         ],
       };
 

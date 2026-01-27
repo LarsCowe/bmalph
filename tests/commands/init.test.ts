@@ -51,17 +51,25 @@ describe("init command", () => {
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({});
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("already initialized"),
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("already initialized"));
     const { installProject } = await import("../../src/installer.js");
     expect(installProject).not.toHaveBeenCalled();
   });
 
+  it("suggests upgrade command when already initialized", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    vi.mocked(isInitialized).mockResolvedValue(true);
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({});
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("bmalph upgrade");
+    expect(output).not.toContain("reset");
+  });
+
   it("installs and writes config with CLI options", async () => {
-    const { isInitialized, installProject, mergeClaudeMd } = await import(
-      "../../src/installer.js"
-    );
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
     const { writeConfig } = await import("../../src/utils/config.js");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
@@ -78,15 +86,13 @@ describe("init command", () => {
       expect.objectContaining({
         name: "my-proj",
         description: "A project",
-      }),
+      })
     );
     expect(mergeClaudeMd).toHaveBeenCalled();
   });
 
   it("displays installed directories and workflow info", async () => {
-    const { isInitialized, installProject, mergeClaudeMd } = await import(
-      "../../src/installer.js"
-    );
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
     const { writeConfig } = await import("../../src/utils/config.js");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
@@ -105,9 +111,7 @@ describe("init command", () => {
   });
 
   it("prompts user when options missing", async () => {
-    const { isInitialized, installProject, mergeClaudeMd } = await import(
-      "../../src/installer.js"
-    );
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
     const { writeConfig } = await import("../../src/utils/config.js");
     const inquirer = await import("inquirer");
 
@@ -129,14 +133,13 @@ describe("init command", () => {
       expect.objectContaining({
         name: "prompted-name",
         description: "prompted-desc",
-      }),
+      })
     );
   });
 
   it("dry-run does not install files", async () => {
-    const { isInitialized, installProject, mergeClaudeMd, previewInstall } = await import(
-      "../../src/installer.js"
-    );
+    const { isInitialized, installProject, mergeClaudeMd, previewInstall } =
+      await import("../../src/installer.js");
     const { writeConfig } = await import("../../src/utils/config.js");
 
     vi.mocked(isInitialized).mockResolvedValue(false);

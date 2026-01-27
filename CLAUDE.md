@@ -10,6 +10,7 @@ bmalph bundles and installs two AI development systems:
 - **[Ralph](https://github.com/snarktank/ralph)** — Autonomous implementation loop (Phase 4)
 
 bmalph provides:
+
 - `bmalph init` — Install both systems
 - `bmalph upgrade` — Update to latest versions
 - `bmalph doctor` — Check installation health
@@ -35,26 +36,26 @@ project-root/
 
 ## CLI Commands
 
-| Command | Action |
-|---------|--------|
-| `bmalph init` | Install BMAD + Ralph, configure project |
+| Command          | Action                                   |
+| ---------------- | ---------------------------------------- |
+| `bmalph init`    | Install BMAD + Ralph, configure project  |
 | `bmalph upgrade` | Update bundled assets to current version |
-| `bmalph doctor` | Check installation health |
+| `bmalph doctor`  | Check installation health                |
 
 ## Slash Commands
 
 bmalph installs 50+ BMAD slash commands. Key commands:
 
-| Command | Description |
-|---------|-------------|
-| `/bmalph` | BMAD master agent — navigate phases |
-| `/analyst` | Analyst agent |
-| `/pm` | Product Manager agent |
-| `/architect` | Architect agent |
-| `/create-prd` | Create PRD workflow |
-| `/create-architecture` | Create architecture workflow |
-| `/create-epics-stories` | Create epics and stories |
-| `/bmad-help` | List all BMAD commands |
+| Command                 | Description                         |
+| ----------------------- | ----------------------------------- |
+| `/bmalph`               | BMAD master agent — navigate phases |
+| `/analyst`              | Analyst agent                       |
+| `/pm`                   | Product Manager agent               |
+| `/architect`            | Architect agent                     |
+| `/create-prd`           | Create PRD workflow                 |
+| `/create-architecture`  | Create architecture workflow        |
+| `/create-epics-stories` | Create epics and stories            |
+| `/bmad-help`            | List all BMAD commands              |
 
 For full list, run `/bmad-help` in Claude Code.
 

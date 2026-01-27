@@ -1,6 +1,6 @@
 {
   "name": "bmalph",
-  "version": "1.7.3",
+  "version": "1.8.0",
   "description": "Unified AI Development Framework - BMAD phases with Ralph execution loop for Claude Code",
   "type": "module",
   "bin": {
@@ -17,7 +17,12 @@
     "check": "npm run lint && npm run build && npm test",
     "dev": "tsc --watch",
     "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
     "format": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "fmt:fix": "prettier --write .",
+    "type-check": "tsc --noEmit",
+    "ci": "npm run type-check && npm run lint && npm run fmt:check && npm run build && npm run test:all",
     "prepublishOnly": "npm run lint && npm run build && npm test",
     "update-bundled": "bash scripts/update-bundled.sh"
   },

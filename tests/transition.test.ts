@@ -2,7 +2,27 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile, readFile, access } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { parseStories, parseStoriesWithWarnings, generateFixPlan, generatePrompt, runTransition, validateArtifacts, detectTechStack, customizeAgentMd, hasFixPlanProgress, extractSection, extractProjectContext, generateProjectContextMd, parseFixPlan, mergeFixPlanProgress, generateSpecsChangelog, formatChangelog, type Story, type TechStack, type ProjectContext } from "../src/transition.js";
+import {
+  parseStories,
+  parseStoriesWithWarnings,
+  generateFixPlan,
+  generatePrompt,
+  runTransition,
+  validateArtifacts,
+  detectTechStack,
+  customizeAgentMd,
+  hasFixPlanProgress,
+  extractSection,
+  extractProjectContext,
+  generateProjectContextMd,
+  parseFixPlan,
+  mergeFixPlanProgress,
+  generateSpecsChangelog,
+  formatChangelog,
+  type Story,
+  type TechStack,
+  type ProjectContext,
+} from "../src/transition.js";
 
 describe("transition", () => {
   describe("parseStories", () => {
@@ -59,7 +79,9 @@ As a user, I want to log in.
 `;
       const stories = parseStories(content);
 
-      expect(stories[0].epicDescription).toBe("Provide secure authentication. Enable multi-factor support.");
+      expect(stories[0].epicDescription).toBe(
+        "Provide secure authentication. Enable multi-factor support."
+      );
     });
 
     it("parses epic with no description lines", () => {
@@ -392,9 +414,30 @@ As a user, I want to log in.
   describe("generateFixPlan", () => {
     it("generates markdown with stories grouped by epic", () => {
       const stories: Story[] = [
-        { epic: "Auth", id: "1.1", title: "Login", description: "", epicDescription: "", acceptanceCriteria: [] },
-        { epic: "Auth", id: "1.2", title: "Register", description: "", epicDescription: "", acceptanceCriteria: [] },
-        { epic: "Dashboard", id: "2.1", title: "View Stats", description: "", epicDescription: "", acceptanceCriteria: [] },
+        {
+          epic: "Auth",
+          id: "1.1",
+          title: "Login",
+          description: "",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
+        {
+          epic: "Auth",
+          id: "1.2",
+          title: "Register",
+          description: "",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
+        {
+          epic: "Dashboard",
+          id: "2.1",
+          title: "View Stats",
+          description: "",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
       ];
 
       const plan = generateFixPlan(stories);
@@ -410,7 +453,14 @@ As a user, I want to log in.
 
     it("includes completed section", () => {
       const plan = generateFixPlan([
-        { epic: "E1", id: "1.1", title: "T1", description: "", epicDescription: "", acceptanceCriteria: [] },
+        {
+          epic: "E1",
+          id: "1.1",
+          title: "T1",
+          description: "",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
       ]);
 
       expect(plan).toContain("## Completed");
@@ -418,7 +468,14 @@ As a user, I want to log in.
 
     it("includes epic description as Goal line", () => {
       const stories: Story[] = [
-        { epic: "Auth", id: "1.1", title: "Login", description: "", epicDescription: "Secure user access", acceptanceCriteria: [] },
+        {
+          epic: "Auth",
+          id: "1.1",
+          title: "Login",
+          description: "",
+          epicDescription: "Secure user access",
+          acceptanceCriteria: [],
+        },
       ];
 
       const plan = generateFixPlan(stories);
@@ -428,7 +485,14 @@ As a user, I want to log in.
 
     it("does not include Goal line when epic description is empty", () => {
       const stories: Story[] = [
-        { epic: "Auth", id: "1.1", title: "Login", description: "", epicDescription: "", acceptanceCriteria: [] },
+        {
+          epic: "Auth",
+          id: "1.1",
+          title: "Login",
+          description: "",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
       ];
 
       const plan = generateFixPlan(stories);
@@ -470,8 +534,12 @@ As a user, I want to log in.
 
       const plan = generateFixPlan(stories);
 
-      expect(plan).toContain("  > AC: Given valid credentials, When user submits login form, Then user is redirected to dashboard");
-      expect(plan).toContain("  > AC: Given invalid credentials, When user submits login form, Then error is shown");
+      expect(plan).toContain(
+        "  > AC: Given valid credentials, When user submits login form, Then user is redirected to dashboard"
+      );
+      expect(plan).toContain(
+        "  > AC: Given invalid credentials, When user submits login form, Then error is shown"
+      );
     });
 
     it("outputs description before acceptance criteria", () => {
@@ -522,7 +590,9 @@ As a user, I want to log in.
       // Should be first item in objectives
       const lines = prompt.split("\n");
       const objectivesStart = lines.findIndex((l) => l.includes("Current Objectives"));
-      const contextLine = lines.findIndex((l) => l.includes("PROJECT_CONTEXT.md") && l.match(/^\d+\.|^-/));
+      const contextLine = lines.findIndex(
+        (l) => l.includes("PROJECT_CONTEXT.md") && l.match(/^\d+\.|^-/)
+      );
       expect(contextLine).toBeGreaterThan(objectivesStart);
     });
 
@@ -537,12 +607,15 @@ As a user, I want to log in.
     let testDir: string;
 
     beforeEach(async () => {
-      testDir = join(tmpdir(), `bmalph-transition-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      testDir = join(
+        tmpdir(),
+        `bmalph-transition-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" }),
+        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" })
       );
     });
 
@@ -569,7 +642,7 @@ As a user, I want to log in.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
-        "# No actual stories here\nJust text.",
+        "# No actual stories here\nJust text."
       );
 
       await expect(runTransition(testDir)).rejects.toThrow("No stories parsed");
@@ -588,7 +661,7 @@ Initialize project.
 ### Story 1.2: API
 
 Build API endpoints.
-`,
+`
       );
 
       const result = await runTransition(testDir);
@@ -621,7 +694,7 @@ So that I can access the app.
 **Given** an already registered email
 **When** user submits registration form
 **Then** an error message is shown
-`,
+`
       );
 
       await runTransition(testDir);
@@ -631,8 +704,12 @@ So that I can access the app.
       expect(fixPlan).toContain("  > As a visitor");
       expect(fixPlan).toContain("  > I want to create an account");
       expect(fixPlan).toContain("  > So that I can access the app.");
-      expect(fixPlan).toContain("  > AC: Given valid email and password, When user submits registration form, Then account is created and user receives confirmation");
-      expect(fixPlan).toContain("  > AC: Given an already registered email, When user submits registration form, Then an error message is shown");
+      expect(fixPlan).toContain(
+        "  > AC: Given valid email and password, When user submits registration form, Then account is created and user receives confirmation"
+      );
+      expect(fixPlan).toContain(
+        "  > AC: Given an already registered email, When user submits registration form, Then an error message is shown"
+      );
     });
 
     it("copies planning-artifacts to .ralph/specs/planning-artifacts/", async () => {
@@ -640,7 +717,7 @@ So that I can access the app.
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# PRD content");
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       await runTransition(testDir);
@@ -654,16 +731,28 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/implementation-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
-      await writeFile(join(testDir, "_bmad-output/implementation-artifacts/sprint-plan.md"), "# Sprint 1");
-      await writeFile(join(testDir, "_bmad-output/implementation-artifacts/story-1.1.md"), "# Story Detail");
+      await writeFile(
+        join(testDir, "_bmad-output/implementation-artifacts/sprint-plan.md"),
+        "# Sprint 1"
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/implementation-artifacts/story-1.1.md"),
+        "# Story Detail"
+      );
 
       await runTransition(testDir);
 
-      const sprint = await readFile(join(testDir, ".ralph/specs/implementation-artifacts/sprint-plan.md"), "utf-8");
+      const sprint = await readFile(
+        join(testDir, ".ralph/specs/implementation-artifacts/sprint-plan.md"),
+        "utf-8"
+      );
       expect(sprint).toContain("Sprint 1");
-      const story = await readFile(join(testDir, ".ralph/specs/implementation-artifacts/story-1.1.md"), "utf-8");
+      const story = await readFile(
+        join(testDir, ".ralph/specs/implementation-artifacts/story-1.1.md"),
+        "utf-8"
+      );
       expect(story).toContain("Story Detail");
     });
 
@@ -672,7 +761,7 @@ So that I can access the app.
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# PRD");
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       await runTransition(testDir);
@@ -680,14 +769,16 @@ So that I can access the app.
       const prd = await readFile(join(testDir, ".ralph/specs/planning-artifacts/prd.md"), "utf-8");
       expect(prd).toContain("PRD");
       // implementation-artifacts should not exist
-      await expect(access(join(testDir, ".ralph/specs/implementation-artifacts"))).rejects.toThrow();
+      await expect(
+        access(join(testDir, ".ralph/specs/implementation-artifacts"))
+      ).rejects.toThrow();
     });
 
     it("generates PROMPT.md with project name", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       await runTransition(testDir);
@@ -700,12 +791,12 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
       // Pre-populate .ralph/PROMPT.md with a template containing the placeholder
       await writeFile(
         join(testDir, ".ralph/PROMPT.md"),
-        "# Ralph Instructions\n\nYou are working on a [YOUR PROJECT NAME] project.\n\n## Rich Content\nThis is preserved.",
+        "# Ralph Instructions\n\nYou are working on a [YOUR PROJECT NAME] project.\n\n## Rich Content\nThis is preserved."
       );
 
       await runTransition(testDir);
@@ -721,13 +812,10 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
       // Pre-populate with a customized PROMPT.md (no placeholder)
-      await writeFile(
-        join(testDir, ".ralph/PROMPT.md"),
-        "# Custom Ralph\nNo placeholder here.",
-      );
+      await writeFile(join(testDir, ".ralph/PROMPT.md"), "# Custom Ralph\nNo placeholder here.");
 
       await runTransition(testDir);
 
@@ -744,7 +832,7 @@ So that I can access the app.
       await writeFile(join(testDir, "_bmad-output/brainstorming/session-2.md"), "# Brainstorm 2");
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       await runTransition(testDir);
@@ -759,7 +847,7 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       // Should not throw
@@ -771,7 +859,7 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -784,7 +872,7 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -796,7 +884,7 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -810,7 +898,7 @@ So that I can access the app.
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/architecture.md"), "# Arch");
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -825,11 +913,11 @@ So that I can access the app.
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/architecture.md"), "# Arch");
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/readiness-report.md"),
-        "# Readiness\n\nStatus: NO-GO\nNot ready for implementation.",
+        "# Readiness\n\nStatus: NO-GO\nNot ready for implementation."
       );
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -841,12 +929,12 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n\n### Story 1.2: Z\n\nDo Z.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n\n### Story 1.2: Z\n\nDo Z.\n`
       );
       // Pre-populate fix_plan with progress
       await writeFile(
         join(testDir, ".ralph/@fix_plan.md"),
-        `# Ralph Fix Plan\n\n- [x] Story 1.1: Y\n- [ ] Story 1.2: Z\n`,
+        `# Ralph Fix Plan\n\n- [x] Story 1.1: Y\n- [ ] Story 1.2: Z\n`
       );
 
       const result = await runTransition(testDir);
@@ -860,11 +948,11 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
       await writeFile(
         join(testDir, ".ralph/@fix_plan.md"),
-        `# Ralph Fix Plan\n\n- [ ] Story 1.1: Old\n`,
+        `# Ralph Fix Plan\n\n- [ ] Story 1.1: Old\n`
       );
 
       const result = await runTransition(testDir);
@@ -878,15 +966,15 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/prd.md"),
-        `# PRD\n\n## Executive Summary\nBuild a task management platform.\n\n## Success Metrics\n- 500 active teams\n\n## Scope\nIn scope: task CRUD.\n`,
+        `# PRD\n\n## Executive Summary\nBuild a task management platform.\n\n## Success Metrics\n- 500 active teams\n\n## Scope\nIn scope: task CRUD.\n`
       );
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
-        `# Architecture\n\n## Constraints\nUse PostgreSQL for storage.\n\n## Risks\nScalability under load.\n`,
+        `# Architecture\n\n## Constraints\nUse PostgreSQL for storage.\n\n## Risks\nScalability under load.\n`
       );
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       await runTransition(testDir);
@@ -903,7 +991,7 @@ So that I can access the app.
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -916,11 +1004,11 @@ So that I can access the app.
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/architecture.md"), "# Arch");
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/readiness-report.md"),
-        "# Readiness\n\nStatus: GO\nReady for implementation.",
+        "# Readiness\n\nStatus: GO\nReady for implementation."
       );
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
 
       const result = await runTransition(testDir);
@@ -1119,7 +1207,7 @@ cargo run
       await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" }),
+        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" })
       );
     });
 
@@ -1135,16 +1223,16 @@ cargo run
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
-        `# Architecture\n\n## Tech Stack\n- Runtime: Node.js\n- Language: TypeScript\n- Testing: Vitest\n`,
+        `# Architecture\n\n## Tech Stack\n- Runtime: Node.js\n- Language: TypeScript\n- Testing: Vitest\n`
       );
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
       // Pre-populate AGENT.md with the template
       await writeFile(
         join(testDir, ".ralph/@AGENT.md"),
-        `# Agent Build Instructions\n\n## Project Setup\n\`\`\`bash\nnpm install\n# Or for Python project\npip install -r requirements.txt\n\`\`\`\n\n## Running Tests\n\`\`\`bash\nnpm test\n# Python\npytest\n\`\`\`\n\n## Build Commands\n\`\`\`bash\nnpm run build\n# or\ncargo build --release\n\`\`\`\n\n## Development Server\n\`\`\`bash\nnpm run dev\n# or\ncargo run\n\`\`\`\n`,
+        `# Agent Build Instructions\n\n## Project Setup\n\`\`\`bash\nnpm install\n# Or for Python project\npip install -r requirements.txt\n\`\`\`\n\n## Running Tests\n\`\`\`bash\nnpm test\n# Python\npytest\n\`\`\`\n\n## Build Commands\n\`\`\`bash\nnpm run build\n# or\ncargo build --release\n\`\`\`\n\n## Development Server\n\`\`\`bash\nnpm run dev\n# or\ncargo run\n\`\`\`\n`
       );
 
       await runTransition(testDir);
@@ -1159,7 +1247,7 @@ cargo run
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
       const originalContent = "# Original AGENT\nUntouched.";
       await writeFile(join(testDir, ".ralph/@AGENT.md"), originalContent);
@@ -1174,11 +1262,11 @@ cargo run
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
-        `# Architecture\n\nJust text, no tech stack section.\n`,
+        `# Architecture\n\nJust text, no tech stack section.\n`
       );
       await writeFile(
         join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`,
+        `## Epic 1: X\n\n### Story 1.1: Y\n\nDo Y.\n`
       );
       const originalContent = "# Original AGENT\nUntouched.";
       await writeFile(join(testDir, ".ralph/@AGENT.md"), originalContent);
@@ -1259,49 +1347,70 @@ cargo run
   describe("extractProjectContext", () => {
     it("extracts project goals from PRD executive summary", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("prd.md", `# PRD\n\n## Executive Summary\nBuild a SaaS platform for teams.\n\n## Other\nStuff.\n`);
+      artifacts.set(
+        "prd.md",
+        `# PRD\n\n## Executive Summary\nBuild a SaaS platform for teams.\n\n## Other\nStuff.\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.projectGoals).toContain("SaaS platform");
     });
 
     it("extracts success metrics from PRD", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("prd.md", `# PRD\n\n## Success Metrics\n- 1000 DAU\n- 99.9% uptime\n\n## Next\n`);
+      artifacts.set(
+        "prd.md",
+        `# PRD\n\n## Success Metrics\n- 1000 DAU\n- 99.9% uptime\n\n## Next\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.successMetrics).toContain("1000 DAU");
     });
 
     it("extracts architecture constraints", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("architecture.md", `# Architecture\n\n## Constraints\nMust use PostgreSQL.\nNo vendor lock-in.\n\n## Next\n`);
+      artifacts.set(
+        "architecture.md",
+        `# Architecture\n\n## Constraints\nMust use PostgreSQL.\nNo vendor lock-in.\n\n## Next\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.architectureConstraints).toContain("PostgreSQL");
     });
 
     it("extracts technical risks from architecture", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("architecture.md", `# Architecture\n\n## Risks\nScalability concerns.\nThird-party API rate limits.\n\n## Next\n`);
+      artifacts.set(
+        "architecture.md",
+        `# Architecture\n\n## Risks\nScalability concerns.\nThird-party API rate limits.\n\n## Next\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.technicalRisks).toContain("Scalability");
     });
 
     it("extracts scope boundaries from PRD", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("prd.md", `# PRD\n\n## Scope\nIn scope: user management.\nOut of scope: payment processing.\n\n## Next\n`);
+      artifacts.set(
+        "prd.md",
+        `# PRD\n\n## Scope\nIn scope: user management.\nOut of scope: payment processing.\n\n## Next\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.scopeBoundaries).toContain("user management");
     });
 
     it("extracts target users from PRD", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("prd.md", `# PRD\n\n## Target Users\nDevelopers building SaaS apps.\n\n## Next\n`);
+      artifacts.set(
+        "prd.md",
+        `# PRD\n\n## Target Users\nDevelopers building SaaS apps.\n\n## Next\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.targetUsers).toContain("Developers");
     });
 
     it("extracts non-functional requirements from PRD", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("prd.md", `# PRD\n\n## Non-Functional Requirements\n- Response time < 200ms\n- WCAG 2.1 AA compliance\n\n## Next\n`);
+      artifacts.set(
+        "prd.md",
+        `# PRD\n\n## Non-Functional Requirements\n- Response time < 200ms\n- WCAG 2.1 AA compliance\n\n## Next\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.nonFunctionalRequirements).toContain("200ms");
     });
@@ -1317,7 +1426,10 @@ cargo run
 
     it("tries alternative heading patterns", () => {
       const artifacts = new Map<string, string>();
-      artifacts.set("prd.md", `# PRD\n\n## Vision\nRevolutionize team collaboration.\n\n## KPIs\n- NPS > 50\n`);
+      artifacts.set(
+        "prd.md",
+        `# PRD\n\n## Vision\nRevolutionize team collaboration.\n\n## KPIs\n- NPS > 50\n`
+      );
       const ctx = extractProjectContext(artifacts);
       expect(ctx.projectGoals).toContain("collaboration");
       expect(ctx.successMetrics).toContain("NPS");
@@ -1388,7 +1500,10 @@ cargo run
     let testDir: string;
 
     beforeEach(async () => {
-      testDir = join(tmpdir(), `bmalph-validate-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      testDir = join(
+        tmpdir(),
+        `bmalph-validate-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
       await mkdir(testDir, { recursive: true });
     });
 
@@ -1424,7 +1539,10 @@ cargo run
       await writeFile(join(testDir, "prd.md"), "# PRD");
       await writeFile(join(testDir, "architecture.md"), "# Arch");
       await writeFile(join(testDir, "readiness-report.md"), "Status: NO-GO");
-      const warnings = await validateArtifacts(["prd.md", "architecture.md", "readiness-report.md"], testDir);
+      const warnings = await validateArtifacts(
+        ["prd.md", "architecture.md", "readiness-report.md"],
+        testDir
+      );
       expect(warnings).toContainEqual(expect.stringMatching(/NO.?GO/i));
     });
 
@@ -1438,7 +1556,10 @@ cargo run
       await writeFile(join(testDir, "prd.md"), "# PRD");
       await writeFile(join(testDir, "architecture.md"), "# Arch");
       await writeFile(join(testDir, "readiness-report.md"), "Status: GO\nAll clear.");
-      const warnings = await validateArtifacts(["prd.md", "architecture.md", "readiness-report.md"], testDir);
+      const warnings = await validateArtifacts(
+        ["prd.md", "architecture.md", "readiness-report.md"],
+        testDir
+      );
       expect(warnings).not.toContainEqual(expect.stringMatching(/NO.?GO/i));
     });
   });
@@ -1527,7 +1648,10 @@ cargo run
     let testDir: string;
 
     beforeEach(async () => {
-      testDir = join(tmpdir(), `bmalph-changelog-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      testDir = join(
+        tmpdir(),
+        `bmalph-changelog-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
       await mkdir(testDir, { recursive: true });
     });
 
@@ -1544,7 +1668,7 @@ cargo run
       await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "# PRD");
 
       const changes = await generateSpecsChangelog(
-        join(testDir, "old"),  // doesn't exist
+        join(testDir, "old"), // doesn't exist
         join(testDir, "new")
       );
 
@@ -1557,15 +1681,14 @@ cargo run
       await writeFile(join(testDir, "old/planning-artifacts/prd.md"), "# PRD v1");
       await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "# PRD v2");
 
-      const changes = await generateSpecsChangelog(
-        join(testDir, "old"),
-        join(testDir, "new")
-      );
+      const changes = await generateSpecsChangelog(join(testDir, "old"), join(testDir, "new"));
 
-      expect(changes).toContainEqual(expect.objectContaining({
-        file: "planning-artifacts/prd.md",
-        status: "modified"
-      }));
+      expect(changes).toContainEqual(
+        expect.objectContaining({
+          file: "planning-artifacts/prd.md",
+          status: "modified",
+        })
+      );
     });
 
     it("detects removed files", async () => {
@@ -1573,10 +1696,7 @@ cargo run
       await mkdir(join(testDir, "new"), { recursive: true });
       await writeFile(join(testDir, "old/planning-artifacts/old-doc.md"), "# Old");
 
-      const changes = await generateSpecsChangelog(
-        join(testDir, "old"),
-        join(testDir, "new")
-      );
+      const changes = await generateSpecsChangelog(join(testDir, "old"), join(testDir, "new"));
 
       expect(changes).toContainEqual({ file: "planning-artifacts/old-doc.md", status: "removed" });
     });
@@ -1587,10 +1707,7 @@ cargo run
       await writeFile(join(testDir, "old/planning-artifacts/prd.md"), "# Same content");
       await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "# Same content");
 
-      const changes = await generateSpecsChangelog(
-        join(testDir, "old"),
-        join(testDir, "new")
-      );
+      const changes = await generateSpecsChangelog(join(testDir, "old"), join(testDir, "new"));
 
       expect(changes).toEqual([]);
     });
@@ -1601,12 +1718,9 @@ cargo run
       await writeFile(join(testDir, "old/planning-artifacts/prd.md"), "Line 1\nLine 2");
       await writeFile(join(testDir, "new/planning-artifacts/prd.md"), "Line 1\nLine 2 changed");
 
-      const changes = await generateSpecsChangelog(
-        join(testDir, "old"),
-        join(testDir, "new")
-      );
+      const changes = await generateSpecsChangelog(join(testDir, "old"), join(testDir, "new"));
 
-      const modified = changes.find(c => c.status === "modified");
+      const modified = changes.find((c) => c.status === "modified");
       expect(modified).toBeDefined();
       expect(modified!.summary).toBeDefined();
     });
@@ -1667,7 +1781,7 @@ cargo run
       await mkdir(join(testDir, ".ralph/specs"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" }),
+        JSON.stringify({ name: "test-project", createdAt: "2025-01-01T00:00:00.000Z" })
       );
     });
 
@@ -1681,14 +1795,18 @@ cargo run
 
     it("preserves completed stories when BMAD adds new epic", async () => {
       // Setup: existing fix_plan with story 1.1 completed
-      await writeFile(join(testDir, ".ralph/@fix_plan.md"),
-        `# Fix Plan\n- [x] Story 1.1: Old\n- [ ] Story 1.2: Pending\n`);
+      await writeFile(
+        join(testDir, ".ralph/@fix_plan.md"),
+        `# Fix Plan\n- [x] Story 1.1: Old\n- [ ] Story 1.2: Pending\n`
+      );
 
       // New BMAD output adds Epic 2
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
         `## Epic 1: Core\n### Story 1.1: Old\nDesc.\n### Story 1.2: Also old\nDesc.\n
-## Epic 2: New\n### Story 2.1: Brand new\nDesc.\n`);
+## Epic 2: New\n### Story 2.1: Brand new\nDesc.\n`
+      );
 
       await runTransition(testDir);
 
@@ -1706,8 +1824,10 @@ cargo run
       // New BMAD output with modified PRD
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# PRD v2");
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`
+      );
 
       await runTransition(testDir);
 
@@ -1719,8 +1839,10 @@ cargo run
     it("does not generate SPECS_CHANGELOG.md when no specs changes", async () => {
       // No existing specs
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`
+      );
 
       await runTransition(testDir);
 
@@ -1737,11 +1859,22 @@ cargo run
     it("generates SPECS_INDEX.md with prioritized file list", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
       await mkdir(join(testDir, "_bmad-output/brainstorming"), { recursive: true });
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/prd.md"), "# Product Requirements\n\nCore product specs.");
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/architecture.md"), "# Architecture\n\nTechnical decisions.");
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
-      await writeFile(join(testDir, "_bmad-output/brainstorming/session-1.md"), "# Brainstorm\n\nIdeas.");
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/prd.md"),
+        "# Product Requirements\n\nCore product specs."
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        "# Architecture\n\nTechnical decisions."
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/brainstorming/session-1.md"),
+        "# Brainstorm\n\nIdeas."
+      );
 
       await runTransition(testDir);
 
@@ -1757,8 +1890,10 @@ cargo run
 
     it("PROMPT.md includes specs reading strategy", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
-      await writeFile(join(testDir, "_bmad-output/planning-artifacts/stories.md"),
-        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`);
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n### Story 1.1: Feature\nDesc.\n`
+      );
 
       await runTransition(testDir);
 

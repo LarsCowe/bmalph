@@ -86,7 +86,9 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
     console.log(chalk.bold("  Ralph Loop"));
     console.log(`    ${chalk.cyan("Status:")} ${formatRalphStatus(ralphStatus.status)}`);
     console.log(`    ${chalk.cyan("Loop count:")} ${ralphStatus.loopCount}`);
-    console.log(`    ${chalk.cyan("Tasks:")} ${ralphStatus.tasksCompleted}/${ralphStatus.tasksTotal}`);
+    console.log(
+      `    ${chalk.cyan("Tasks:")} ${ralphStatus.tasksCompleted}/${ralphStatus.tasksTotal}`
+    );
   } else if (phase === 4) {
     console.log("");
     console.log(chalk.bold("  Ralph Loop"));
@@ -127,7 +129,11 @@ function formatRalphStatus(status: string): string {
   }
 }
 
-function getNextAction(phase: number, status: string, ralphStatus: { status: string } | null): string | null {
+function getNextAction(
+  phase: number,
+  status: string,
+  ralphStatus: { status: string } | null
+): string | null {
   if (status === "completed") {
     return null;
   }

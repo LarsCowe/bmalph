@@ -1,5 +1,6 @@
 import type { BmalphConfig, UpstreamVersions } from "./config.js";
 import type { BmalphState } from "./state.js";
+import { MAX_PROJECT_NAME_LENGTH } from "./constants.js";
 
 const VALID_STATUSES = ["planning", "implementing", "completed"] as const;
 
@@ -8,12 +9,29 @@ const INVALID_FS_CHARS = /[<>:"/\\|?*]/;
 
 // Windows reserved names (case-insensitive, exact match only)
 const WINDOWS_RESERVED_NAMES = new Set([
-  "con", "prn", "aux", "nul",
-  "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
-  "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com1",
+  "com2",
+  "com3",
+  "com4",
+  "com5",
+  "com6",
+  "com7",
+  "com8",
+  "com9",
+  "lpt1",
+  "lpt2",
+  "lpt3",
+  "lpt4",
+  "lpt5",
+  "lpt6",
+  "lpt7",
+  "lpt8",
+  "lpt9",
 ]);
-
-const MAX_PROJECT_NAME_LENGTH = 100;
 
 function assertObject(data: unknown, label: string): asserts data is Record<string, unknown> {
   if (data === null || data === undefined || typeof data !== "object" || Array.isArray(data)) {
@@ -52,7 +70,9 @@ export function validateConfig(data: unknown): BmalphConfig {
   const description = typeof data.description === "string" ? data.description : "";
 
   const upstreamVersions =
-    data.upstreamVersions !== undefined ? validateUpstreamVersions(data.upstreamVersions) : undefined;
+    data.upstreamVersions !== undefined
+      ? validateUpstreamVersions(data.upstreamVersions)
+      : undefined;
 
   return {
     name: data.name,
@@ -69,7 +89,10 @@ export function validateState(data: unknown): BmalphState {
     throw new Error("state.currentPhase must be a number");
   }
 
-  if (typeof data.status !== "string" || !VALID_STATUSES.includes(data.status as typeof VALID_STATUSES[number])) {
+  if (
+    typeof data.status !== "string" ||
+    !VALID_STATUSES.includes(data.status as (typeof VALID_STATUSES)[number])
+  ) {
     throw new Error(`state.status must be one of: ${VALID_STATUSES.join(", ")}`);
   }
 
@@ -101,8 +124,13 @@ export interface CircuitBreakerState {
 export function validateCircuitBreakerState(data: unknown): CircuitBreakerState {
   assertObject(data, "circuitBreakerState");
 
-  if (typeof data.state !== "string" || !CIRCUIT_BREAKER_STATES.includes(data.state as typeof CIRCUIT_BREAKER_STATES[number])) {
-    throw new Error(`circuitBreakerState.state must be one of: ${CIRCUIT_BREAKER_STATES.join(", ")}`);
+  if (
+    typeof data.state !== "string" ||
+    !CIRCUIT_BREAKER_STATES.includes(data.state as (typeof CIRCUIT_BREAKER_STATES)[number])
+  ) {
+    throw new Error(
+      `circuitBreakerState.state must be one of: ${CIRCUIT_BREAKER_STATES.join(", ")}`
+    );
   }
 
   if (typeof data.consecutive_no_progress !== "number") {
@@ -189,7 +217,10 @@ export function validateRalphLoopStatus(data: unknown): RalphLoopStatus {
     throw new Error("ralphLoopStatus.loopCount must be a number");
   }
 
-  if (typeof data.status !== "string" || !RALPH_LOOP_STATUSES.includes(data.status as typeof RALPH_LOOP_STATUSES[number])) {
+  if (
+    typeof data.status !== "string" ||
+    !RALPH_LOOP_STATUSES.includes(data.status as (typeof RALPH_LOOP_STATUSES)[number])
+  ) {
     throw new Error(`ralphLoopStatus.status must be one of: ${RALPH_LOOP_STATUSES.join(", ")}`);
   }
 
@@ -242,7 +273,7 @@ export function validateProjectName(name: string): string {
 
   // Check for invalid filesystem characters
   if (INVALID_FS_CHARS.test(name)) {
-    throw new Error("Project name contains invalid character (< > : \" / \\ | ? * are not allowed)");
+    throw new Error('Project name contains invalid character (< > : " / \\ | ? * are not allowed)');
   }
 
   // Check for Windows reserved names (case-insensitive, exact match)

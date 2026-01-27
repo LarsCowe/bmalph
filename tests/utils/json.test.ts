@@ -30,9 +30,7 @@ describe("readJsonFile", () => {
     const data = { name: "test", value: 42 };
     await writeFile(join(testDir, "valid.json"), JSON.stringify(data));
 
-    const result = await readJsonFile<{ name: string; value: number }>(
-      join(testDir, "valid.json")
-    );
+    const result = await readJsonFile<{ name: string; value: number }>(join(testDir, "valid.json"));
     expect(result).toEqual(data);
   });
 

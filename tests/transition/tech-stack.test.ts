@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  detectTechStack,
-  customizeAgentMd,
-} from "../../src/transition/tech-stack.js";
+import { detectTechStack, customizeAgentMd } from "../../src/transition/tech-stack.js";
 
 describe("tech-stack", () => {
   describe("detectTechStack", () => {
@@ -282,9 +279,7 @@ This content should remain unchanged.
         dev: "cargo run",
       };
       const result = customizeAgentMd(template, stack);
-      expect(result).toContain(
-        "## Build Commands\n\n```bash\ncargo build --release\n```"
-      );
+      expect(result).toContain("## Build Commands\n\n```bash\ncargo build --release\n```");
     });
 
     it("replaces Development Server code block", () => {
@@ -295,9 +290,7 @@ This content should remain unchanged.
         dev: "go run .",
       };
       const result = customizeAgentMd(template, stack);
-      expect(result).toContain(
-        "## Development Server\n\n```bash\ngo run .\n```"
-      );
+      expect(result).toContain("## Development Server\n\n```bash\ngo run .\n```");
     });
 
     it("preserves other content unchanged", () => {

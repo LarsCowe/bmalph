@@ -9,7 +9,11 @@ export type {
   SpecsChange,
 } from "./transition/types.js";
 
-export { parseStories, parseStoriesWithWarnings, type ParseStoriesResult } from "./transition/story-parsing.js";
+export {
+  parseStories,
+  parseStoriesWithWarnings,
+  type ParseStoriesResult,
+} from "./transition/story-parsing.js";
 
 export {
   generateFixPlan,

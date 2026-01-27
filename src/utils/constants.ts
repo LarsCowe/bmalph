@@ -1,11 +1,50 @@
 /**
- * Centralized path constants for bmalph directory structure.
+ * Centralized constants for bmalph.
  *
- * These constants define the standard directory names used throughout
+ * Path constants define the standard directory names used throughout
  * the bmalph project for BMAD, Ralph, and Claude Code integration.
+ *
+ * Numeric thresholds are used for validation, file processing, and health checks.
  */
 
 import { join } from "path";
+
+// =============================================================================
+// Validation thresholds
+// =============================================================================
+
+/** Maximum allowed project name length */
+export const MAX_PROJECT_NAME_LENGTH = 100;
+
+// =============================================================================
+// File processing thresholds
+// =============================================================================
+
+/** File size threshold for "large file" warnings (50 KB) */
+export const LARGE_FILE_THRESHOLD_BYTES = 50000;
+
+/** Default max length for extracted content snippets */
+export const DEFAULT_SNIPPET_MAX_LENGTH = 60;
+
+/** Max length for section extraction from documents */
+export const SECTION_EXTRACT_MAX_LENGTH = 500;
+
+/** Max characters for diff line preview */
+export const DIFF_LINE_PREVIEW_LENGTH = 50;
+
+// =============================================================================
+// Health check thresholds
+// =============================================================================
+
+/** Session age warning threshold (24 hours in milliseconds) */
+export const SESSION_AGE_WARNING_MS = 24 * 60 * 60 * 1000;
+
+/** API call usage warning threshold (percentage) */
+export const API_USAGE_WARNING_PERCENT = 90;
+
+// =============================================================================
+// Path constants
+// =============================================================================
 
 /** Ralph working directory (contains loop, specs, logs) */
 export const RALPH_DIR = ".ralph";

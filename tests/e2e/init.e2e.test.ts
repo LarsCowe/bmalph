@@ -43,9 +43,10 @@ describe("bmalph init e2e", { timeout: 60000 }, () => {
 
     await runInit(project.path, "test-name", "test-desc");
 
-    const config = (await expectValidJson(
-      join(project.path, "bmalph/config.json"),
-    )) as Record<string, unknown>;
+    const config = (await expectValidJson(join(project.path, "bmalph/config.json"))) as Record<
+      string,
+      unknown
+    >;
     expect(config.name).toBe("test-name");
     expect(config.description).toBe("test-desc");
     expect(config.createdAt).toBeDefined();
@@ -118,7 +119,7 @@ describe("bmalph init e2e", { timeout: 60000 }, () => {
     await expectFileExists(join(project.path, ".claude/commands/bmalph.md"));
     await expectFileContains(
       join(project.path, ".claude/commands/bmalph.md"),
-      "bmad-master.agent.yaml",
+      "bmad-master.agent.yaml"
     );
   });
 
@@ -127,9 +128,7 @@ describe("bmalph init e2e", { timeout: 60000 }, () => {
 
     await runInit(project.path);
 
-    await expectFileExists(
-      join(project.path, ".claude/commands/bmalph-implement.md"),
-    );
+    await expectFileExists(join(project.path, ".claude/commands/bmalph-implement.md"));
   });
 
   it("creates _bmad directory with BMAD agents", async () => {
@@ -138,13 +137,9 @@ describe("bmalph init e2e", { timeout: 60000 }, () => {
     await runInit(project.path);
 
     await expectFileExists(join(project.path, "_bmad/config.yaml"));
-    await expectFileExists(
-      join(project.path, "_bmad/bmm/agents/analyst.agent.yaml"),
-    );
+    await expectFileExists(join(project.path, "_bmad/bmm/agents/analyst.agent.yaml"));
     await expectFileExists(join(project.path, "_bmad/bmm/agents/pm.agent.yaml"));
-    await expectFileExists(
-      join(project.path, "_bmad/bmm/agents/architect.agent.yaml"),
-    );
+    await expectFileExists(join(project.path, "_bmad/bmm/agents/architect.agent.yaml"));
   });
 
   it("creates .ralph directory with ralph loop", async () => {

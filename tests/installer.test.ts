@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { installProject, copyBundledAssets, mergeClaudeMd, isInitialized, previewInstall, previewUpgrade } from "../src/installer.js";
+import {
+  installProject,
+  copyBundledAssets,
+  mergeClaudeMd,
+  isInitialized,
+  previewInstall,
+  previewUpgrade,
+} from "../src/installer.js";
 import { mkdir, rm, access, readFile, writeFile, readdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -65,7 +72,9 @@ describe("installer", () => {
       await installProject(testDir);
       await expect(access(join(testDir, ".ralph/ralph_loop.sh"))).resolves.toBeUndefined();
       await expect(access(join(testDir, ".ralph/lib/circuit_breaker.sh"))).resolves.toBeUndefined();
-      await expect(access(join(testDir, ".ralph/lib/response_analyzer.sh"))).resolves.toBeUndefined();
+      await expect(
+        access(join(testDir, ".ralph/lib/response_analyzer.sh"))
+      ).resolves.toBeUndefined();
     });
 
     it("copies Ralph templates to .ralph/", async () => {
@@ -211,8 +220,14 @@ describe("installer", () => {
 
     it("generates _bmad/_config/workflow-manifest.csv identical to task-manifest.csv", async () => {
       await copyBundledAssets(testDir);
-      const taskManifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
-      const workflowManifest = await readFile(join(testDir, "_bmad/_config/workflow-manifest.csv"), "utf-8");
+      const taskManifest = await readFile(
+        join(testDir, "_bmad/_config/task-manifest.csv"),
+        "utf-8"
+      );
+      const workflowManifest = await readFile(
+        join(testDir, "_bmad/_config/workflow-manifest.csv"),
+        "utf-8"
+      );
       expect(workflowManifest).toBe(taskManifest);
     });
 
@@ -264,14 +279,12 @@ describe("installer", () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "my-project", description: "test" }),
+        JSON.stringify({ name: "my-project", description: "test" })
       );
 
       await copyBundledAssets(testDir);
 
-      const config = JSON.parse(
-        await readFile(join(testDir, "bmalph/config.json"), "utf-8"),
-      );
+      const config = JSON.parse(await readFile(join(testDir, "bmalph/config.json"), "utf-8"));
       expect(config.name).toBe("my-project");
     });
 
@@ -318,7 +331,9 @@ describe("installer", () => {
       // Verify the CSV files exist and manifests were generated
       await expect(access(join(testDir, "_bmad/core/module-help.csv"))).resolves.toBeUndefined();
       await expect(access(join(testDir, "_bmad/bmm/module-help.csv"))).resolves.toBeUndefined();
-      await expect(access(join(testDir, "_bmad/_config/task-manifest.csv"))).resolves.toBeUndefined();
+      await expect(
+        access(join(testDir, "_bmad/_config/task-manifest.csv"))
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -360,7 +375,7 @@ describe("installer", () => {
 
       // Modify to have marker at EOF without newline
       let content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
-      content = content.trimEnd() + "\n# bmalph-version: 1.0.0";  // No trailing newline
+      content = content.trimEnd() + "\n# bmalph-version: 1.0.0"; // No trailing newline
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), content);
 
       // Run copyBundledAssets
@@ -406,7 +421,7 @@ describe("installer", () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await writeFile(
         join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "my-cool-project", description: "test" }),
+        JSON.stringify({ name: "my-cool-project", description: "test" })
       );
       await copyBundledAssets(testDir);
       const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
@@ -618,7 +633,10 @@ describe("installer", () => {
     });
 
     it("returns wouldSkip for CLAUDE.md with existing integration", async () => {
-      await writeFile(join(testDir, "CLAUDE.md"), "# My Project\n## BMAD-METHOD Integration\nContent");
+      await writeFile(
+        join(testDir, "CLAUDE.md"),
+        "# My Project\n## BMAD-METHOD Integration\nContent"
+      );
 
       const result = await previewInstall(testDir);
 

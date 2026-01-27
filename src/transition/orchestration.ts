@@ -15,21 +15,19 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   const artifactsDir = await findArtifactsDir(projectDir);
   if (!artifactsDir) {
     throw new Error(
-      "No BMAD artifacts found. Run BMAD planning phases first (at minimum: Create PRD, Create Architecture, Create Epics and Stories).",
+      "No BMAD artifacts found. Run BMAD planning phases first (at minimum: Create PRD, Create Architecture, Create Epics and Stories)."
     );
   }
 
   // Find and parse stories file
   const files = await readdir(artifactsDir);
   const storiesPattern = /^(epics[-_]?(and[-_]?)?)?stor(y|ies)([-_]\d+)?\.md$/i;
-  const storiesFile = files.find(
-    (f) => storiesPattern.test(f) || /epic/i.test(f),
-  );
+  const storiesFile = files.find((f) => storiesPattern.test(f) || /epic/i.test(f));
 
   if (!storiesFile) {
     debug(`Files in artifacts dir: ${files.join(", ")}`);
     throw new Error(
-      `No epics/stories file found in ${artifactsDir}. Available files: ${files.join(", ")}. Run 'CE' (Create Epics and Stories) first.`,
+      `No epics/stories file found in ${artifactsDir}. Available files: ${files.join(", ")}. Run 'CE' (Create Epics and Stories) first.`
     );
   }
   debug(`Using stories file: ${storiesFile}`);
@@ -38,7 +36,9 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   const { stories, warnings: parseWarnings } = parseStoriesWithWarnings(storiesContent);
 
   if (stories.length === 0) {
-    throw new Error("No stories parsed from the epics file. Ensure stories follow the format: ### Story N.M: Title");
+    throw new Error(
+      "No stories parsed from the epics file. Ensure stories follow the format: ### Story N.M: Title"
+    );
   }
 
   // Check existing fix_plan for completed items (smart merge)
@@ -92,7 +92,9 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     // Fall back to just artifactsDir if _bmad-output root doesn't exist
     await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
     for (const file of files) {
-      await cp(join(artifactsDir, file), join(projectDir, ".ralph/specs", file), { recursive: true });
+      await cp(join(artifactsDir, file), join(projectDir, ".ralph/specs", file), {
+        recursive: true,
+      });
     }
   }
 

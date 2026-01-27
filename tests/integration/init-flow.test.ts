@@ -9,7 +9,10 @@ describe("init flow integration", { timeout: 30000 }, () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `bmalph-integration-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testDir = join(
+      tmpdir(),
+      `bmalph-integration-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     await mkdir(testDir, { recursive: true });
   });
 
@@ -46,9 +49,13 @@ describe("init flow integration", { timeout: 30000 }, () => {
     await expect(access(join(testDir, "_bmad/bmm"))).resolves.toBeUndefined();
 
     // Verify BMAD agent files exist
-    await expect(access(join(testDir, "_bmad/bmm/agents/analyst.agent.yaml"))).resolves.toBeUndefined();
+    await expect(
+      access(join(testDir, "_bmad/bmm/agents/analyst.agent.yaml"))
+    ).resolves.toBeUndefined();
     await expect(access(join(testDir, "_bmad/bmm/agents/pm.agent.yaml"))).resolves.toBeUndefined();
-    await expect(access(join(testDir, "_bmad/bmm/agents/architect.agent.yaml"))).resolves.toBeUndefined();
+    await expect(
+      access(join(testDir, "_bmad/bmm/agents/architect.agent.yaml"))
+    ).resolves.toBeUndefined();
 
     // Verify .ralph directory with ralph loop
     await expect(access(join(testDir, ".ralph/ralph_loop.sh"))).resolves.toBeUndefined();

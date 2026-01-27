@@ -250,7 +250,10 @@ describe("check-updates command", () => {
 
     await checkUpdatesCommand({});
 
-    const errorOutput = vi.mocked(console.error).mock.calls.map((c) => c[0]).join("\n");
+    const errorOutput = vi
+      .mocked(console.error)
+      .mock.calls.map((c) => c[0])
+      .join("\n");
     expect(errorOutput).toContain("Failed to read bundled-versions.json");
     expect(process.exitCode).toBe(1);
   });

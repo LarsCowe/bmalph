@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import {
-  generateSpecsChangelog,
-  formatChangelog,
-} from "../../src/transition/specs-changelog.js";
+import { generateSpecsChangelog, formatChangelog } from "../../src/transition/specs-changelog.js";
 
 describe("specs-changelog", () => {
   let testDir: string;

@@ -11,10 +11,7 @@ export interface TestProject {
  * Create a unique temporary directory for testing
  */
 export async function createTestProject(prefix = "bmalph-e2e"): Promise<TestProject> {
-  const path = join(
-    tmpdir(),
-    `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
+  const path = join(tmpdir(), `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   await mkdir(path, { recursive: true });
 
   return {
@@ -49,10 +46,13 @@ function sleep(ms: number): Promise<void> {
 export async function createFile(
   projectPath: string,
   relativePath: string,
-  content: string,
+  content: string
 ): Promise<void> {
   const fullPath = join(projectPath, relativePath);
-  const dir = fullPath.substring(0, fullPath.lastIndexOf(/[/\\]/.test(fullPath) ? /[/\\]/.exec(fullPath)![0] : "/"));
+  const dir = fullPath.substring(
+    0,
+    fullPath.lastIndexOf(/[/\\]/.test(fullPath) ? /[/\\]/.exec(fullPath)![0] : "/")
+  );
   await mkdir(dir, { recursive: true }).catch(() => {});
   await writeFile(fullPath, content, "utf-8");
 }
@@ -60,19 +60,14 @@ export async function createFile(
 /**
  * Read a file from the test project
  */
-export async function readProjectFile(
-  projectPath: string,
-  relativePath: string,
-): Promise<string> {
+export async function readProjectFile(projectPath: string, relativePath: string): Promise<string> {
   return readFile(join(projectPath, relativePath), "utf-8");
 }
 
 /**
  * Create a test project with existing CLAUDE.md
  */
-export async function createProjectWithClaudeMd(
-  existingContent: string,
-): Promise<TestProject> {
+export async function createProjectWithClaudeMd(existingContent: string): Promise<TestProject> {
   const project = await createTestProject();
   await createFile(project.path, "CLAUDE.md", existingContent);
   return project;
@@ -81,9 +76,7 @@ export async function createProjectWithClaudeMd(
 /**
  * Create a test project with existing .gitignore
  */
-export async function createProjectWithGitignore(
-  existingContent: string,
-): Promise<TestProject> {
+export async function createProjectWithGitignore(existingContent: string): Promise<TestProject> {
   const project = await createTestProject();
   await createFile(project.path, ".gitignore", existingContent);
   return project;
@@ -93,7 +86,7 @@ export async function createProjectWithGitignore(
  * Create a test project with user files in .ralph directory
  */
 export async function createProjectWithRalphUserFiles(
-  userFiles: Record<string, string>,
+  userFiles: Record<string, string>
 ): Promise<TestProject> {
   const project = await createTestProject();
   for (const [relativePath, content] of Object.entries(userFiles)) {

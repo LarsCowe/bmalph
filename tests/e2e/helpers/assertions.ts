@@ -27,10 +27,7 @@ export async function expectFileNotExists(path: string): Promise<void> {
 /**
  * Assert that a file contains a substring
  */
-export async function expectFileContains(
-  path: string,
-  substring: string,
-): Promise<void> {
+export async function expectFileContains(path: string, substring: string): Promise<void> {
   const content = await readFile(path, "utf-8");
   expect(content).toContain(substring);
 }
@@ -38,10 +35,7 @@ export async function expectFileContains(
 /**
  * Assert that a file does not contain a substring
  */
-export async function expectFileNotContains(
-  path: string,
-  substring: string,
-): Promise<void> {
+export async function expectFileNotContains(path: string, substring: string): Promise<void> {
   const content = await readFile(path, "utf-8");
   expect(content).not.toContain(substring);
 }
@@ -82,10 +76,7 @@ export async function expectBmalphInitialized(projectPath: string): Promise<void
 /**
  * Assert that doctor output contains a specific check with expected status
  */
-export function expectDoctorCheckPassed(
-  output: string,
-  checkLabel: string,
-): void {
+export function expectDoctorCheckPassed(output: string, checkLabel: string): void {
   // Doctor uses ✓ for passed checks
   expect(output).toMatch(new RegExp(`[✓✔]\\s+${escapeRegex(checkLabel)}`));
 }
@@ -93,10 +84,7 @@ export function expectDoctorCheckPassed(
 /**
  * Assert that doctor output contains a specific check as failed
  */
-export function expectDoctorCheckFailed(
-  output: string,
-  checkLabel: string,
-): void {
+export function expectDoctorCheckFailed(output: string, checkLabel: string): void {
   // Doctor uses ✗ for failed checks
   expect(output).toMatch(new RegExp(`[✗✘]\\s+${escapeRegex(checkLabel)}`));
 }
@@ -107,7 +95,7 @@ export function expectDoctorCheckFailed(
 export function expectDoctorSummary(
   output: string,
   expectedPassed: number,
-  expectedFailed: number,
+  expectedFailed: number
 ): void {
   expect(output).toContain(`${expectedPassed} passed`);
   if (expectedFailed > 0) {

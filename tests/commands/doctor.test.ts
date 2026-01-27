@@ -79,7 +79,7 @@ describe("doctor command", () => {
           bmadCommit: TEST_BMAD_COMMIT,
           ralphCommit: TEST_RALPH_COMMIT,
         },
-      }),
+      })
     );
     await mkdir(join(testDir, "_bmad"), { recursive: true });
     await mkdir(join(testDir, ".ralph/lib"), { recursive: true });
@@ -88,7 +88,7 @@ describe("doctor command", () => {
     await writeFile(join(testDir, ".claude/commands/bmalph.md"), "# bmalph");
     await writeFile(
       join(testDir, "CLAUDE.md"),
-      "# Project\n\n## BMAD-METHOD Integration\n\nSome content",
+      "# Project\n\n## BMAD-METHOD Integration\n\nSome content"
     );
     await writeFile(join(testDir, ".gitignore"), ".ralph/logs/\n_bmad-output/\n");
   }
@@ -164,10 +164,7 @@ describe("doctor command", () => {
 
     it("fails when _bmad/ directory does not exist", async () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -192,10 +189,7 @@ describe("doctor command", () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await mkdir(join(testDir, "_bmad"), { recursive: true });
       await mkdir(join(testDir, ".ralph/lib"), { recursive: true });
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -210,10 +204,7 @@ describe("doctor command", () => {
       await mkdir(join(testDir, "_bmad"), { recursive: true });
       await mkdir(join(testDir, ".ralph/lib"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -238,10 +229,7 @@ describe("doctor command", () => {
       await mkdir(join(testDir, "_bmad"), { recursive: true });
       await mkdir(join(testDir, ".ralph"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -267,10 +255,7 @@ describe("doctor command", () => {
       await mkdir(join(testDir, "_bmad"), { recursive: true });
       await mkdir(join(testDir, ".ralph/lib"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -298,10 +283,7 @@ describe("doctor command", () => {
       await mkdir(join(testDir, ".claude/commands"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
       await writeFile(join(testDir, ".claude/commands/bmalph.md"), "# bmalph");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -319,10 +301,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
       await writeFile(join(testDir, ".claude/commands/bmalph.md"), "# bmalph");
       await writeFile(join(testDir, "CLAUDE.md"), "# Project\n\nNo BMAD here.");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -350,14 +329,8 @@ describe("doctor command", () => {
       await mkdir(join(testDir, ".claude/commands"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
       await writeFile(join(testDir, ".claude/commands/bmalph.md"), "# bmalph");
-      await writeFile(
-        join(testDir, "CLAUDE.md"),
-        "## BMAD-METHOD Integration\n",
-      );
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "CLAUDE.md"), "## BMAD-METHOD Integration\n");
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -374,15 +347,9 @@ describe("doctor command", () => {
       await mkdir(join(testDir, ".claude/commands"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
       await writeFile(join(testDir, ".claude/commands/bmalph.md"), "# bmalph");
-      await writeFile(
-        join(testDir, "CLAUDE.md"),
-        "## BMAD-METHOD Integration\n",
-      );
+      await writeFile(join(testDir, "CLAUDE.md"), "## BMAD-METHOD Integration\n");
       await writeFile(join(testDir, ".gitignore"), "_bmad-output/\n");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -398,15 +365,9 @@ describe("doctor command", () => {
       await mkdir(join(testDir, ".claude/commands"), { recursive: true });
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\n");
       await writeFile(join(testDir, ".claude/commands/bmalph.md"), "# bmalph");
-      await writeFile(
-        join(testDir, "CLAUDE.md"),
-        "## BMAD-METHOD Integration\n",
-      );
+      await writeFile(join(testDir, "CLAUDE.md"), "## BMAD-METHOD Integration\n");
       await writeFile(join(testDir, ".gitignore"), ".ralph/logs/\n");
-      await writeFile(
-        join(testDir, "bmalph/config.json"),
-        JSON.stringify({ name: "test" }),
-      );
+      await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -424,7 +385,7 @@ describe("doctor command", () => {
       const version = getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
-        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`,
+        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -438,10 +399,7 @@ describe("doctor command", () => {
     it("passes with detail when no version marker present (pre-0.8.0)", async () => {
       await setupFullProject();
       // ralph_loop.sh without version marker
-      await writeFile(
-        join(testDir, ".ralph/ralph_loop.sh"),
-        "#!/bin/bash\necho hello\n",
-      );
+      await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\necho hello\n");
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
       await doctorCommand();
@@ -455,7 +413,7 @@ describe("doctor command", () => {
       await setupFullProject();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
-        "#!/bin/bash\n# bmalph-version: 0.1.0\necho hello\n",
+        "#!/bin/bash\n# bmalph-version: 0.1.0\necho hello\n"
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -484,7 +442,7 @@ describe("doctor command", () => {
       const version = getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
-        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`,
+        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -509,7 +467,7 @@ describe("doctor command", () => {
       const version = getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
-        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`,
+        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -574,7 +532,7 @@ describe("doctor command", () => {
       const version = getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
-        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`,
+        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
       );
 
       // Mock checkUpstream to return success
@@ -629,7 +587,7 @@ describe("doctor command", () => {
             state: "CLOSED",
             consecutive_no_progress: 0,
             last_progress_loop: 5,
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -648,7 +606,7 @@ describe("doctor command", () => {
             state: "HALF_OPEN",
             consecutive_no_progress: 2,
             reason: "Monitoring: 2 loops without progress",
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -667,7 +625,7 @@ describe("doctor command", () => {
             state: "OPEN",
             consecutive_no_progress: 3,
             reason: "No progress detected in 3 consecutive loops",
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -691,10 +649,7 @@ describe("doctor command", () => {
 
       it("handles corrupt circuit breaker JSON (parse error)", async () => {
         await setupFullProject();
-        await writeFile(
-          join(testDir, ".ralph/.circuit_breaker_state"),
-          "{ invalid json syntax",
-        );
+        await writeFile(join(testDir, ".ralph/.circuit_breaker_state"), "{ invalid json syntax");
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
         await doctorCommand();
@@ -711,7 +666,7 @@ describe("doctor command", () => {
           JSON.stringify({
             state: "INVALID_STATE",
             consecutive_no_progress: 0,
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -734,7 +689,7 @@ describe("doctor command", () => {
             session_id: "ralph-12345",
             created_at: twoHoursAgo.toISOString(),
             last_used: now.toISOString(),
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -766,7 +721,7 @@ describe("doctor command", () => {
             session_id: "ralph-12345",
             created_at: thirtyHoursAgo.toISOString(),
             last_used: now.toISOString(),
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -779,10 +734,7 @@ describe("doctor command", () => {
 
       it("handles corrupt ralph session JSON (parse error)", async () => {
         await setupFullProject();
-        await writeFile(
-          join(testDir, ".ralph/.ralph_session"),
-          "not valid json {{{",
-        );
+        await writeFile(join(testDir, ".ralph/.ralph_session"), "not valid json {{{");
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
         await doctorCommand();
@@ -801,7 +753,7 @@ describe("doctor command", () => {
             session_id: "ralph-12345",
             created_at: futureDate.toISOString(),
             last_used: new Date().toISOString(),
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -825,7 +777,7 @@ describe("doctor command", () => {
             calls_made_this_hour: 12,
             max_calls_per_hour: 100,
             status: "running",
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -857,7 +809,7 @@ describe("doctor command", () => {
             calls_made_this_hour: 95,
             max_calls_per_hour: 100,
             status: "running",
-          }),
+          })
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -944,6 +896,75 @@ describe("doctor command", () => {
       expect(output).not.toMatch(/\x1b\[/);
       // eslint-disable-next-line no-control-regex
       expect(output).not.toMatch(/\u001b\[/);
+    });
+  });
+
+  describe("check registry pattern", () => {
+    it("exports CHECK_REGISTRY with all expected checks", async () => {
+      const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+
+      expect(Array.isArray(CHECK_REGISTRY)).toBe(true);
+      expect(CHECK_REGISTRY.length).toBe(15);
+
+      // All checks should have required properties
+      for (const check of CHECK_REGISTRY) {
+        expect(check).toHaveProperty("id");
+        expect(check).toHaveProperty("run");
+        expect(typeof check.id).toBe("string");
+        expect(typeof check.run).toBe("function");
+      }
+    });
+
+    it("CHECK_REGISTRY contains expected check IDs in order", async () => {
+      const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+
+      const expectedIds = [
+        "node-version",
+        "bash-available",
+        "config-valid",
+        "bmad-dir",
+        "ralph-loop",
+        "ralph-lib",
+        "slash-command",
+        "claude-md",
+        "gitignore",
+        "version-marker",
+        "upstream-versions",
+        "circuit-breaker",
+        "ralph-session",
+        "api-calls",
+        "upstream-github",
+      ];
+
+      const actualIds = CHECK_REGISTRY.map((c) => c.id);
+      expect(actualIds).toEqual(expectedIds);
+    });
+
+    it("individual check functions return CheckResult", async () => {
+      await setupFullProject();
+      const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+
+      // Test a few checks directly
+      const configCheck = CHECK_REGISTRY.find((c) => c.id === "config-valid");
+      expect(configCheck).toBeDefined();
+
+      const result = await configCheck!.run(testDir);
+      expect(result).toHaveProperty("label");
+      expect(result).toHaveProperty("passed");
+      expect(typeof result.passed).toBe("boolean");
+    });
+
+    it("CheckResult type includes optional detail and hint", async () => {
+      // Empty project - config check will fail
+      const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+
+      const configCheck = CHECK_REGISTRY.find((c) => c.id === "config-valid");
+      const result = await configCheck!.run(testDir);
+
+      // Failed check should have detail and hint
+      expect(result.passed).toBe(false);
+      expect(result).toHaveProperty("detail");
+      expect(result).toHaveProperty("hint");
     });
   });
 

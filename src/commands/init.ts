@@ -1,7 +1,13 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { writeConfig, type BmalphConfig } from "../utils/config.js";
-import { installProject, mergeClaudeMd, isInitialized, previewInstall, getBundledVersions } from "../installer.js";
+import {
+  installProject,
+  mergeClaudeMd,
+  isInitialized,
+  previewInstall,
+  getBundledVersions,
+} from "../installer.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 import { validateProjectName } from "../utils/validate.js";
 import { withErrorHandling } from "../utils/errors.js";
@@ -21,7 +27,7 @@ async function runInit(options: InitOptions): Promise<void> {
 
   if (await isInitialized(projectDir)) {
     console.log(chalk.yellow("bmalph is already initialized in this project."));
-    console.log("Use 'bmalph reset --hard' to reinitialize.");
+    console.log("Use 'bmalph upgrade' to update bundled assets to the latest version.");
     return;
   }
 
@@ -100,5 +106,7 @@ async function runInit(options: InitOptions): Promise<void> {
   console.log(`  .claude/commands/  Slash command (/bmalph)`);
   console.log(`  bmalph/            State management`);
   console.log(`\nNext step:`);
-  console.log(`  Use ${chalk.cyan("/bmalph")} in Claude Code to see your current phase and commands.`);
+  console.log(
+    `  Use ${chalk.cyan("/bmalph")} in Claude Code to see your current phase and commands.`
+  );
 }

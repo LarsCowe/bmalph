@@ -2,10 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import {
-  findArtifactsDir,
-  validateArtifacts,
-} from "../../src/transition/artifacts.js";
+import { findArtifactsDir, validateArtifacts } from "../../src/transition/artifacts.js";
 
 describe("artifacts", () => {
   let testDir: string;
@@ -93,9 +90,7 @@ describe("artifacts", () => {
       const files = ["architecture.md"];
       const warnings = await validateArtifacts(files, artifactsDir);
 
-      expect(warnings).toContain(
-        "No PRD document found in planning artifacts"
-      );
+      expect(warnings).toContain("No PRD document found in planning artifacts");
     });
 
     it("warns when architecture is missing", async () => {
@@ -106,9 +101,7 @@ describe("artifacts", () => {
       const files = ["prd.md"];
       const warnings = await validateArtifacts(files, artifactsDir);
 
-      expect(warnings).toContain(
-        "No architecture document found in planning artifacts"
-      );
+      expect(warnings).toContain("No architecture document found in planning artifacts");
     });
 
     it("detects NO-GO status in readiness report", async () => {
@@ -196,9 +189,7 @@ describe("artifacts", () => {
         await writeFile(join(artifactsDir, filename), "# PRD");
         const files = [filename, "architecture.md"];
         const warnings = await validateArtifacts(files, artifactsDir);
-        expect(
-          warnings.find((w) => w.includes("No PRD"))
-        ).toBeUndefined();
+        expect(warnings.find((w) => w.includes("No PRD"))).toBeUndefined();
         await rm(join(artifactsDir, filename));
       }
     });
@@ -217,9 +208,7 @@ describe("artifacts", () => {
         await writeFile(join(artifactsDir, filename), "# Architecture");
         const files = ["prd.md", filename];
         const warnings = await validateArtifacts(files, artifactsDir);
-        expect(
-          warnings.find((w) => w.includes("No architecture"))
-        ).toBeUndefined();
+        expect(warnings.find((w) => w.includes("No architecture"))).toBeUndefined();
         await rm(join(artifactsDir, filename));
       }
     });

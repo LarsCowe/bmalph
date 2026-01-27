@@ -102,9 +102,7 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
       }
 
       // Find where AC starts: either "**Acceptance Criteria:**" heading or first Given line
-      let acStartIndex = bodyLines.findIndex((l) =>
-        AC_HEADING_PATTERN.test(l.trim()),
-      );
+      let acStartIndex = bodyLines.findIndex((l) => AC_HEADING_PATTERN.test(l.trim()));
 
       if (acStartIndex === -1) {
         // Look for first Given/When/Then line as AC start

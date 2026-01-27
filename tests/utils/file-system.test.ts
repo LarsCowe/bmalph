@@ -1,0 +1,109 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdir, writeFile, rm } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
+import { getFilesRecursive, getMarkdownFilesWithContent } from "../../src/utils/file-system.js";
+
+describe("file-system utilities", () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(tmpdir(), `bmalph-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
+
+  describe("getFilesRecursive", () => {
+    it("returns empty array for empty directory", async () => {
+      const files = await getFilesRecursive(testDir);
+      expect(files).toEqual([]);
+    });
+
+    it("returns empty array for non-existent directory", async () => {
+      const files = await getFilesRecursive(join(testDir, "nonexistent"));
+      expect(files).toEqual([]);
+    });
+
+    it("returns files in root directory", async () => {
+      await writeFile(join(testDir, "file1.txt"), "content");
+      await writeFile(join(testDir, "file2.md"), "markdown");
+
+      const files = await getFilesRecursive(testDir);
+      expect(files.sort()).toEqual(["file1.txt", "file2.md"]);
+    });
+
+    it("returns files in nested directories", async () => {
+      await mkdir(join(testDir, "sub1"), { recursive: true });
+      await mkdir(join(testDir, "sub2", "deep"), { recursive: true });
+      await writeFile(join(testDir, "root.txt"), "");
+      await writeFile(join(testDir, "sub1", "a.txt"), "");
+      await writeFile(join(testDir, "sub2", "b.txt"), "");
+      await writeFile(join(testDir, "sub2", "deep", "c.txt"), "");
+
+      const files = await getFilesRecursive(testDir);
+      const normalized = files.map((f) => f.replace(/\\/g, "/")).sort();
+      expect(normalized).toEqual(["root.txt", "sub1/a.txt", "sub2/b.txt", "sub2/deep/c.txt"]);
+    });
+
+    it("uses forward slashes in paths on all platforms", async () => {
+      await mkdir(join(testDir, "sub"), { recursive: true });
+      await writeFile(join(testDir, "sub", "file.txt"), "");
+
+      const files = await getFilesRecursive(testDir);
+      expect(files[0]).toBe("sub/file.txt");
+    });
+  });
+
+  describe("getMarkdownFilesWithContent", () => {
+    it("returns empty array for empty directory", async () => {
+      const files = await getMarkdownFilesWithContent(testDir);
+      expect(files).toEqual([]);
+    });
+
+    it("returns empty array for non-existent directory", async () => {
+      const files = await getMarkdownFilesWithContent(join(testDir, "nonexistent"));
+      expect(files).toEqual([]);
+    });
+
+    it("only returns markdown files", async () => {
+      await writeFile(join(testDir, "file.txt"), "text");
+      await writeFile(join(testDir, "readme.md"), "markdown");
+      await writeFile(join(testDir, "docs.MD"), "upper case");
+
+      const files = await getMarkdownFilesWithContent(testDir);
+      const paths = files.map((f) => f.path).sort();
+      expect(paths).toEqual(["docs.MD", "readme.md"]);
+    });
+
+    it("includes content and size", async () => {
+      await writeFile(join(testDir, "test.md"), "Hello World");
+
+      const files = await getMarkdownFilesWithContent(testDir);
+      expect(files).toHaveLength(1);
+      expect(files[0].path).toBe("test.md");
+      expect(files[0].content).toBe("Hello World");
+      expect(files[0].size).toBe(11);
+    });
+
+    it("includes files from subdirectories", async () => {
+      await mkdir(join(testDir, "docs"), { recursive: true });
+      await writeFile(join(testDir, "root.md"), "root");
+      await writeFile(join(testDir, "docs", "nested.md"), "nested");
+
+      const files = await getMarkdownFilesWithContent(testDir);
+      const paths = files.map((f) => f.path).sort();
+      expect(paths).toEqual(["docs/nested.md", "root.md"]);
+    });
+
+    it("uses forward slashes in paths", async () => {
+      await mkdir(join(testDir, "sub"), { recursive: true });
+      await writeFile(join(testDir, "sub", "file.md"), "content");
+
+      const files = await getMarkdownFilesWithContent(testDir);
+      expect(files[0].path).toBe("sub/file.md");
+    });
+  });
+});

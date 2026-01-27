@@ -1,8 +1,9 @@
-import { readFile, readdir, stat } from "fs/promises";
-import { join, extname } from "path";
 import type { SpecFileType, Priority, SpecFileMetadata, SpecsIndex } from "./types.js";
-
-const LARGE_FILE_THRESHOLD = 50000; // 50 KB
+import { getMarkdownFilesWithContent } from "../utils/file-system.js";
+import {
+  LARGE_FILE_THRESHOLD_BYTES,
+  DEFAULT_SNIPPET_MAX_LENGTH,
+} from "../utils/constants.js";
 
 /**
  * Detects the type of a spec file based on its filename.
@@ -49,7 +50,7 @@ export function determinePriority(type: SpecFileType, _size: number): Priority {
  * Extracts a one-line description from file content.
  * Prefers the first heading, falls back to first non-empty line.
  */
-export function extractDescription(content: string, maxLength = 60): string {
+export function extractDescription(content: string, maxLength = DEFAULT_SNIPPET_MAX_LENGTH): string {
   const trimmed = content.trim();
   if (!trimmed) return "";
 
@@ -78,43 +79,10 @@ export function extractDescription(content: string, maxLength = 60): string {
 }
 
 /**
- * Recursively gets all markdown files from a directory.
- */
-async function getMarkdownFiles(dir: string, basePath = ""): Promise<{ path: string; size: number; content: string }[]> {
-  const files: { path: string; size: number; content: string }[] = [];
-
-  try {
-    const entries = await readdir(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      const relativePath = basePath ? join(basePath, entry.name) : entry.name;
-
-      if (entry.isDirectory()) {
-        const subFiles = await getMarkdownFiles(fullPath, relativePath);
-        files.push(...subFiles);
-      } else if (entry.isFile() && extname(entry.name).toLowerCase() === ".md") {
-        const stats = await stat(fullPath);
-        const content = await readFile(fullPath, "utf-8");
-        files.push({
-          path: relativePath.replace(/\\/g, "/"),
-          size: stats.size,
-          content,
-        });
-      }
-    }
-  } catch {
-    // Directory doesn't exist or can't be read
-  }
-
-  return files;
-}
-
-/**
  * Generates a specs index from a specs directory.
  */
 export async function generateSpecsIndex(specsDir: string): Promise<SpecsIndex> {
-  const files = await getMarkdownFiles(specsDir);
+  const files = await getMarkdownFilesWithContent(specsDir);
 
   const metadata: SpecFileMetadata[] = files.map((file) => {
     const type = detectSpecFileType(file.path, file.content);
@@ -182,7 +150,7 @@ export function formatSpecsIndexMd(index: SpecsIndex): string {
 
     for (const file of filesInPriority) {
       const sizeKb = Math.round(file.size / 1024);
-      const isLarge = file.size >= LARGE_FILE_THRESHOLD;
+      const isLarge = file.size >= LARGE_FILE_THRESHOLD_BYTES;
 
       let line = `${fileNumber}. **${file.path}** (${sizeKb} KB)`;
       if (isLarge) {

@@ -16,7 +16,9 @@ export function logDryRunAction(action: DryRunAction): void {
       console.log(`${prefix} Would modify: ${chalk.yellow(action.path)}`);
       break;
     case "skip":
-      console.log(`${prefix} Would skip: ${chalk.dim(action.path)}${action.reason ? ` (${action.reason})` : ""}`);
+      console.log(
+        `${prefix} Would skip: ${chalk.dim(action.path)}${action.reason ? ` (${action.reason})` : ""}`
+      );
       break;
   }
 }
