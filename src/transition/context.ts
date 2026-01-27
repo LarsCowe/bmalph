@@ -68,9 +68,7 @@ function extractFromPatternsWithInfo(
   return { content: "", wasTruncated: false, originalLength: 0 };
 }
 
-export function extractProjectContext(
-  artifacts: Map<string, string>
-): ExtractProjectContextResult {
+export function extractProjectContext(artifacts: Map<string, string>): ExtractProjectContextResult {
   // Combine all content, keyed by likely role
   let prdContent = "";
   let archContent = "";
@@ -108,41 +106,22 @@ export function extractProjectContext(
     {
       field: "architectureConstraints",
       source: archContent || allContent,
-      patterns: [
-        /^##\s+Constraints/m,
-        /^##\s+ADR/m,
-        /^##\s+Architecture Decision/m,
-      ],
+      patterns: [/^##\s+Constraints/m, /^##\s+ADR/m, /^##\s+Architecture Decision/m],
     },
     {
       field: "technicalRisks",
       source: archContent || allContent,
-      patterns: [
-        /^##\s+Risks/m,
-        /^##\s+Technical Risks/m,
-        /^##\s+Mitigations/m,
-        /^##\s+Risk/m,
-      ],
+      patterns: [/^##\s+Risks/m, /^##\s+Technical Risks/m, /^##\s+Mitigations/m, /^##\s+Risk/m],
     },
     {
       field: "scopeBoundaries",
       source: prdContent || allContent,
-      patterns: [
-        /^##\s+Scope/m,
-        /^##\s+In Scope/m,
-        /^##\s+Out of Scope/m,
-        /^##\s+Boundaries/m,
-      ],
+      patterns: [/^##\s+Scope/m, /^##\s+In Scope/m, /^##\s+Out of Scope/m, /^##\s+Boundaries/m],
     },
     {
       field: "targetUsers",
       source: prdContent || allContent,
-      patterns: [
-        /^##\s+Target Users/m,
-        /^##\s+Users/m,
-        /^##\s+Personas/m,
-        /^##\s+User Profiles/m,
-      ],
+      patterns: [/^##\s+Target Users/m, /^##\s+Users/m, /^##\s+Personas/m, /^##\s+User Profiles/m],
     },
     {
       field: "nonFunctionalRequirements",
