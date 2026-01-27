@@ -26,8 +26,8 @@ export const LARGE_FILE_THRESHOLD_BYTES = 50000;
 /** Default max length for extracted content snippets */
 export const DEFAULT_SNIPPET_MAX_LENGTH = 60;
 
-/** Max length for section extraction from documents */
-export const SECTION_EXTRACT_MAX_LENGTH = 500;
+/** Max length for section extraction from documents (increased to preserve full BMAD specs) */
+export const SECTION_EXTRACT_MAX_LENGTH = 5000;
 
 /** Max characters for diff line preview */
 export const DIFF_LINE_PREVIEW_LENGTH = 50;

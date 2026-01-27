@@ -114,13 +114,39 @@ export function generateProjectContextMd(context: ProjectContext, projectName: s
   return lines.join("\n");
 }
 
-export function generatePrompt(projectName: string): string {
+export function generatePrompt(projectName: string, context?: ProjectContext): string {
+  // Build context sections if provided
+  const contextSections = context
+    ? [
+        context.projectGoals && `### Project Goals\n${context.projectGoals}`,
+        context.successMetrics && `### Success Metrics\n${context.successMetrics}`,
+        context.architectureConstraints &&
+          `### Architecture Constraints\n${context.architectureConstraints}`,
+        context.scopeBoundaries && `### Scope\n${context.scopeBoundaries}`,
+        context.technicalRisks && `### Technical Risks\n${context.technicalRisks}`,
+        context.targetUsers && `### Target Users\n${context.targetUsers}`,
+        context.nonFunctionalRequirements &&
+          `### Non-Functional Requirements\n${context.nonFunctionalRequirements}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : "";
+
+  const projectContextBlock = contextSections
+    ? `
+
+## Project Specifications (CRITICAL - READ THIS)
+
+${contextSections}
+`
+    : "";
+
   return `# Ralph Development Instructions
 
 ## Context
 You are an autonomous AI development agent working on the ${projectName} project.
 You follow BMAD-METHOD's developer (Amelia) persona and TDD methodology.
-
+${projectContextBlock}
 ## Development Methodology (BMAD Dev Agent)
 
 For each story in @fix_plan.md:

@@ -133,14 +133,16 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     debug("Could not read config for project name, using default");
   }
 
+  // Extract project context for both PROJECT_CONTEXT.md and PROMPT.md
+  let projectContext = null;
   if (artifactContents.size > 0) {
-    const projectContext = extractProjectContext(artifactContents);
+    projectContext = extractProjectContext(artifactContents);
     const contextMd = generateProjectContextMd(projectContext, projectName);
     await writeFile(join(projectDir, ".ralph/PROJECT_CONTEXT.md"), contextMd);
     debug("Generated PROJECT_CONTEXT.md");
   }
 
-  // Generate PROMPT.md
+  // Generate PROMPT.md with embedded context
   // Try to preserve rich PROMPT.md template if it has the placeholder
   let prompt: string;
   try {
@@ -148,10 +150,12 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     if (existingPrompt.includes("[YOUR PROJECT NAME]")) {
       prompt = existingPrompt.replace(/\[YOUR PROJECT NAME\]/g, projectName);
     } else {
-      prompt = generatePrompt(projectName);
+      // Pass context to embed critical specs directly in PROMPT.md
+      prompt = generatePrompt(projectName, projectContext ?? undefined);
     }
   } catch {
-    prompt = generatePrompt(projectName);
+    // Pass context to embed critical specs directly in PROMPT.md
+    prompt = generatePrompt(projectName, projectContext ?? undefined);
   }
   await writeFile(join(projectDir, ".ralph/PROMPT.md"), prompt);
 

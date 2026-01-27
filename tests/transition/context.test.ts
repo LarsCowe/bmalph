@@ -44,7 +44,7 @@ This should not be included.
       expect(result).not.toContain("This should not be included.");
     });
 
-    it("truncates to maxLength when content exceeds limit", () => {
+    it("truncates to explicit maxLength when provided", () => {
       const content = `## Long Section
 
 ${"A".repeat(600)}
@@ -53,6 +53,32 @@ ${"A".repeat(600)}
 `;
       const result = extractSection(content, /^##\s+Long Section/m, 100);
       expect(result.length).toBe(100);
+    });
+
+    it("does not truncate content under 5000 chars (default limit)", () => {
+      // Content just under 5000 chars should not be truncated
+      const longContent = "B".repeat(4500);
+      const content = `## Goals
+
+${longContent}
+
+## Next Section
+`;
+      const result = extractSection(content, /^##\s+Goals/m);
+      expect(result).toBe(longContent);
+    });
+
+    it("truncates content over 5000 chars when no explicit maxLength", () => {
+      // Content over 5000 chars should be truncated
+      const veryLongContent = "C".repeat(6000);
+      const content = `## Goals
+
+${veryLongContent}
+
+## Next Section
+`;
+      const result = extractSection(content, /^##\s+Goals/m);
+      expect(result.length).toBe(5000);
     });
 
     it("returns full content when under maxLength", () => {
@@ -312,6 +338,54 @@ Third-party API rate limits.
       expect(prompt).toContain("High");
       expect(prompt).toContain("Medium");
       expect(prompt).toContain("Low");
+    });
+
+    it("embeds project context when provided", () => {
+      const context = {
+        projectGoals: "Build a CLI tool for developers",
+        successMetrics: "95% test coverage, <100ms response",
+        architectureConstraints: "Must use TypeScript, Node.js 20+",
+        technicalRisks: "",
+        scopeBoundaries: "MVP: core features only",
+        targetUsers: "",
+        nonFunctionalRequirements: "",
+      };
+      const prompt = generatePrompt("TestProject", context);
+
+      expect(prompt).toContain("### Project Goals");
+      expect(prompt).toContain("Build a CLI tool for developers");
+      expect(prompt).toContain("### Success Metrics");
+      expect(prompt).toContain("95% test coverage");
+      expect(prompt).toContain("### Architecture Constraints");
+      expect(prompt).toContain("Must use TypeScript");
+      expect(prompt).toContain("### Scope");
+      expect(prompt).toContain("MVP: core features only");
+    });
+
+    it("omits empty context sections from prompt", () => {
+      const context = {
+        projectGoals: "Only goals are set",
+        successMetrics: "",
+        architectureConstraints: "",
+        technicalRisks: "",
+        scopeBoundaries: "",
+        targetUsers: "",
+        nonFunctionalRequirements: "",
+      };
+      const prompt = generatePrompt("TestProject", context);
+
+      expect(prompt).toContain("### Project Goals");
+      expect(prompt).toContain("Only goals are set");
+      expect(prompt).not.toContain("### Success Metrics");
+      expect(prompt).not.toContain("### Architecture Constraints");
+      expect(prompt).not.toContain("### Scope");
+    });
+
+    it("works without context parameter (backwards compatible)", () => {
+      const prompt = generatePrompt("TestProject");
+      expect(prompt).toContain("TestProject project");
+      expect(prompt).toContain("RALPH_STATUS");
+      expect(prompt).not.toContain("### Project Goals");
     });
   });
 });

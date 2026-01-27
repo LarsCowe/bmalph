@@ -72,9 +72,9 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
     const epicMatch = line.match(EPIC_HEADER_PATTERN);
     if (epicMatch) {
       currentEpic = epicMatch[1].trim();
-      // Collect max 2 non-empty lines between epic header and first story/next heading
+      // Collect all non-empty lines between epic header and first story/next heading
       const descLines: string[] = [];
-      for (let j = i + 1; j < lines.length && descLines.length < 2; j++) {
+      for (let j = i + 1; j < lines.length; j++) {
         if (HEADING_PATTERN.test(lines[j])) break;
         const trimmed = lines[j].trim();
         if (trimmed) descLines.push(trimmed);
@@ -109,12 +109,11 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
         acStartIndex = bodyLines.findIndex((l) => isGivenLine(l));
       }
 
-      // Description: non-empty lines before AC (max 3)
+      // Description: all non-empty lines before AC
       const descSource = acStartIndex > -1 ? bodyLines.slice(0, acStartIndex) : bodyLines;
       const descLines: string[] = [];
       for (const dl of descSource) {
         if (dl.trim()) descLines.push(dl.trim());
-        if (descLines.length >= 3) break;
       }
 
       // Acceptance criteria: lines from AC start onward

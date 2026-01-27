@@ -8,6 +8,7 @@ import {
   RALPH_LOGS_DIR,
   RALPH_SPECS_DIR,
   CLAUDE_COMMANDS_DIR,
+  SECTION_EXTRACT_MAX_LENGTH,
   getRalphDir,
   getBmadDir,
   getBmalphDir,
@@ -18,6 +19,13 @@ import {
 } from "../../src/utils/constants.js";
 
 describe("constants", () => {
+  describe("threshold constants", () => {
+    it("defines SECTION_EXTRACT_MAX_LENGTH as 5000 for full context transfer", () => {
+      // This limit should be high enough to capture most BMAD spec sections without truncation
+      expect(SECTION_EXTRACT_MAX_LENGTH).toBe(5000);
+    });
+  });
+
   describe("directory constants", () => {
     it("defines RALPH_DIR as .ralph", () => {
       expect(RALPH_DIR).toBe(".ralph");

@@ -66,12 +66,13 @@ So that I can access my data.
       });
     });
 
-    it("parses epic description with max 2 lines", () => {
+    it("parses all epic description lines without limit", () => {
       const content = `## Epic 1: Auth
 
 Provide secure authentication.
 Enable multi-factor support.
-This third line should be ignored.
+This third line should be included.
+And this fourth line too.
 
 ### Story 1.1: Login
 
@@ -79,9 +80,27 @@ As a user, I want to log in.
 `;
       const stories = parseStories(content);
 
-      expect(stories[0].epicDescription).toBe(
-        "Provide secure authentication. Enable multi-factor support."
-      );
+      expect(stories[0].epicDescription).toContain("Provide secure authentication.");
+      expect(stories[0].epicDescription).toContain("Enable multi-factor support.");
+      expect(stories[0].epicDescription).toContain("This third line should be included.");
+      expect(stories[0].epicDescription).toContain("And this fourth line too.");
+    });
+
+    it("parses long epic descriptions with many lines", () => {
+      const epicLines = Array.from({ length: 5 }, (_, i) => `Epic description line ${i + 1}.`);
+      const content = `## Epic 1: Complex Epic
+
+${epicLines.join("\n")}
+
+### Story 1.1: Feature
+
+Story description.
+`;
+      const stories = parseStories(content);
+
+      // All 5 epic description lines should be present
+      expect(stories[0].epicDescription).toContain("Epic description line 1.");
+      expect(stories[0].epicDescription).toContain("Epic description line 5.");
     });
 
     it("parses epic with no description lines", () => {
@@ -210,7 +229,7 @@ Description.
       expect(stories[0].acceptanceCriteria.length).toBeGreaterThanOrEqual(0);
     });
 
-    it("handles story with only description, no AC section", () => {
+    it("parses all story description lines without limit", () => {
       const content = `## Epic 1: Setup
 
 ### Story 1.1: Init
@@ -223,9 +242,25 @@ Line five of description.
 `;
       const stories = parseStories(content);
       expect(stories).toHaveLength(1);
-      // Description is limited to max 3 lines
-      expect(stories[0].description.split(" ").length).toBeLessThanOrEqual(20);
+      // All 5 lines should be included in description
+      expect(stories[0].description).toContain("Line one of description.");
+      expect(stories[0].description).toContain("Line five of description.");
       expect(stories[0].acceptanceCriteria).toEqual([]);
+    });
+
+    it("parses long story descriptions with many lines", () => {
+      const lines = Array.from({ length: 10 }, (_, i) => `Description line ${i + 1}.`);
+      const content = `## Epic 1: Feature
+
+### Story 1.1: Complex Feature
+
+${lines.join("\n")}
+`;
+      const stories = parseStories(content);
+      expect(stories).toHaveLength(1);
+      // All 10 lines should be present
+      expect(stories[0].description).toContain("Description line 1.");
+      expect(stories[0].description).toContain("Description line 10.");
     });
 
     it("parses acceptance criteria in heading-based format", () => {
@@ -561,6 +596,80 @@ As a user, I want to log in.
 
       expect(descIndex).toBeGreaterThan(-1);
       expect(acIndex).toBeGreaterThan(descIndex);
+    });
+
+    it("includes spec-link after acceptance criteria", () => {
+      const stories: Story[] = [
+        {
+          epic: "Auth",
+          id: "1.1",
+          title: "Login",
+          description: "As a user, I want to log in.",
+          epicDescription: "",
+          acceptanceCriteria: ["Given valid creds, When submitted, Then logged in"],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("  > Spec: specs/planning-artifacts/stories.md#story-1-1");
+    });
+
+    it("converts story ID dots to dashes in spec-link anchor", () => {
+      const stories: Story[] = [
+        {
+          epic: "Dashboard",
+          id: "2.3",
+          title: "Stats View",
+          description: "View stats.",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("  > Spec: specs/planning-artifacts/stories.md#story-2-3");
+      expect(plan).not.toContain("#story-2.3");
+    });
+
+    it("places spec-link after acceptance criteria", () => {
+      const stories: Story[] = [
+        {
+          epic: "Core",
+          id: "1.1",
+          title: "Feature",
+          description: "As a user, I want feature X.",
+          epicDescription: "",
+          acceptanceCriteria: ["Given A, When B, Then C"],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+      const lines = plan.split("\n");
+      const acIndex = lines.findIndex((l) => l.includes("> AC:"));
+      const specIndex = lines.findIndex((l) => l.includes("> Spec:"));
+
+      expect(acIndex).toBeGreaterThan(-1);
+      expect(specIndex).toBeGreaterThan(-1);
+      expect(specIndex).toBeGreaterThan(acIndex);
+    });
+
+    it("includes spec-link even when no acceptance criteria", () => {
+      const stories: Story[] = [
+        {
+          epic: "Setup",
+          id: "3.2",
+          title: "Config",
+          description: "Configure project.",
+          epicDescription: "",
+          acceptanceCriteria: [],
+        },
+      ];
+
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("  > Spec: specs/planning-artifacts/stories.md#story-3-2");
     });
   });
 

@@ -27,6 +27,10 @@ export function generateFixPlan(stories: Story[]): string {
     for (const ac of story.acceptanceCriteria) {
       lines.push(`  > AC: ${ac}`);
     }
+
+    // Add spec-link for easy reference to full story details
+    const anchor = story.id.replace(".", "-");
+    lines.push(`  > Spec: specs/planning-artifacts/stories.md#story-${anchor}`);
   }
 
   lines.push(
