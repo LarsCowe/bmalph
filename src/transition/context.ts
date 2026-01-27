@@ -1,13 +1,32 @@
-import type { ProjectContext } from "./types.js";
+import type { ProjectContext, TruncationInfo } from "./types.js";
 import { SECTION_EXTRACT_MAX_LENGTH } from "../utils/constants.js";
+
+export interface ExtractProjectContextResult {
+  context: ProjectContext;
+  truncated: TruncationInfo[];
+}
+
+export interface ExtractSectionResult {
+  content: string;
+  wasTruncated: boolean;
+  originalLength: number;
+}
 
 export function extractSection(
   content: string,
   headingPattern: RegExp,
   maxLength = SECTION_EXTRACT_MAX_LENGTH
 ): string {
+  return extractSectionWithInfo(content, headingPattern, maxLength).content;
+}
+
+export function extractSectionWithInfo(
+  content: string,
+  headingPattern: RegExp,
+  maxLength = SECTION_EXTRACT_MAX_LENGTH
+): ExtractSectionResult {
   const match = headingPattern.exec(content);
-  if (!match) return "";
+  if (!match) return { content: "", wasTruncated: false, originalLength: 0 };
 
   // Determine heading level from the match
   const headingLevelMatch = match[0].match(/^(#{1,6})\s/);
@@ -22,19 +41,40 @@ export function extractSection(
   const sectionBody = nextMatch ? rest.slice(0, nextMatch.index) : rest;
 
   const trimmed = sectionBody.trim();
-  if (trimmed.length <= maxLength) return trimmed;
-  return trimmed.slice(0, maxLength);
+  if (trimmed.length <= maxLength) {
+    return { content: trimmed, wasTruncated: false, originalLength: trimmed.length };
+  }
+  return {
+    content: trimmed.slice(0, maxLength),
+    wasTruncated: true,
+    originalLength: trimmed.length,
+  };
+}
+
+interface ExtractFromPatternsResult {
+  content: string;
+  wasTruncated: boolean;
+  originalLength: number;
 }
 
 function extractFromPatterns(content: string, patterns: RegExp[]): string {
-  for (const pattern of patterns) {
-    const result = extractSection(content, pattern);
-    if (result) return result;
-  }
-  return "";
+  return extractFromPatternsWithInfo(content, patterns).content;
 }
 
-export function extractProjectContext(artifacts: Map<string, string>): ProjectContext {
+function extractFromPatternsWithInfo(
+  content: string,
+  patterns: RegExp[]
+): ExtractFromPatternsResult {
+  for (const pattern of patterns) {
+    const result = extractSectionWithInfo(content, pattern);
+    if (result.content) return result;
+  }
+  return { content: "", wasTruncated: false, originalLength: 0 };
+}
+
+export function extractProjectContext(
+  artifacts: Map<string, string>
+): ExtractProjectContextResult {
   // Combine all content, keyed by likely role
   let prdContent = "";
   let archContent = "";
@@ -46,50 +86,107 @@ export function extractProjectContext(artifacts: Map<string, string>): ProjectCo
   }
 
   const allContent = prdContent + "\n" + archContent;
+  const truncated: TruncationInfo[] = [];
+
+  const fields: { field: string; source: string; patterns: RegExp[] }[] = [
+    {
+      field: "projectGoals",
+      source: prdContent || allContent,
+      patterns: [
+        /^##\s+Executive Summary/m,
+        /^##\s+Vision/m,
+        /^##\s+Goals/m,
+        /^##\s+Project Goals/m,
+      ],
+    },
+    {
+      field: "successMetrics",
+      source: prdContent || allContent,
+      patterns: [
+        /^##\s+Success (?:Criteria|Metrics)/m,
+        /^##\s+KPIs?/m,
+        /^##\s+Metrics/m,
+        /^##\s+Key Performance/m,
+      ],
+    },
+    {
+      field: "architectureConstraints",
+      source: archContent || allContent,
+      patterns: [
+        /^##\s+Constraints/m,
+        /^##\s+ADR/m,
+        /^##\s+Architecture Decision/m,
+      ],
+    },
+    {
+      field: "technicalRisks",
+      source: archContent || allContent,
+      patterns: [
+        /^##\s+Risks/m,
+        /^##\s+Technical Risks/m,
+        /^##\s+Mitigations/m,
+        /^##\s+Risk/m,
+      ],
+    },
+    {
+      field: "scopeBoundaries",
+      source: prdContent || allContent,
+      patterns: [
+        /^##\s+Scope/m,
+        /^##\s+In Scope/m,
+        /^##\s+Out of Scope/m,
+        /^##\s+Boundaries/m,
+      ],
+    },
+    {
+      field: "targetUsers",
+      source: prdContent || allContent,
+      patterns: [
+        /^##\s+Target Users/m,
+        /^##\s+Users/m,
+        /^##\s+Personas/m,
+        /^##\s+User Profiles/m,
+      ],
+    },
+    {
+      field: "nonFunctionalRequirements",
+      source: prdContent || allContent,
+      patterns: [
+        /^##\s+Non-Functional/m,
+        /^##\s+NFR/m,
+        /^##\s+Quality/m,
+        /^##\s+Quality Attributes/m,
+      ],
+    },
+  ];
+
+  const context: Record<string, string> = {};
+  for (const { field, source, patterns } of fields) {
+    const result = extractFromPatternsWithInfo(source, patterns);
+    context[field] = result.content;
+    if (result.wasTruncated) {
+      truncated.push({
+        field,
+        originalLength: result.originalLength,
+        truncatedTo: result.content.length,
+      });
+    }
+  }
 
   return {
-    projectGoals: extractFromPatterns(prdContent || allContent, [
-      /^##\s+Executive Summary/m,
-      /^##\s+Vision/m,
-      /^##\s+Goals/m,
-      /^##\s+Project Goals/m,
-    ]),
-    successMetrics: extractFromPatterns(prdContent || allContent, [
-      /^##\s+Success (?:Criteria|Metrics)/m,
-      /^##\s+KPIs?/m,
-      /^##\s+Metrics/m,
-      /^##\s+Key Performance/m,
-    ]),
-    architectureConstraints: extractFromPatterns(archContent || allContent, [
-      /^##\s+Constraints/m,
-      /^##\s+ADR/m,
-      /^##\s+Architecture Decision/m,
-    ]),
-    technicalRisks: extractFromPatterns(archContent || allContent, [
-      /^##\s+Risks/m,
-      /^##\s+Technical Risks/m,
-      /^##\s+Mitigations/m,
-      /^##\s+Risk/m,
-    ]),
-    scopeBoundaries: extractFromPatterns(prdContent || allContent, [
-      /^##\s+Scope/m,
-      /^##\s+In Scope/m,
-      /^##\s+Out of Scope/m,
-      /^##\s+Boundaries/m,
-    ]),
-    targetUsers: extractFromPatterns(prdContent || allContent, [
-      /^##\s+Target Users/m,
-      /^##\s+Users/m,
-      /^##\s+Personas/m,
-      /^##\s+User Profiles/m,
-    ]),
-    nonFunctionalRequirements: extractFromPatterns(prdContent || allContent, [
-      /^##\s+Non-Functional/m,
-      /^##\s+NFR/m,
-      /^##\s+Quality/m,
-      /^##\s+Quality Attributes/m,
-    ]),
+    context: context as unknown as ProjectContext,
+    truncated,
   };
+}
+
+/**
+ * Converts truncation info into human-readable warnings.
+ */
+export function detectTruncation(truncated: TruncationInfo[]): string[] {
+  return truncated.map(
+    (t) =>
+      `${t.field} was truncated from ${t.originalLength} to ${t.truncatedTo} characters. Some content may be missing.`
+  );
 }
 
 export function generateProjectContextMd(context: ProjectContext, projectName: string): string {

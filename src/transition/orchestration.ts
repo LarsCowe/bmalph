@@ -2,12 +2,24 @@ import { readFile, writeFile, readdir, cp, mkdir, access } from "fs/promises";
 import { join } from "path";
 import { debug } from "../utils/logger.js";
 import { readConfig } from "../utils/config.js";
+import { readState, writeState, type BmalphState } from "../utils/state.js";
 import type { TransitionResult } from "./types.js";
 import { parseStoriesWithWarnings } from "./story-parsing.js";
-import { generateFixPlan, parseFixPlan, mergeFixPlanProgress } from "./fix-plan.js";
+import {
+  generateFixPlan,
+  parseFixPlan,
+  mergeFixPlanProgress,
+  detectOrphanedCompletedStories,
+  detectRenumberedStories,
+} from "./fix-plan.js";
 import { detectTechStack, customizeAgentMd } from "./tech-stack.js";
 import { findArtifactsDir, validateArtifacts } from "./artifacts.js";
-import { extractProjectContext, generateProjectContextMd, generatePrompt } from "./context.js";
+import {
+  extractProjectContext,
+  generateProjectContextMd,
+  generatePrompt,
+  detectTruncation,
+} from "./context.js";
 import { generateSpecsChangelog, formatChangelog } from "./specs-changelog.js";
 import { generateSpecsIndex, formatSpecsIndexMd } from "./specs-index.js";
 
@@ -43,15 +55,24 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
 
   // Check existing fix_plan for completed items (smart merge)
   let completedIds = new Set<string>();
+  let existingItems: { id: string; completed: boolean; title?: string }[] = [];
   const fixPlanPath = join(projectDir, ".ralph/@fix_plan.md");
   try {
     const existingFixPlan = await readFile(fixPlanPath, "utf-8");
-    const items = parseFixPlan(existingFixPlan);
-    completedIds = new Set(items.filter((i) => i.completed).map((i) => i.id));
+    existingItems = parseFixPlan(existingFixPlan);
+    completedIds = new Set(existingItems.filter((i) => i.completed).map((i) => i.id));
     debug(`Found ${completedIds.size} completed stories in existing fix_plan`);
   } catch {
     // No existing file, start fresh
+    debug("No existing fix_plan found, starting fresh");
   }
+
+  // Detect orphaned completed stories (Bug #2)
+  const newStoryIds = new Set(stories.map((s) => s.id));
+  const orphanWarnings = detectOrphanedCompletedStories(existingItems, newStoryIds);
+
+  // Detect renumbered stories (Bug #3)
+  const renumberWarnings = detectRenumberedStories(existingItems, stories);
 
   // Generate new fix_plan from current stories, preserving completion status
   const newFixPlan = generateFixPlan(stories);
@@ -135,8 +156,11 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
 
   // Extract project context for both PROJECT_CONTEXT.md and PROMPT.md
   let projectContext = null;
+  let truncationWarnings: string[] = [];
   if (artifactContents.size > 0) {
-    projectContext = extractProjectContext(artifactContents);
+    const { context, truncated } = extractProjectContext(artifactContents);
+    projectContext = context;
+    truncationWarnings = detectTruncation(truncated);
     const contextMd = generateProjectContextMd(projectContext, projectName);
     await writeFile(join(projectDir, ".ralph/PROJECT_CONTEXT.md"), contextMd);
     debug("Generated PROJECT_CONTEXT.md");
@@ -179,7 +203,25 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
 
   // Validate artifacts and collect warnings
   const artifactWarnings = await validateArtifacts(files, artifactsDir);
-  const warnings = [...parseWarnings, ...artifactWarnings];
+  const warnings = [
+    ...parseWarnings,
+    ...artifactWarnings,
+    ...orphanWarnings,
+    ...renumberWarnings,
+    ...truncationWarnings,
+  ];
+
+  // Update phase state to 4 (Implementation) - Bug #1
+  const now = new Date().toISOString();
+  const currentState = await readState(projectDir);
+  const newState: BmalphState = {
+    currentPhase: 4,
+    status: "implementing",
+    startedAt: currentState?.startedAt ?? now,
+    lastUpdated: now,
+  };
+  await writeState(projectDir, newState);
+  debug("Updated phase state to 4 (implementing)");
 
   return { storiesCount: stories.length, warnings, fixPlanPreserved };
 }

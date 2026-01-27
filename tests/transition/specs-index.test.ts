@@ -55,6 +55,13 @@ describe("specs-index", () => {
       expect(detectSpecFileType("brainstorming.md", "content")).toBe("brainstorm");
     });
 
+    it("detects stories over brainstorm when both patterns match (Bug #5)", () => {
+      // File like "brainstorm-stories.md" should be detected as stories (critical), not brainstorm (low)
+      expect(detectSpecFileType("brainstorm-stories.md", "# Stories")).toBe("stories");
+      expect(detectSpecFileType("stories-brainstorm.md", "content")).toBe("stories");
+      expect(detectSpecFileType("epic-brainstorm-stories.md", "content")).toBe("stories");
+    });
+
     it("returns 'other' for unrecognized filenames", () => {
       expect(detectSpecFileType("notes.md", "content")).toBe("other");
       expect(detectSpecFileType("random-doc.md", "content")).toBe("other");

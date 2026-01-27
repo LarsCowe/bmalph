@@ -229,6 +229,38 @@ Description.
       expect(stories[0].acceptanceCriteria.length).toBeGreaterThanOrEqual(0);
     });
 
+    it("parses multiple Given/When/Then blocks as separate criteria (Bug #4)", () => {
+      const content = `## Epic 1: Auth
+
+### Story 1.1: Login
+
+As a user, I want to log in.
+
+**Acceptance Criteria:**
+
+**Given** valid credentials
+**When** user submits login form
+**Then** user is redirected to dashboard
+
+**Given** invalid credentials
+**When** user submits login form
+**Then** error message is displayed
+
+**Given** locked account
+**When** user attempts login
+**Then** account locked message is shown
+`;
+      const stories = parseStories(content);
+      expect(stories).toHaveLength(1);
+      // Should parse THREE separate acceptance criteria, not combine them
+      expect(stories[0].acceptanceCriteria).toHaveLength(3);
+      expect(stories[0].acceptanceCriteria[0]).toContain("valid credentials");
+      expect(stories[0].acceptanceCriteria[0]).not.toContain("invalid credentials");
+      expect(stories[0].acceptanceCriteria[1]).toContain("invalid credentials");
+      expect(stories[0].acceptanceCriteria[1]).not.toContain("locked account");
+      expect(stories[0].acceptanceCriteria[2]).toContain("locked account");
+    });
+
     it("parses all story description lines without limit", () => {
       const content = `## Epic 1: Setup
 
@@ -1460,7 +1492,7 @@ cargo run
         "prd.md",
         `# PRD\n\n## Executive Summary\nBuild a SaaS platform for teams.\n\n## Other\nStuff.\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.projectGoals).toContain("SaaS platform");
     });
 
@@ -1470,7 +1502,7 @@ cargo run
         "prd.md",
         `# PRD\n\n## Success Metrics\n- 1000 DAU\n- 99.9% uptime\n\n## Next\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.successMetrics).toContain("1000 DAU");
     });
 
@@ -1480,7 +1512,7 @@ cargo run
         "architecture.md",
         `# Architecture\n\n## Constraints\nMust use PostgreSQL.\nNo vendor lock-in.\n\n## Next\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.architectureConstraints).toContain("PostgreSQL");
     });
 
@@ -1490,7 +1522,7 @@ cargo run
         "architecture.md",
         `# Architecture\n\n## Risks\nScalability concerns.\nThird-party API rate limits.\n\n## Next\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.technicalRisks).toContain("Scalability");
     });
 
@@ -1500,7 +1532,7 @@ cargo run
         "prd.md",
         `# PRD\n\n## Scope\nIn scope: user management.\nOut of scope: payment processing.\n\n## Next\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.scopeBoundaries).toContain("user management");
     });
 
@@ -1510,7 +1542,7 @@ cargo run
         "prd.md",
         `# PRD\n\n## Target Users\nDevelopers building SaaS apps.\n\n## Next\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.targetUsers).toContain("Developers");
     });
 
@@ -1520,14 +1552,14 @@ cargo run
         "prd.md",
         `# PRD\n\n## Non-Functional Requirements\n- Response time < 200ms\n- WCAG 2.1 AA compliance\n\n## Next\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.nonFunctionalRequirements).toContain("200ms");
     });
 
     it("returns empty strings when no matching sections found", () => {
       const artifacts = new Map<string, string>();
       artifacts.set("random.md", `# Random\n\nSome content.\n`);
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.projectGoals).toBe("");
       expect(ctx.successMetrics).toBe("");
       expect(ctx.architectureConstraints).toBe("");
@@ -1539,7 +1571,7 @@ cargo run
         "prd.md",
         `# PRD\n\n## Vision\nRevolutionize team collaboration.\n\n## KPIs\n- NPS > 50\n`
       );
-      const ctx = extractProjectContext(artifacts);
+      const { context: ctx } = extractProjectContext(artifacts);
       expect(ctx.projectGoals).toContain("collaboration");
       expect(ctx.successMetrics).toContain("NPS");
     });
@@ -1674,7 +1706,7 @@ cargo run
   });
 
   describe("parseFixPlan", () => {
-    it("extracts completed and pending story IDs", () => {
+    it("extracts completed and pending story IDs with titles", () => {
       const content = `# Fix Plan
 ### Epic 1
 - [x] Story 1.1: Done
@@ -1684,10 +1716,10 @@ cargo run
 - [ ] Story 2.2: Not done`;
       const items = parseFixPlan(content);
       expect(items).toEqual([
-        { id: "1.1", completed: true },
-        { id: "1.2", completed: false },
-        { id: "2.1", completed: true },
-        { id: "2.2", completed: false },
+        { id: "1.1", completed: true, title: "Done" },
+        { id: "1.2", completed: false, title: "Pending" },
+        { id: "2.1", completed: true, title: "Also done" },
+        { id: "2.2", completed: false, title: "Not done" },
       ]);
     });
 
@@ -1704,14 +1736,14 @@ cargo run
 - [ ] Story 1.2: API`;
       const items = parseFixPlan(content);
       expect(items).toHaveLength(2);
-      expect(items[0]).toEqual({ id: "1.1", completed: true });
-      expect(items[1]).toEqual({ id: "1.2", completed: false });
+      expect(items[0]).toEqual({ id: "1.1", completed: true, title: "Setup" });
+      expect(items[1]).toEqual({ id: "1.2", completed: false, title: "API" });
     });
 
     it("handles complex story IDs like 10.25", () => {
       const content = `- [x] Story 10.25: Complex ID`;
       const items = parseFixPlan(content);
-      expect(items).toEqual([{ id: "10.25", completed: true }]);
+      expect(items).toEqual([{ id: "10.25", completed: true, title: "Complex ID" }]);
     });
   });
 

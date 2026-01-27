@@ -29,6 +29,16 @@ export interface FixPlanItem {
   completed: boolean;
 }
 
+export interface FixPlanItemWithTitle extends FixPlanItem {
+  title?: string;
+}
+
+export interface TruncationInfo {
+  field: string;
+  originalLength: number;
+  truncatedTo: number;
+}
+
 export interface SpecsChange {
   file: string;
   status: "added" | "modified" | "removed";

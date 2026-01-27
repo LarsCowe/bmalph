@@ -4,6 +4,7 @@ import {
   extractProjectContext,
   generateProjectContextMd,
   generatePrompt,
+  detectTruncation,
 } from "../../src/transition/context.js";
 
 describe("context", () => {
@@ -139,7 +140,7 @@ Our project aims to build a developer CLI tool.
 `,
         ],
       ]);
-      const context = extractProjectContext(artifacts);
+      const { context } = extractProjectContext(artifacts);
       expect(context.projectGoals).toContain("Our project aims to build a developer CLI tool.");
     });
 
@@ -158,7 +159,7 @@ Our project aims to build a developer CLI tool.
 `,
         ],
       ]);
-      const context = extractProjectContext(artifacts);
+      const { context } = extractProjectContext(artifacts);
       expect(context.architectureConstraints).toContain("Must work offline");
       expect(context.architectureConstraints).toContain("Node.js 20+ required");
     });
@@ -175,7 +176,7 @@ Goals here.
 `,
         ],
       ]);
-      const context = extractProjectContext(artifacts);
+      const { context } = extractProjectContext(artifacts);
       expect(context.projectGoals).toBeTruthy();
       expect(context.successMetrics).toBe("");
       expect(context.architectureConstraints).toBe("");
@@ -214,7 +215,7 @@ Third-party API rate limits.
 `,
         ],
       ]);
-      const context = extractProjectContext(artifacts);
+      const { context } = extractProjectContext(artifacts);
       expect(context.projectGoals).toContain("Project goals defined here.");
       expect(context.targetUsers).toContain("Developers and technical leads.");
       expect(context.architectureConstraints).toContain("Must use TypeScript.");
@@ -234,15 +235,74 @@ Third-party API rate limits.
 `,
         ],
       ]);
-      const context = extractProjectContext(artifacts);
+      const { context } = extractProjectContext(artifacts);
       expect(context.successMetrics).toContain("95% test coverage");
     });
 
     it("handles empty artifacts map", () => {
       const artifacts = new Map<string, string>();
-      const context = extractProjectContext(artifacts);
+      const { context } = extractProjectContext(artifacts);
       expect(context.projectGoals).toBe("");
       expect(context.successMetrics).toBe("");
+    });
+
+    it("tracks truncation when content exceeds max length", () => {
+      const longContent = "X".repeat(6000);
+      const artifacts = new Map([
+        [
+          "prd.md",
+          `# PRD
+
+## Executive Summary
+
+${longContent}
+
+## Other Section
+`,
+        ],
+      ]);
+      const { context, truncated } = extractProjectContext(artifacts);
+      expect(context.projectGoals.length).toBe(5000);
+      expect(truncated.length).toBeGreaterThan(0);
+      expect(truncated[0].field).toBe("projectGoals");
+      expect(truncated[0].originalLength).toBe(6000);
+      expect(truncated[0].truncatedTo).toBe(5000);
+    });
+
+    it("returns empty truncated array when no content is truncated", () => {
+      const artifacts = new Map([
+        [
+          "prd.md",
+          `# PRD
+
+## Executive Summary
+
+Short content.
+`,
+        ],
+      ]);
+      const { truncated } = extractProjectContext(artifacts);
+      expect(truncated).toEqual([]);
+    });
+  });
+
+  describe("detectTruncation", () => {
+    it("converts truncation info to warning strings", () => {
+      const truncated = [
+        { field: "projectGoals", originalLength: 6000, truncatedTo: 5000 },
+        { field: "architectureConstraints", originalLength: 7000, truncatedTo: 5000 },
+      ];
+      const warnings = detectTruncation(truncated);
+      expect(warnings).toHaveLength(2);
+      expect(warnings[0]).toContain("projectGoals");
+      expect(warnings[0]).toContain("6000");
+      expect(warnings[0]).toContain("5000");
+      expect(warnings[1]).toContain("architectureConstraints");
+    });
+
+    it("returns empty array when no truncation", () => {
+      const warnings = detectTruncation([]);
+      expect(warnings).toEqual([]);
     });
   });
 

@@ -10,9 +10,10 @@ export function detectSpecFileType(filename: string, _content: string): SpecFile
 
   if (lower.includes("prd")) return "prd";
   if (lower.includes("arch")) return "architecture";
-  // Check brainstorm before stories (brainstorm contains 'stor')
+  // Check stories/epic BEFORE brainstorm (Bug #5: brainstorm-stories.md should be "stories")
+  // Use "stori" to match "stories"/"story" but not "brainstorm" (which contains "stor")
+  if (lower.includes("stori") || lower.includes("epic")) return "stories";
   if (lower.includes("brainstorm")) return "brainstorm";
-  if (lower.includes("stor") || lower.includes("epic")) return "stories";
   if (lower.includes("ux")) return "ux";
   if (lower.includes("test")) return "test-design";
   if (lower.includes("readiness")) return "readiness";
