@@ -95,6 +95,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     }
   } catch {
     // No bmad-output directory yet, skip changelog
+    debug("Skipping SPECS_CHANGELOG.md (no _bmad-output directory)");
   }
 
   // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
@@ -104,6 +105,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     bmadOutputExists = true;
   } catch {
     // _bmad-output doesn't exist, will fall back to artifactsDir
+    debug("_bmad-output not found, falling back to artifacts directory");
   }
 
   if (bmadOutputExists) {
@@ -178,7 +180,8 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
       prompt = generatePrompt(projectName, projectContext ?? undefined);
     }
   } catch {
-    // Pass context to embed critical specs directly in PROMPT.md
+    // No existing PROMPT.md or read failed, generate new one
+    debug("No existing PROMPT.md found, generating from template");
     prompt = generatePrompt(projectName, projectContext ?? undefined);
   }
   await writeFile(join(projectDir, ".ralph/PROMPT.md"), prompt);
