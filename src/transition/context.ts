@@ -57,10 +57,6 @@ interface ExtractFromPatternsResult {
   originalLength: number;
 }
 
-function extractFromPatterns(content: string, patterns: RegExp[]): string {
-  return extractFromPatternsWithInfo(content, patterns).content;
-}
-
 function extractFromPatternsWithInfo(
   content: string,
   patterns: RegExp[]

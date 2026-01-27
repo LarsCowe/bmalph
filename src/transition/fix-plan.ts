@@ -1,4 +1,4 @@
-import type { Story, FixPlanItem, FixPlanItemWithTitle } from "./types.js";
+import type { Story, FixPlanItemWithTitle } from "./types.js";
 
 export function generateFixPlan(stories: Story[]): string {
   const lines = ["# Ralph Fix Plan", "", "## Stories to Implement", ""];
