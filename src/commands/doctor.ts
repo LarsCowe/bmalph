@@ -10,10 +10,7 @@ import {
   validateRalphSession,
   validateRalphApiStatus,
 } from "../utils/validate.js";
-import {
-  SESSION_AGE_WARNING_MS,
-  API_USAGE_WARNING_PERCENT,
-} from "../utils/constants.js";
+import { SESSION_AGE_WARNING_MS, API_USAGE_WARNING_PERCENT } from "../utils/constants.js";
 
 /**
  * Result of a single doctor check.

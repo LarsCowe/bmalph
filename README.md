@@ -228,12 +228,14 @@ Press `Ctrl+C` to stop the loop at any time.
 Ralph requires bash to run. On Windows, install one of:
 
 **Git Bash (Recommended)**
+
 ```bash
 # Install Git for Windows from https://git-scm.com/downloads
 # Git Bash is included and works well with bmalph
 ```
 
 **WSL (Windows Subsystem for Linux)**
+
 ```powershell
 # In PowerShell as Administrator
 wsl --install
@@ -254,12 +256,12 @@ ls -la .ralph/
 
 ### Common Errors
 
-| Error | Solution |
-|-------|----------|
-| `bmalph is not initialized` | Run `bmalph init` first |
-| `No stories found` | Create stories in Phase 3 with `/create-epics-stories` |
-| `Circuit breaker OPEN` | Ralph detected stagnation. Check `.ralph/logs/` for details |
-| `Version mismatch` | Run `bmalph upgrade` to update assets |
+| Error                       | Solution                                                    |
+| --------------------------- | ----------------------------------------------------------- |
+| `bmalph is not initialized` | Run `bmalph init` first                                     |
+| `No stories found`          | Create stories in Phase 3 with `/create-epics-stories`      |
+| `Circuit breaker OPEN`      | Ralph detected stagnation. Check `.ralph/logs/` for details |
+| `Version mismatch`          | Run `bmalph upgrade` to update assets                       |
 
 ### Reset Installation
 
@@ -276,6 +278,7 @@ bmalph init
 ## Quick Examples
 
 ### Initialize a new project
+
 ```bash
 # Interactive mode (prompts for name/description)
 bmalph init
@@ -288,6 +291,7 @@ bmalph init --dry-run
 ```
 
 ### Check installation health
+
 ```bash
 # Human-readable output
 bmalph doctor
@@ -297,6 +301,7 @@ bmalph doctor --json
 ```
 
 ### Update bundled assets
+
 ```bash
 # Update BMAD and Ralph to latest bundled versions
 bmalph upgrade
@@ -306,6 +311,7 @@ bmalph upgrade --dry-run
 ```
 
 ### After init: Next steps
+
 ```bash
 # 1. Open Claude Code in your project
 claude

@@ -1,9 +1,6 @@
 import type { SpecFileType, Priority, SpecFileMetadata, SpecsIndex } from "./types.js";
 import { getMarkdownFilesWithContent } from "../utils/file-system.js";
-import {
-  LARGE_FILE_THRESHOLD_BYTES,
-  DEFAULT_SNIPPET_MAX_LENGTH,
-} from "../utils/constants.js";
+import { LARGE_FILE_THRESHOLD_BYTES, DEFAULT_SNIPPET_MAX_LENGTH } from "../utils/constants.js";
 
 /**
  * Detects the type of a spec file based on its filename.
@@ -50,7 +47,10 @@ export function determinePriority(type: SpecFileType, _size: number): Priority {
  * Extracts a one-line description from file content.
  * Prefers the first heading, falls back to first non-empty line.
  */
-export function extractDescription(content: string, maxLength = DEFAULT_SNIPPET_MAX_LENGTH): string {
+export function extractDescription(
+  content: string,
+  maxLength = DEFAULT_SNIPPET_MAX_LENGTH
+): string {
   const trimmed = content.trim();
   if (!trimmed) return "";
 
