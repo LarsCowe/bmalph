@@ -138,12 +138,39 @@ describe("installer", () => {
     it("copies all slash commands from slash-commands/ directory", async () => {
       await installProject(testDir);
       const files = await readdir(join(testDir, ".claude/commands"));
-      expect(files.length).toBeGreaterThanOrEqual(54);
+      expect(files.length).toBeGreaterThanOrEqual(43);
       expect(files).toContain("bmalph.md");
       expect(files).toContain("analyst.md");
       expect(files).toContain("architect.md");
       expect(files).toContain("create-prd.md");
       expect(files).toContain("sprint-planning.md");
+      expect(files).toContain("qa.md");
+      expect(files).toContain("qa-automate.md");
+      expect(files).toContain("generate-project-context.md");
+    });
+
+    it("does not include removed TEA, testarch, or excalidraw commands", async () => {
+      await installProject(testDir);
+      const files = await readdir(join(testDir, ".claude/commands"));
+      const removed = [
+        "tea.md",
+        "test-design.md",
+        "validate-test-design.md",
+        "test-framework.md",
+        "atdd.md",
+        "test-automate.md",
+        "test-trace.md",
+        "nfr-assess.md",
+        "continuous-integration.md",
+        "test-review.md",
+        "create-dataflow.md",
+        "create-diagram.md",
+        "create-flowchart.md",
+        "create-wireframe.md",
+      ];
+      for (const file of removed) {
+        expect(files).not.toContain(file);
+      }
     });
 
     it("does not include Phase 4 commands replaced by Ralph", async () => {
@@ -161,7 +188,7 @@ describe("installer", () => {
         { file: "dev.md", path: "_bmad/bmm/agents/dev.agent.yaml" },
         { file: "pm.md", path: "_bmad/bmm/agents/pm.agent.yaml" },
         { file: "sm.md", path: "_bmad/bmm/agents/sm.agent.yaml" },
-        { file: "tea.md", path: "_bmad/bmm/agents/tea.agent.yaml" },
+        { file: "qa.md", path: "_bmad/bmm/agents/qa.agent.yaml" },
         { file: "ux-designer.md", path: "_bmad/bmm/agents/ux-designer.agent.yaml" },
         { file: "quick-flow-solo-dev.md", path: "_bmad/bmm/agents/quick-flow-solo-dev.agent.yaml" },
       ];
@@ -175,7 +202,9 @@ describe("installer", () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".claude/commands/create-prd.md"), "utf-8");
       expect(content).toContain("_bmad/bmm/agents/pm.agent.yaml");
-      expect(content).toContain("_bmad/bmm/workflows/2-plan-workflows/prd/workflow.md");
+      expect(content).toContain(
+        "_bmad/bmm/workflows/2-plan-workflows/create-prd/workflow-create-prd.md"
+      );
       expect(content).toMatch(/[Cc]reate/);
     });
 
@@ -212,7 +241,7 @@ describe("installer", () => {
       // Should contain header row
       expect(manifest).toContain("module,phase,name,code,");
       // Should contain core module entries
-      expect(manifest).toContain("core,,Brainstorming,BS,");
+      expect(manifest).toContain("core,anytime,Brainstorming,BSP,");
       // Should contain bmm module entries
       expect(manifest).toContain("bmm,1-analysis,Create Brief,CB,");
       expect(manifest).toContain("bmm,3-solutioning,Create Architecture,CA,");
@@ -235,7 +264,7 @@ describe("installer", () => {
       await copyBundledAssets(testDir);
       const helpCsv = await readFile(join(testDir, "_bmad/_config/bmad-help.csv"), "utf-8");
       expect(helpCsv).toContain("module,phase,name,code,");
-      expect(helpCsv).toContain("core,,Brainstorming,BS,");
+      expect(helpCsv).toContain("core,anytime,Brainstorming,BSP,");
       expect(helpCsv).toContain("bmm,1-analysis,Create Brief,CB,");
     });
 
@@ -286,6 +315,31 @@ describe("installer", () => {
 
       const config = JSON.parse(await readFile(join(testDir, "bmalph/config.json"), "utf-8"));
       expect(config.name).toBe("my-project");
+    });
+
+    it("copies .ralphrc during install", async () => {
+      await copyBundledAssets(testDir);
+      await expect(access(join(testDir, ".ralph/.ralphrc"))).resolves.toBeUndefined();
+      const content = await readFile(join(testDir, ".ralph/.ralphrc"), "utf-8");
+      expect(content).toContain("MAX_CALLS_PER_HOUR");
+      expect(content).toContain("ALLOWED_TOOLS");
+    });
+
+    it("preserves existing .ralphrc on upgrade", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/.ralphrc"), "# Custom config\nMAX_CALLS_PER_HOUR=50\n");
+
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/.ralphrc"), "utf-8");
+      expect(content).toBe("# Custom config\nMAX_CALLS_PER_HOUR=50\n");
+    });
+
+    it("copies new Ralph lib files", async () => {
+      await copyBundledAssets(testDir);
+      await expect(access(join(testDir, ".ralph/lib/enable_core.sh"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".ralph/lib/task_sources.sh"))).resolves.toBeUndefined();
+      await expect(access(join(testDir, ".ralph/lib/wizard_utils.sh"))).resolves.toBeUndefined();
     });
 
     it("is idempotent (twice = same result)", async () => {
@@ -446,10 +500,10 @@ describe("installer", () => {
       expect(content).toContain(".ralph/specs/");
     });
 
-    it("PROMPT.md references @fix_plan.md", async () => {
+    it("PROMPT.md references fix_plan.md", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
-      expect(content).toContain("@fix_plan.md");
+      expect(content).toContain("fix_plan.md");
     });
 
     it("PROMPT.md references docs/ for project knowledge", async () => {
@@ -571,7 +625,29 @@ describe("installer", () => {
       expect(content).toContain("/sm");
       expect(content).toContain("/dev");
       expect(content).toContain("/ux-designer");
-      expect(content).toContain("/tea");
+      expect(content).toContain("/qa");
+      expect(content).not.toContain("/tea");
+    });
+
+    it("replaces stale BMAD section on upgrade instead of skipping", async () => {
+      // Simulate stale CLAUDE.md with old TEA reference
+      const staleSection = `# My Project
+
+## BMAD-METHOD Integration
+
+Old stale content with /tea agent reference.
+`;
+      await writeFile(join(testDir, "CLAUDE.md"), staleSection);
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+      // Section should be refreshed with new content
+      expect(content).toContain("/qa");
+      expect(content).not.toContain("Old stale content");
+      // Should still have project header
+      expect(content).toContain("# My Project");
+      // Should have exactly one integration section
+      const matches = content.match(/## BMAD-METHOD Integration/g);
+      expect(matches).toHaveLength(1);
     });
   });
 

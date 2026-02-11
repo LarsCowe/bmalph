@@ -123,7 +123,9 @@ parse_json_response() {
     fi
 
     # Exit signal: from flat format OR derived from completion_status
+    # Track whether EXIT_SIGNAL was explicitly provided (vs inferred from STATUS)
     local exit_signal=$(jq -r '.exit_signal // false' "$output_file" 2>/dev/null)
+    local explicit_exit_signal_found=$(jq -r 'has("exit_signal")' "$output_file" 2>/dev/null)
 
     # Bug #1 Fix: If exit_signal is still false, check for RALPH_STATUS block in .result field
     # Claude CLI JSON format embeds the RALPH_STATUS block within the .result text field
@@ -131,17 +133,27 @@ parse_json_response() {
         local result_text=$(jq -r '.result // ""' "$output_file" 2>/dev/null)
         if [[ -n "$result_text" ]] && echo "$result_text" | grep -q -- "---RALPH_STATUS---"; then
             # Extract EXIT_SIGNAL value from RALPH_STATUS block within result text
-            local embedded_exit_sig=$(echo "$result_text" | grep "EXIT_SIGNAL:" | cut -d: -f2 | xargs)
-            if [[ "$embedded_exit_sig" == "true" ]]; then
-                exit_signal="true"
-                [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Extracted EXIT_SIGNAL=true from .result RALPH_STATUS block" >&2
+            local embedded_exit_sig
+            embedded_exit_sig=$(echo "$result_text" | grep "EXIT_SIGNAL:" | cut -d: -f2 | xargs)
+            if [[ -n "$embedded_exit_sig" ]]; then
+                # Explicit EXIT_SIGNAL found in RALPH_STATUS block
+                explicit_exit_signal_found="true"
+                if [[ "$embedded_exit_sig" == "true" ]]; then
+                    exit_signal="true"
+                    [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Extracted EXIT_SIGNAL=true from .result RALPH_STATUS block" >&2
+                else
+                    exit_signal="false"
+                    [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Extracted EXIT_SIGNAL=false from .result RALPH_STATUS block (respecting explicit intent)" >&2
+                fi
             fi
-            # Also check STATUS field as fallback
-            local embedded_status=$(echo "$result_text" | grep "STATUS:" | cut -d: -f2 | xargs)
-            if [[ "$embedded_status" == "COMPLETE" && "$exit_signal" != "true" ]]; then
-                # STATUS: COMPLETE without explicit EXIT_SIGNAL implies completion
+            # Also check STATUS field as fallback ONLY when EXIT_SIGNAL was not specified
+            # This respects explicit EXIT_SIGNAL: false which means "task complete, continue working"
+            local embedded_status
+            embedded_status=$(echo "$result_text" | grep "STATUS:" | cut -d: -f2 | xargs)
+            if [[ "$embedded_status" == "COMPLETE" && "$explicit_exit_signal_found" != "true" ]]; then
+                # STATUS: COMPLETE without any EXIT_SIGNAL field implies completion
                 exit_signal="true"
-                [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Inferred EXIT_SIGNAL=true from .result STATUS=COMPLETE" >&2
+                [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Inferred EXIT_SIGNAL=true from .result STATUS=COMPLETE (no explicit EXIT_SIGNAL found)" >&2
             fi
         fi
     fi
@@ -178,9 +190,32 @@ parse_json_response() {
     # Progress indicators: from Claude CLI metadata (optional)
     local progress_count=$(jq -r '.metadata.progress_indicators | if . then length else 0 end' "$output_file" 2>/dev/null)
 
+    # Permission denials: from Claude Code output (Issue #101)
+    # When Claude Code is denied permission to run commands, it outputs a permission_denials array
+    local permission_denial_count=$(jq -r '.permission_denials | if . then length else 0 end' "$output_file" 2>/dev/null)
+    permission_denial_count=$((permission_denial_count + 0))  # Ensure integer
+
+    local has_permission_denials="false"
+    if [[ $permission_denial_count -gt 0 ]]; then
+        has_permission_denials="true"
+    fi
+
+    # Extract denied tool names and commands for logging/display
+    # Shows tool_name for non-Bash tools, and for Bash tools shows the command that was denied
+    # This handles both cases: AskUserQuestion denial shows "AskUserQuestion",
+    # while Bash denial shows "Bash(git commit -m ...)" with truncated command
+    local denied_commands_json="[]"
+    if [[ $permission_denial_count -gt 0 ]]; then
+        denied_commands_json=$(jq -r '[.permission_denials[] | if .tool_name == "Bash" then "Bash(\(.tool_input.command // "?" | split("\n")[0] | .[0:60]))" else .tool_name // "unknown" end]' "$output_file" 2>/dev/null || echo "[]")
+    fi
+
     # Normalize values
     # Convert exit_signal to boolean string
-    if [[ "$exit_signal" == "true" || "$status" == "COMPLETE" || "$completion_status" == "complete" || "$completion_status" == "COMPLETE" ]]; then
+    # Only infer from status/completion_status if no explicit EXIT_SIGNAL was provided
+    if [[ "$explicit_exit_signal_found" == "true" ]]; then
+        # Respect explicit EXIT_SIGNAL value (already set above)
+        [[ "$exit_signal" == "true" ]] && exit_signal="true" || exit_signal="false"
+    elif [[ "$exit_signal" == "true" || "$status" == "COMPLETE" || "$completion_status" == "complete" || "$completion_status" == "COMPLETE" ]]; then
         exit_signal="true"
     else
         exit_signal="false"
@@ -233,6 +268,9 @@ parse_json_response() {
         --argjson loop_number "$loop_number" \
         --arg session_id "$session_id" \
         --argjson confidence "$confidence" \
+        --argjson has_permission_denials "$has_permission_denials" \
+        --argjson permission_denial_count "$permission_denial_count" \
+        --argjson denied_commands "$denied_commands_json" \
         '{
             status: $status,
             exit_signal: $exit_signal,
@@ -245,6 +283,9 @@ parse_json_response() {
             loop_number: $loop_number,
             session_id: $session_id,
             confidence: $confidence,
+            has_permission_denials: $has_permission_denials,
+            permission_denial_count: $permission_denial_count,
+            denied_commands: $denied_commands,
             metadata: {
                 loop_number: $loop_number,
                 session_id: $session_id
@@ -300,6 +341,11 @@ analyze_response() {
             local json_confidence=$(jq -r '.confidence' $RALPH_DIR/.json_parse_result 2>/dev/null || echo "0")
             local session_id=$(jq -r '.session_id' $RALPH_DIR/.json_parse_result 2>/dev/null || echo "")
 
+            # Extract permission denial fields (Issue #101)
+            local has_permission_denials=$(jq -r '.has_permission_denials' $RALPH_DIR/.json_parse_result 2>/dev/null || echo "false")
+            local permission_denial_count=$(jq -r '.permission_denial_count' $RALPH_DIR/.json_parse_result 2>/dev/null || echo "0")
+            local denied_commands_json=$(jq -r '.denied_commands' $RALPH_DIR/.json_parse_result 2>/dev/null || echo "[]")
+
             # Persist session ID if present (for session continuity across loop iterations)
             if [[ -n "$session_id" && "$session_id" != "null" ]]; then
                 store_session_id "$session_id"
@@ -314,8 +360,37 @@ analyze_response() {
             fi
 
             # Check for file changes via git (supplements JSON data)
+            # Fix #141: Detect both uncommitted changes AND committed changes
             if command -v git &>/dev/null && git rev-parse --git-dir >/dev/null 2>&1; then
-                local git_files=$(git diff --name-only 2>/dev/null | wc -l)
+                local git_files=0
+                local loop_start_sha=""
+                local current_sha=""
+
+                if [[ -f "$RALPH_DIR/.loop_start_sha" ]]; then
+                    loop_start_sha=$(cat "$RALPH_DIR/.loop_start_sha" 2>/dev/null || echo "")
+                fi
+                current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+                # Check if commits were made (HEAD changed)
+                if [[ -n "$loop_start_sha" && -n "$current_sha" && "$loop_start_sha" != "$current_sha" ]]; then
+                    # Commits were made - count union of committed files AND working tree changes
+                    git_files=$(
+                        {
+                            git diff --name-only "$loop_start_sha" "$current_sha" 2>/dev/null
+                            git diff --name-only HEAD 2>/dev/null           # unstaged changes
+                            git diff --name-only --cached 2>/dev/null       # staged changes
+                        } | sort -u | wc -l
+                    )
+                else
+                    # No commits - check for uncommitted changes (staged + unstaged)
+                    git_files=$(
+                        {
+                            git diff --name-only 2>/dev/null                # unstaged changes
+                            git diff --name-only --cached 2>/dev/null       # staged changes
+                        } | sort -u | wc -l
+                    )
+                fi
+
                 if [[ $git_files -gt 0 ]]; then
                     has_progress=true
                     files_modified=$git_files
@@ -337,6 +412,9 @@ analyze_response() {
                 --argjson exit_signal "$exit_signal" \
                 --arg work_summary "$work_summary" \
                 --argjson output_length "$output_length" \
+                --argjson has_permission_denials "$has_permission_denials" \
+                --argjson permission_denial_count "$permission_denial_count" \
+                --argjson denied_commands "$denied_commands_json" \
                 '{
                     loop_number: $loop_number,
                     timestamp: $timestamp,
@@ -351,7 +429,10 @@ analyze_response() {
                         confidence_score: $confidence_score,
                         exit_signal: $exit_signal,
                         work_summary: $work_summary,
-                        output_length: $output_length
+                        output_length: $output_length,
+                        has_permission_denials: $has_permission_denials,
+                        permission_denial_count: $permission_denial_count,
+                        denied_commands: $denied_commands
                     }
                 }' > "$analysis_result_file"
             rm -f "$RALPH_DIR/.json_parse_result"
@@ -450,8 +531,36 @@ analyze_response() {
     done
 
     # 6. Check for file changes (git integration)
+    # Fix #141: Detect both uncommitted changes AND committed changes
     if command -v git &>/dev/null && git rev-parse --git-dir >/dev/null 2>&1; then
-        files_modified=$(git diff --name-only 2>/dev/null | wc -l)
+        local loop_start_sha=""
+        local current_sha=""
+
+        if [[ -f "$RALPH_DIR/.loop_start_sha" ]]; then
+            loop_start_sha=$(cat "$RALPH_DIR/.loop_start_sha" 2>/dev/null || echo "")
+        fi
+        current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+        # Check if commits were made (HEAD changed)
+        if [[ -n "$loop_start_sha" && -n "$current_sha" && "$loop_start_sha" != "$current_sha" ]]; then
+            # Commits were made - count union of committed files AND working tree changes
+            files_modified=$(
+                {
+                    git diff --name-only "$loop_start_sha" "$current_sha" 2>/dev/null
+                    git diff --name-only HEAD 2>/dev/null           # unstaged changes
+                    git diff --name-only --cached 2>/dev/null       # staged changes
+                } | sort -u | wc -l
+            )
+        else
+            # No commits - check for uncommitted changes (staged + unstaged)
+            files_modified=$(
+                {
+                    git diff --name-only 2>/dev/null                # unstaged changes
+                    git diff --name-only --cached 2>/dev/null       # staged changes
+                } | sort -u | wc -l
+            )
+        fi
+
         if [[ $files_modified -gt 0 ]]; then
             has_progress=true
             ((confidence_score+=20))
@@ -489,6 +598,7 @@ analyze_response() {
     fi
 
     # Write analysis results to file (text parsing path) using jq for safe construction
+    # Note: Permission denial fields default to false/0 since text output doesn't include this data
     jq -n \
         --argjson loop_number "$loop_number" \
         --arg timestamp "$(get_iso_timestamp)" \
@@ -517,7 +627,10 @@ analyze_response() {
                 confidence_score: $confidence_score,
                 exit_signal: $exit_signal,
                 work_summary: $work_summary,
-                output_length: $output_length
+                output_length: $output_length,
+                has_permission_denials: false,
+                permission_denial_count: 0,
+                denied_commands: []
             }
         }' > "$analysis_result_file"
 
@@ -560,9 +673,12 @@ update_exit_signals() {
         signals=$(echo "$signals" | jq ".done_signals += [$loop_number]")
     fi
 
-    # Update completion_indicators array (strong signals)
-    local confidence=$(jq -r '.analysis.confidence_score' "$analysis_file")
-    if [[ $confidence -ge 60 ]]; then
+    # Update completion_indicators array (only when Claude explicitly signals exit)
+    # Note: Previously used confidence >= 60, but JSON mode always has confidence >= 70
+    # due to deterministic scoring (+50 for JSON format, +20 for result field).
+    # This caused premature exits after 5 loops. Now we respect Claude's explicit intent.
+    local exit_signal=$(jq -r '.analysis.exit_signal // false' "$analysis_file")
+    if [[ "$exit_signal" == "true" ]]; then
         signals=$(echo "$signals" | jq ".completion_indicators += [$loop_number]")
     fi
 

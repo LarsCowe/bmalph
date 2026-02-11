@@ -180,10 +180,10 @@ export function getPhaseInfo(phase: number): PhaseInfo {
           required: false,
         },
         {
-          code: "TD",
-          name: "Test Design",
-          agent: "tea",
-          description: "Create comprehensive test scenarios",
+          code: "QA",
+          name: "QA Automation Test",
+          agent: "qa",
+          description: "Generate automated API and E2E tests for implemented code",
           required: false,
         },
         {

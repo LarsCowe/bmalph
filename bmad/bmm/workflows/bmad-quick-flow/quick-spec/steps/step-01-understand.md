@@ -2,10 +2,9 @@
 name: 'step-01-understand'
 description: 'Analyze the requirement delta between current state and what user wants to build'
 
-workflow_path: '{project-root}/_bmad/bmm/workflows/bmad-quick-flow/create-tech-spec'
 nextStepFile: './step-02-investigate.md'
 skipToStepFile: './step-03-generate.md'
-templateFile: '{workflow_path}/tech-spec-template.md'
+templateFile: '../tech-spec-template.md'
 wipFile: '{implementation_artifacts}/tech-spec-wip.md'
 ---
 
@@ -77,7 +76,7 @@ a) **Before asking detailed questions, do a rapid scan to understand the landsca
 
 b) **Check for existing context docs:**
 
-- Check `{output_folder}` and `{planning_artifacts}`for planning documents (PRD, architecture, epics, research)
+- Check `{implementation_artifacts}` and `{planning_artifacts}`for planning documents (PRD, architecture, epics, research)
 - Check for `**/project-context.md` - if it exists, skim for patterns and conventions
 - Check for any existing stories or specs related to user's request
 

@@ -131,6 +131,15 @@ modules:
   await cp(join(ralphDir, "templates/AGENT.md"), join(projectDir, ".ralph/@AGENT.md"));
   await cp(join(ralphDir, "RALPH-REFERENCE.md"), join(projectDir, ".ralph/RALPH-REFERENCE.md"));
 
+  // Copy .ralphrc from template (skip if user has customized it)
+  const ralphrcDest = join(projectDir, ".ralph/.ralphrc");
+  try {
+    await access(ralphrcDest);
+    // File exists, preserve user's config
+  } catch {
+    await cp(join(ralphDir, "templates/ralphrc.template"), ralphrcDest);
+  }
+
   // Copy Ralph loop and lib → .ralph/
   // Add version marker to ralph_loop.sh
   const loopContent = await readFile(join(ralphDir, "ralph_loop.sh"), "utf-8");
@@ -323,7 +332,7 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
 | \`/sm\` | Scrum Master | Sprint planning, status, coordination |
 | \`/dev\` | Developer | Implementation, coding |
 | \`/ux-designer\` | UX Designer | User experience, wireframes |
-| \`/tea\` | Test Engineer | Test design, validation |
+| \`/qa\` | QA Engineer | Test automation, quality assurance |
 `;
 
   let existing = "";
@@ -334,7 +343,10 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
   }
 
   if (existing.includes("## BMAD-METHOD Integration")) {
-    return; // Already merged
+    // Replace stale section with current content
+    const before = existing.slice(0, existing.indexOf("## BMAD-METHOD Integration"));
+    await writeFile(claudeMdPath, before.trimEnd() + "\n" + snippet);
+    return;
   }
 
   await writeFile(claudeMdPath, existing + snippet);

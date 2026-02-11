@@ -261,7 +261,7 @@ The command will:
 1. Create a new Ralph project
 2. Use Claude Code to intelligently convert your PRD into:
    - .ralph/PROMPT.md (Ralph instructions)
-   - .ralph/@fix_plan.md (prioritized tasks)
+   - .ralph/fix_plan.md (prioritized tasks)
    - .ralph/specs/ (technical specifications)
 
 HELPEOF
@@ -273,9 +273,13 @@ check_dependencies() {
         log "ERROR" "Ralph not installed. Run ./install.sh first"
         exit 1
     fi
-    
-    if ! npx @anthropic/claude-code --version &> /dev/null 2>&1; then
-        log "WARN" "Claude Code CLI not found. It will be downloaded when first used."
+
+    if ! command -v jq &> /dev/null; then
+        log "WARN" "jq not found. Install it (brew install jq | sudo apt-get install jq | choco install jq) for faster JSON parsing."
+    fi
+
+    if ! command -v "$CLAUDE_CODE_CMD" &> /dev/null 2>&1; then
+        log "WARN" "Claude Code CLI ($CLAUDE_CODE_CMD) not found. It will be downloaded when first used."
     fi
 }
 
@@ -330,7 +334,7 @@ You are Ralph, an autonomous AI development agent working on a [PROJECT NAME] pr
 - Search the codebase before assuming something isn't implemented
 - Use subagents for expensive operations (file searching, analysis)
 - Write comprehensive tests with clear documentation
-- Update @fix_plan.md with your learnings
+- Update fix_plan.md with your learnings
 - Commit working changes with descriptive messages
 
 ## 🧪 Testing Guidelines (CRITICAL)
@@ -350,10 +354,10 @@ You are Ralph, an autonomous AI development agent working on a [PROJECT NAME] pr
 [Define what "done" looks like based on the PRD]
 
 ## Current Task
-Follow @fix_plan.md and choose the most important item to implement next.
+Follow fix_plan.md and choose the most important item to implement next.
 ```
 
-### 2. .ralph/@fix_plan.md
+### 2. .ralph/fix_plan.md
 Convert requirements into a prioritized task list:
 ```markdown
 # Ralph Fix Plan
@@ -396,7 +400,7 @@ Create detailed technical specifications:
 2. Create the three files above with content derived from the PRD
 3. Ensure all requirements are captured and properly prioritized
 4. Make the PROMPT.md actionable for autonomous development
-5. Structure @fix_plan.md with clear, implementable tasks
+5. Structure fix_plan.md with clear, implementable tasks
 
 PROMPTEOF
 
@@ -425,16 +429,18 @@ PROMPTEOF
 
     if [[ "$use_modern_cli" == "true" ]]; then
         # Modern CLI invocation with JSON output and controlled tool permissions
-        # --allowedTools permits file operations without user prompts
-        # Array expansion preserves quoting for each tool argument
-        if $CLAUDE_CODE_CMD --output-format "$CLAUDE_OUTPUT_FORMAT" --allowedTools "${CLAUDE_ALLOWED_TOOLS[@]}" < "$CONVERSION_PROMPT_FILE" > "$CONVERSION_OUTPUT_FILE" 2> "$stderr_file"; then
+        # --print: Required for piped input (prevents interactive session hang)
+        # --allowedTools: Permits file operations without user prompts
+        # --strict-mcp-config: Skip loading user MCP servers (faster startup)
+        if $CLAUDE_CODE_CMD --print --strict-mcp-config --output-format "$CLAUDE_OUTPUT_FORMAT" --allowedTools "${CLAUDE_ALLOWED_TOOLS[@]}" < "$CONVERSION_PROMPT_FILE" > "$CONVERSION_OUTPUT_FILE" 2> "$stderr_file"; then
             cli_exit_code=0
         else
             cli_exit_code=$?
         fi
     else
         # Standard CLI invocation (backward compatible)
-        if $CLAUDE_CODE_CMD < "$CONVERSION_PROMPT_FILE" > "$CONVERSION_OUTPUT_FILE" 2> "$stderr_file"; then
+        # --print: Required for piped input (prevents interactive session hang)
+        if $CLAUDE_CODE_CMD --print < "$CONVERSION_PROMPT_FILE" > "$CONVERSION_OUTPUT_FILE" 2> "$stderr_file"; then
             cli_exit_code=0
         else
             cli_exit_code=$?
@@ -505,7 +511,7 @@ PROMPTEOF
     # Use PARSED_FILES_CREATED from JSON if available, otherwise check filesystem
     local missing_files=()
     local created_files=()
-    local expected_files=(".ralph/PROMPT.md" ".ralph/@fix_plan.md" ".ralph/specs/requirements.md")
+    local expected_files=(".ralph/PROMPT.md" ".ralph/fix_plan.md" ".ralph/specs/requirements.md")
 
     # If JSON provided files_created, use that to inform verification
     if [[ "$json_parsed" == "true" && -n "$PARSED_FILES_CREATED" && "$PARSED_FILES_CREATED" != "[]" ]]; then
@@ -596,7 +602,11 @@ main() {
     # Copy source file to project (uses basename since we cd'd into project)
     local source_basename
     source_basename=$(basename "$source_file")
-    cp "../$source_file" "$source_basename"
+    if [[ "$source_file" == /* ]]; then
+        cp "$source_file" "$source_basename"
+    else
+        cp "../$source_file" "$source_basename"
+    fi
 
     # Run conversion using local copy (basename, not original path)
     convert_prd "$source_basename" "$project_name"
@@ -606,7 +616,7 @@ main() {
     echo "Next steps:"
     echo "  1. Review and edit the generated files:"
     echo "     - .ralph/PROMPT.md (Ralph instructions)"
-    echo "     - .ralph/@fix_plan.md (task priorities)"
+    echo "     - .ralph/fix_plan.md (task priorities)"
     echo "     - .ralph/specs/requirements.md (technical specs)"
     echo "  2. Start autonomous development:"
     echo "     ralph --monitor"

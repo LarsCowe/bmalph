@@ -5,6 +5,11 @@
 
 set -e  # Exit on any error
 
+# Note: CLAUDE_CODE_ENABLE_DANGEROUS_PERMISSIONS_IN_SANDBOX and IS_SANDBOX
+# environment variables are NOT exported here. Tool restrictions are handled
+# via --allowedTools flag in CLAUDE_CMD_ARGS, which is the proper approach.
+# Exporting sandbox variables without a verified sandbox would be misleading.
+
 # Source library components
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 source "$SCRIPT_DIR/lib/date_utils.sh"
@@ -21,18 +26,34 @@ DOCS_DIR="$RALPH_DIR/docs/generated"
 STATUS_FILE="$RALPH_DIR/status.json"
 PROGRESS_FILE="$RALPH_DIR/progress.json"
 CLAUDE_CODE_CMD="claude"
-MAX_CALLS_PER_HOUR=100  # Adjust based on your plan
-VERBOSE_PROGRESS=false  # Default: no verbose progress updates
-CLAUDE_TIMEOUT_MINUTES=15  # Default: 15 minutes timeout for Claude Code execution
 SLEEP_DURATION=3600     # 1 hour in seconds
+LIVE_OUTPUT=false       # Show Claude Code output in real-time (streaming)
+LIVE_LOG_FILE="$RALPH_DIR/live.log"  # Fixed file for live output monitoring
 CALL_COUNT_FILE="$RALPH_DIR/.call_count"
 TIMESTAMP_FILE="$RALPH_DIR/.last_reset"
 USE_TMUX=false
 
+# Save environment variable state BEFORE setting defaults
+# These are used by load_ralphrc() to determine which values came from environment
+_env_MAX_CALLS_PER_HOUR="${MAX_CALLS_PER_HOUR:-}"
+_env_CLAUDE_TIMEOUT_MINUTES="${CLAUDE_TIMEOUT_MINUTES:-}"
+_env_CLAUDE_OUTPUT_FORMAT="${CLAUDE_OUTPUT_FORMAT:-}"
+_env_CLAUDE_ALLOWED_TOOLS="${CLAUDE_ALLOWED_TOOLS:-}"
+_env_CLAUDE_USE_CONTINUE="${CLAUDE_USE_CONTINUE:-}"
+_env_CLAUDE_SESSION_EXPIRY_HOURS="${CLAUDE_SESSION_EXPIRY_HOURS:-}"
+_env_VERBOSE_PROGRESS="${VERBOSE_PROGRESS:-}"
+_env_CB_COOLDOWN_MINUTES="${CB_COOLDOWN_MINUTES:-}"
+_env_CB_AUTO_RESET="${CB_AUTO_RESET:-}"
+
+# Now set defaults (only if not already set by environment)
+MAX_CALLS_PER_HOUR="${MAX_CALLS_PER_HOUR:-100}"
+VERBOSE_PROGRESS="${VERBOSE_PROGRESS:-false}"
+CLAUDE_TIMEOUT_MINUTES="${CLAUDE_TIMEOUT_MINUTES:-15}"
+
 # Modern Claude CLI configuration (Phase 1.1)
-CLAUDE_OUTPUT_FORMAT="json"              # Options: json, text
-CLAUDE_ALLOWED_TOOLS="Write,Bash(git *),Read"  # Comma-separated list of allowed tools
-CLAUDE_USE_CONTINUE=true                 # Enable session continuity
+CLAUDE_OUTPUT_FORMAT="${CLAUDE_OUTPUT_FORMAT:-json}"
+CLAUDE_ALLOWED_TOOLS="${CLAUDE_ALLOWED_TOOLS:-Write,Read,Edit,Bash(git *),Bash(npm *),Bash(pytest)}"
+CLAUDE_USE_CONTINUE="${CLAUDE_USE_CONTINUE:-true}"
 CLAUDE_SESSION_FILE="$RALPH_DIR/.claude_session_id" # Session ID persistence file
 CLAUDE_MIN_VERSION="2.0.76"              # Minimum required Claude CLI version
 
@@ -73,6 +94,67 @@ MAX_CONSECUTIVE_TEST_LOOPS=3
 MAX_CONSECUTIVE_DONE_SIGNALS=2
 TEST_PERCENTAGE_THRESHOLD=30  # If more than 30% of recent loops are test-only, flag it
 
+# .ralphrc configuration file
+RALPHRC_FILE=".ralphrc"
+RALPHRC_LOADED=false
+
+# load_ralphrc - Load project-specific configuration from .ralphrc
+#
+# This function sources .ralphrc if it exists, applying project-specific
+# settings. Environment variables take precedence over .ralphrc values.
+#
+# Configuration values that can be overridden:
+#   - MAX_CALLS_PER_HOUR
+#   - CLAUDE_TIMEOUT_MINUTES
+#   - CLAUDE_OUTPUT_FORMAT
+#   - ALLOWED_TOOLS (mapped to CLAUDE_ALLOWED_TOOLS)
+#   - SESSION_CONTINUITY (mapped to CLAUDE_USE_CONTINUE)
+#   - SESSION_EXPIRY_HOURS (mapped to CLAUDE_SESSION_EXPIRY_HOURS)
+#   - CB_NO_PROGRESS_THRESHOLD
+#   - CB_SAME_ERROR_THRESHOLD
+#   - CB_OUTPUT_DECLINE_THRESHOLD
+#   - RALPH_VERBOSE
+#
+load_ralphrc() {
+    if [[ ! -f "$RALPHRC_FILE" ]]; then
+        return 0
+    fi
+
+    # Source .ralphrc (this may override default values)
+    # shellcheck source=/dev/null
+    source "$RALPHRC_FILE"
+
+    # Map .ralphrc variable names to internal names
+    if [[ -n "${ALLOWED_TOOLS:-}" ]]; then
+        CLAUDE_ALLOWED_TOOLS="$ALLOWED_TOOLS"
+    fi
+    if [[ -n "${SESSION_CONTINUITY:-}" ]]; then
+        CLAUDE_USE_CONTINUE="$SESSION_CONTINUITY"
+    fi
+    if [[ -n "${SESSION_EXPIRY_HOURS:-}" ]]; then
+        CLAUDE_SESSION_EXPIRY_HOURS="$SESSION_EXPIRY_HOURS"
+    fi
+    if [[ -n "${RALPH_VERBOSE:-}" ]]; then
+        VERBOSE_PROGRESS="$RALPH_VERBOSE"
+    fi
+
+    # Restore ONLY values that were explicitly set via environment variables
+    # (not script defaults). The _env_* variables were captured BEFORE defaults were set.
+    # If _env_* is non-empty, the user explicitly set it in their environment.
+    [[ -n "$_env_MAX_CALLS_PER_HOUR" ]] && MAX_CALLS_PER_HOUR="$_env_MAX_CALLS_PER_HOUR"
+    [[ -n "$_env_CLAUDE_TIMEOUT_MINUTES" ]] && CLAUDE_TIMEOUT_MINUTES="$_env_CLAUDE_TIMEOUT_MINUTES"
+    [[ -n "$_env_CLAUDE_OUTPUT_FORMAT" ]] && CLAUDE_OUTPUT_FORMAT="$_env_CLAUDE_OUTPUT_FORMAT"
+    [[ -n "$_env_CLAUDE_ALLOWED_TOOLS" ]] && CLAUDE_ALLOWED_TOOLS="$_env_CLAUDE_ALLOWED_TOOLS"
+    [[ -n "$_env_CLAUDE_USE_CONTINUE" ]] && CLAUDE_USE_CONTINUE="$_env_CLAUDE_USE_CONTINUE"
+    [[ -n "$_env_CLAUDE_SESSION_EXPIRY_HOURS" ]] && CLAUDE_SESSION_EXPIRY_HOURS="$_env_CLAUDE_SESSION_EXPIRY_HOURS"
+    [[ -n "$_env_VERBOSE_PROGRESS" ]] && VERBOSE_PROGRESS="$_env_VERBOSE_PROGRESS"
+    [[ -n "$_env_CB_COOLDOWN_MINUTES" ]] && CB_COOLDOWN_MINUTES="$_env_CB_COOLDOWN_MINUTES"
+    [[ -n "$_env_CB_AUTO_RESET" ]] && CB_AUTO_RESET="$_env_CB_AUTO_RESET"
+
+    RALPHRC_LOADED=true
+    return 0
+}
+
 # Colors for terminal output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -96,62 +178,128 @@ check_tmux_available() {
     fi
 }
 
+# Get the tmux base-index for windows (handles custom tmux configurations)
+# Returns: the base window index (typically 0 or 1)
+get_tmux_base_index() {
+    local base_index
+    base_index=$(tmux show-options -gv base-index 2>/dev/null)
+    # Default to 0 if not set or tmux command fails
+    echo "${base_index:-0}"
+}
+
 # Setup tmux session with monitor
 setup_tmux_session() {
     local session_name="ralph-$(date +%s)"
     local ralph_home="${RALPH_HOME:-$HOME/.ralph}"
-    
+    local project_dir="$(pwd)"
+
+    # Get the tmux base-index to handle custom configurations (e.g., base-index 1)
+    local base_win
+    base_win=$(get_tmux_base_index)
+
     log_status "INFO" "Setting up tmux session: $session_name"
-    
-    # Create new tmux session detached
-    tmux new-session -d -s "$session_name" -c "$(pwd)"
-    
-    # Split window vertically to create monitor pane on the right
-    tmux split-window -h -t "$session_name" -c "$(pwd)"
-    
-    # Start monitor in the right pane
+
+    # Initialize live.log file
+    echo "=== Ralph Live Output - Waiting for first loop... ===" > "$LIVE_LOG_FILE"
+
+    # Create new tmux session detached (left pane - Ralph loop)
+    tmux new-session -d -s "$session_name" -c "$project_dir"
+
+    # Split window vertically (right side)
+    tmux split-window -h -t "$session_name" -c "$project_dir"
+
+    # Split right pane horizontally (top: Claude output, bottom: status)
+    tmux split-window -v -t "$session_name:${base_win}.1" -c "$project_dir"
+
+    # Right-top pane (pane 1): Live Claude Code output
+    tmux send-keys -t "$session_name:${base_win}.1" "tail -f '$project_dir/$LIVE_LOG_FILE'" Enter
+
+    # Right-bottom pane (pane 2): Ralph status monitor
     if command -v ralph-monitor &> /dev/null; then
-        tmux send-keys -t "$session_name:0.1" "ralph-monitor" Enter
+        tmux send-keys -t "$session_name:${base_win}.2" "ralph-monitor" Enter
     else
-        tmux send-keys -t "$session_name:0.1" "'$ralph_home/ralph_monitor.sh'" Enter
+        tmux send-keys -t "$session_name:${base_win}.2" "'$ralph_home/ralph_monitor.sh'" Enter
     fi
-    
+
     # Start ralph loop in the left pane (exclude tmux flag to avoid recursion)
+    # Forward all CLI parameters that were set by the user
     local ralph_cmd
     if command -v ralph &> /dev/null; then
         ralph_cmd="ralph"
     else
         ralph_cmd="'$ralph_home/ralph_loop.sh'"
     fi
-    
+
+    # Always use --live mode in tmux for real-time streaming
+    ralph_cmd="$ralph_cmd --live"
+
+    # Forward --calls if non-default
     if [[ "$MAX_CALLS_PER_HOUR" != "100" ]]; then
         ralph_cmd="$ralph_cmd --calls $MAX_CALLS_PER_HOUR"
     fi
+    # Forward --prompt if non-default
     if [[ "$PROMPT_FILE" != "$RALPH_DIR/PROMPT.md" ]]; then
         ralph_cmd="$ralph_cmd --prompt '$PROMPT_FILE'"
     fi
-    
-    tmux send-keys -t "$session_name:0.0" "$ralph_cmd" Enter
-    
+    # Forward --output-format if non-default (default is json)
+    if [[ "$CLAUDE_OUTPUT_FORMAT" != "json" ]]; then
+        ralph_cmd="$ralph_cmd --output-format $CLAUDE_OUTPUT_FORMAT"
+    fi
+    # Forward --verbose if enabled
+    if [[ "$VERBOSE_PROGRESS" == "true" ]]; then
+        ralph_cmd="$ralph_cmd --verbose"
+    fi
+    # Forward --timeout if non-default (default is 15)
+    if [[ "$CLAUDE_TIMEOUT_MINUTES" != "15" ]]; then
+        ralph_cmd="$ralph_cmd --timeout $CLAUDE_TIMEOUT_MINUTES"
+    fi
+    # Forward --allowed-tools if non-default
+    if [[ "$CLAUDE_ALLOWED_TOOLS" != "Write,Read,Edit,Bash(git *),Bash(npm *),Bash(pytest)" ]]; then
+        ralph_cmd="$ralph_cmd --allowed-tools '$CLAUDE_ALLOWED_TOOLS'"
+    fi
+    # Forward --no-continue if session continuity disabled
+    if [[ "$CLAUDE_USE_CONTINUE" == "false" ]]; then
+        ralph_cmd="$ralph_cmd --no-continue"
+    fi
+    # Forward --session-expiry if non-default (default is 24)
+    if [[ "$CLAUDE_SESSION_EXPIRY_HOURS" != "24" ]]; then
+        ralph_cmd="$ralph_cmd --session-expiry $CLAUDE_SESSION_EXPIRY_HOURS"
+    fi
+    # Forward --auto-reset-circuit if enabled
+    if [[ "$CB_AUTO_RESET" == "true" ]]; then
+        ralph_cmd="$ralph_cmd --auto-reset-circuit"
+    fi
+
+    tmux send-keys -t "$session_name:${base_win}.0" "$ralph_cmd" Enter
+
     # Focus on left pane (main ralph loop)
-    tmux select-pane -t "$session_name:0.0"
-    
+    tmux select-pane -t "$session_name:${base_win}.0"
+
+    # Set pane titles (requires tmux 2.6+)
+    tmux select-pane -t "$session_name:${base_win}.0" -T "Ralph Loop"
+    tmux select-pane -t "$session_name:${base_win}.1" -T "Claude Output"
+    tmux select-pane -t "$session_name:${base_win}.2" -T "Status"
+
     # Set window title
-    tmux rename-window -t "$session_name:0" "Ralph: Loop | Monitor"
-    
-    log_status "SUCCESS" "Tmux session created. Attaching to session..."
+    tmux rename-window -t "$session_name:${base_win}" "Ralph: Loop | Output | Status"
+
+    log_status "SUCCESS" "Tmux session created with 3 panes:"
+    log_status "INFO" "  Left:         Ralph loop"
+    log_status "INFO" "  Right-top:    Claude Code live output"
+    log_status "INFO" "  Right-bottom: Status monitor"
+    log_status "INFO" ""
     log_status "INFO" "Use Ctrl+B then D to detach from session"
     log_status "INFO" "Use 'tmux attach -t $session_name' to reattach"
-    
+
     # Attach to session (this will block until session ends)
     tmux attach-session -t "$session_name"
-    
+
     exit 0
 }
 
 # Initialize call tracking
 init_call_tracking() {
-    log_status "INFO" "DEBUG: Entered init_call_tracking..."
+    # Debug logging removed for cleaner output
     local current_hour=$(date +%Y%m%d%H)
     local last_reset_hour=""
 
@@ -174,7 +322,6 @@ init_call_tracking() {
     # Initialize circuit breaker
     init_circuit_breaker
 
-    log_status "INFO" "DEBUG: Completed init_call_tracking successfully"
 }
 
 # Log function with timestamps and colors
@@ -192,7 +339,8 @@ log_status() {
         "LOOP") color=$PURPLE ;;
     esac
     
-    echo -e "${color}[$timestamp] [$level] $message${NC}"
+    # Write to stderr so log messages don't interfere with function return values
+    echo -e "${color}[$timestamp] [$level] $message${NC}" >&2
     echo "[$timestamp] [$level] $message" >> "$LOG_DIR/ralph.log"
 }
 
@@ -276,15 +424,12 @@ wait_for_reset() {
 
 # Check if we should gracefully exit
 should_exit_gracefully() {
-    log_status "INFO" "DEBUG: Checking exit conditions..." >&2
     
     if [[ ! -f "$EXIT_SIGNALS_FILE" ]]; then
-        log_status "INFO" "DEBUG: No exit signals file found, continuing..." >&2
         return 1  # Don't exit, file doesn't exist
     fi
     
     local signals=$(cat "$EXIT_SIGNALS_FILE")
-    log_status "INFO" "DEBUG: Exit signals content: $signals" >&2
     
     # Count recent signals (last 5 loops) - with error handling
     local recent_test_loops
@@ -295,10 +440,24 @@ should_exit_gracefully() {
     recent_done_signals=$(echo "$signals" | jq '.done_signals | length' 2>/dev/null || echo "0")
     recent_completion_indicators=$(echo "$signals" | jq '.completion_indicators | length' 2>/dev/null || echo "0")
     
-    log_status "INFO" "DEBUG: Exit counts - test_loops:$recent_test_loops, done_signals:$recent_done_signals, completion:$recent_completion_indicators" >&2
-    
+
     # Check for exit conditions
-    
+
+    # 0. Permission denials (highest priority - Issue #101)
+    # When Claude Code is denied permission to run commands, halt immediately
+    # to allow user to update .ralphrc ALLOWED_TOOLS configuration
+    if [[ -f "$RESPONSE_ANALYSIS_FILE" ]]; then
+        local has_permission_denials=$(jq -r '.analysis.has_permission_denials // false' "$RESPONSE_ANALYSIS_FILE" 2>/dev/null || echo "false")
+        if [[ "$has_permission_denials" == "true" ]]; then
+            local denied_count=$(jq -r '.analysis.permission_denial_count // 0' "$RESPONSE_ANALYSIS_FILE" 2>/dev/null || echo "0")
+            local denied_cmds=$(jq -r '.analysis.denied_commands | join(", ")' "$RESPONSE_ANALYSIS_FILE" 2>/dev/null || echo "unknown")
+            log_status "WARN" "🚫 Permission denied for $denied_count command(s): $denied_cmds"
+            log_status "WARN" "Update ALLOWED_TOOLS in .ralphrc to include the required tools"
+            echo "permission_denied"
+            return 0
+        fi
+    fi
+
     # 1. Too many consecutive test-only loops
     if [[ $recent_test_loops -ge $MAX_CONSECUTIVE_TEST_LOOPS ]]; then
         log_status "WARN" "Exit condition: Too many test-focused loops ($recent_test_loops >= $MAX_CONSECUTIVE_TEST_LOOPS)"
@@ -313,12 +472,14 @@ should_exit_gracefully() {
         return 0
     fi
     
-    # 3. Safety circuit breaker - force exit after 5 consecutive completion indicators
-    # Bug #2 Fix: Prevents infinite loops when EXIT_SIGNAL is not explicitly set
-    # but completion patterns clearly indicate work is done. Threshold of 5 is higher
-    # than normal threshold (2) to avoid false positives while preventing API waste.
+    # 3. Safety circuit breaker - force exit after 5 consecutive EXIT_SIGNAL=true responses
+    # Note: completion_indicators only accumulates when Claude explicitly sets EXIT_SIGNAL=true
+    # (not based on confidence score). This safety breaker catches cases where Claude signals
+    # completion 5+ times but the normal exit path (completion_indicators >= 2 + EXIT_SIGNAL=true)
+    # didn't trigger for some reason. Threshold of 5 prevents API waste while being higher than
+    # the normal threshold (2) to avoid false positives.
     if [[ $recent_completion_indicators -ge 5 ]]; then
-        log_status "WARN" "🚨 SAFETY CIRCUIT BREAKER: Force exit after 5 consecutive completion indicators ($recent_completion_indicators)" >&2
+        log_status "WARN" "🚨 SAFETY CIRCUIT BREAKER: Force exit after 5 consecutive EXIT_SIGNAL=true responses ($recent_completion_indicators)" >&2
         echo "safety_circuit_breaker"
         return 0
     fi
@@ -336,32 +497,25 @@ should_exit_gracefully() {
         log_status "WARN" "Exit condition: Strong completion indicators ($recent_completion_indicators) with EXIT_SIGNAL=true" >&2
         echo "project_complete"
         return 0
-    elif [[ $recent_completion_indicators -ge 2 ]]; then
-        log_status "INFO" "DEBUG: Completion indicators ($recent_completion_indicators) present but EXIT_SIGNAL=false, continuing..." >&2
     fi
     
     # 5. Check fix_plan.md for completion
-    # Bug #3 Fix: Support indented markdown checkboxes with [[:space:]]* pattern
-    if [[ -f "$RALPH_DIR/@fix_plan.md" ]]; then
-        local total_items=$(grep -cE "^[[:space:]]*- \[" "$RALPH_DIR/@fix_plan.md" 2>/dev/null)
-        local completed_items=$(grep -cE "^[[:space:]]*- \[x\]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null)
-
-        # Handle case where grep returns no matches (exit code 1)
-        [[ -z "$total_items" ]] && total_items=0
+    # Fix #144: Only match valid markdown checkboxes, not date entries like [2026-01-29]
+    # Valid patterns: "- [ ]" (uncompleted) and "- [x]" or "- [X]" (completed)
+    if [[ -f "$RALPH_DIR/fix_plan.md" ]]; then
+        local uncompleted_items=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/fix_plan.md" 2>/dev/null || true)
+        [[ -z "$uncompleted_items" ]] && uncompleted_items=0
+        local completed_items=$(grep -cE "^[[:space:]]*- \[[xX]\]" "$RALPH_DIR/fix_plan.md" 2>/dev/null || true)
         [[ -z "$completed_items" ]] && completed_items=0
-
-        log_status "INFO" "DEBUG: .ralph/@fix_plan.md check - total_items:$total_items, completed_items:$completed_items" >&2
+        local total_items=$((uncompleted_items + completed_items))
 
         if [[ $total_items -gt 0 ]] && [[ $completed_items -eq $total_items ]]; then
             log_status "WARN" "Exit condition: All fix_plan.md items completed ($completed_items/$total_items)" >&2
             echo "plan_complete"
             return 0
         fi
-    else
-        log_status "INFO" "DEBUG: .ralph/@fix_plan.md file not found" >&2
     fi
-    
-    log_status "INFO" "DEBUG: No exit conditions met, continuing loop" >&2
+
     echo ""  # Return empty string instead of using return code
 }
 
@@ -455,10 +609,11 @@ build_loop_context() {
     # Add loop number
     context="Loop #${loop_count}. "
 
-    # Extract incomplete tasks from @fix_plan.md
+    # Extract incomplete tasks from fix_plan.md
     # Bug #3 Fix: Support indented markdown checkboxes with [[:space:]]* pattern
-    if [[ -f "$RALPH_DIR/@fix_plan.md" ]]; then
-        local incomplete_tasks=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || echo "0")
+    if [[ -f "$RALPH_DIR/fix_plan.md" ]]; then
+        local incomplete_tasks=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/fix_plan.md" 2>/dev/null || true)
+        [[ -z "$incomplete_tasks" ]] && incomplete_tasks=0
         context+="Remaining tasks: ${incomplete_tasks}. "
     fi
 
@@ -493,16 +648,21 @@ get_session_file_age_hours() {
         return
     fi
 
-    local os_type
-    os_type=$(uname)
-
+    # Get file modification time using capability detection
+    # Handles macOS with Homebrew coreutils where stat flags differ
     local file_mtime
-    if [[ "$os_type" == "Darwin" ]]; then
-        # macOS (BSD stat)
-        file_mtime=$(stat -f %m "$file" 2>/dev/null)
+
+    # Try GNU stat first (Linux, macOS with Homebrew coreutils)
+    if file_mtime=$(stat -c %Y "$file" 2>/dev/null) && [[ -n "$file_mtime" && "$file_mtime" =~ ^[0-9]+$ ]]; then
+        : # success
+    # Try BSD stat (native macOS)
+    elif file_mtime=$(stat -f %m "$file" 2>/dev/null) && [[ -n "$file_mtime" && "$file_mtime" =~ ^[0-9]+$ ]]; then
+        : # success
+    # Fallback to date -r (most portable)
+    elif file_mtime=$(date -r "$file" +%s 2>/dev/null) && [[ -n "$file_mtime" && "$file_mtime" =~ ^[0-9]+$ ]]; then
+        : # success
     else
-        # Linux (GNU stat)
-        file_mtime=$(stat -c %Y "$file" 2>/dev/null)
+        file_mtime=""
     fi
 
     # Handle stat failure - return -1 to indicate error
@@ -798,6 +958,9 @@ build_claude_command() {
     local session_id=$3
 
     # Reset global array
+    # Note: We do NOT use --dangerously-skip-permissions here. Tool permissions
+    # are controlled via --allowedTools from CLAUDE_ALLOWED_TOOLS in .ralphrc.
+    # This preserves the permission denial circuit breaker (Issue #101).
     CLAUDE_CMD_ARGS=("$CLAUDE_CODE_CMD")
 
     # Check if prompt file exists
@@ -827,9 +990,15 @@ build_claude_command() {
     fi
 
     # Add session continuity flag
-    if [[ "$CLAUDE_USE_CONTINUE" == "true" ]]; then
-        CLAUDE_CMD_ARGS+=("--continue")
+    # IMPORTANT: Use --resume with explicit session ID instead of --continue
+    # --continue resumes the "most recent session in current directory" which
+    # can hijack active Claude Code sessions. --resume with a specific session ID
+    # ensures we only resume Ralph's own sessions. (Issue #151)
+    if [[ "$CLAUDE_USE_CONTINUE" == "true" && -n "$session_id" ]]; then
+        CLAUDE_CMD_ARGS+=("--resume" "$session_id")
     fi
+    # If no session_id, start fresh - Claude will generate a new session ID
+    # which we'll capture via save_claude_session() for future loops
 
     # Add loop context as system prompt (no escaping needed - array handles it)
     if [[ -n "$loop_context" ]]; then
@@ -852,6 +1021,14 @@ execute_claude_code() {
     local calls_made=$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")
     calls_made=$((calls_made + 1))
 
+    # Fix #141: Capture git HEAD SHA at loop start to detect commits as progress
+    # Store in file for access by progress detection after Claude execution
+    local loop_start_sha=""
+    if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null 2>&1; then
+        loop_start_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+    fi
+    echo "$loop_start_sha" > "$RALPH_DIR/.loop_start_sha"
+
     log_status "LOOP" "Executing Claude Code (Call $calls_made/$MAX_CALLS_PER_HOUR)"
     local timeout_seconds=$((CLAUDE_TIMEOUT_MINUTES * 60))
     log_status "INFO" "⏳ Starting Claude Code execution... (timeout: ${CLAUDE_TIMEOUT_MINUTES}m)"
@@ -871,71 +1048,217 @@ execute_claude_code() {
         session_id=$(init_claude_session)
     fi
 
+    # Live mode requires JSON output (stream-json) — override text format
+    if [[ "$LIVE_OUTPUT" == "true" && "$CLAUDE_OUTPUT_FORMAT" == "text" ]]; then
+        log_status "WARN" "Live mode requires JSON output format. Overriding text → json for this session."
+        CLAUDE_OUTPUT_FORMAT="json"
+    fi
+
     # Build the Claude CLI command with modern flags
-    # Note: We use the modern CLI with -p flag when CLAUDE_OUTPUT_FORMAT is "json"
-    # For backward compatibility, fall back to stdin piping for text mode
     local use_modern_cli=false
 
-    if [[ "$CLAUDE_OUTPUT_FORMAT" == "json" ]]; then
-        # Modern approach: use CLI flags (builds CLAUDE_CMD_ARGS array)
-        if build_claude_command "$PROMPT_FILE" "$loop_context" "$session_id"; then
-            use_modern_cli=true
-            log_status "INFO" "Using modern CLI mode (JSON output)"
-        else
-            log_status "WARN" "Failed to build modern CLI command, falling back to legacy mode"
-        fi
+    if build_claude_command "$PROMPT_FILE" "$loop_context" "$session_id"; then
+        use_modern_cli=true
+        log_status "INFO" "Using modern CLI mode (${CLAUDE_OUTPUT_FORMAT} output)"
     else
-        log_status "INFO" "Using legacy CLI mode (text output)"
+        log_status "WARN" "Failed to build modern CLI command, falling back to legacy mode"
+        if [[ "$LIVE_OUTPUT" == "true" ]]; then
+            log_status "ERROR" "Live mode requires a built Claude command. Falling back to background mode."
+            LIVE_OUTPUT=false
+        fi
     fi
 
     # Execute Claude Code
-    if [[ "$use_modern_cli" == "true" ]]; then
-        # Modern execution with command array (shell-injection safe)
-        # Execute array directly without bash -c to prevent shell metacharacter interpretation
-        if portable_timeout ${timeout_seconds}s "${CLAUDE_CMD_ARGS[@]}" > "$output_file" 2>&1 &
-        then
-            :  # Continue to wait loop
-        else
-            log_status "ERROR" "❌ Failed to start Claude Code process (modern mode)"
-            # Fall back to legacy mode
-            log_status "INFO" "Falling back to legacy mode..."
-            use_modern_cli=false
+    local exit_code=0
+
+    # Initialize live.log for this execution
+    echo -e "\n\n=== Loop #$loop_count - $(date '+%Y-%m-%d %H:%M:%S') ===" > "$LIVE_LOG_FILE"
+
+    if [[ "$LIVE_OUTPUT" == "true" ]]; then
+        # LIVE MODE: Show streaming output in real-time using stream-json + jq
+        # Based on: https://www.ytyng.com/en/blog/claude-stream-json-jq/
+        #
+        # Uses CLAUDE_CMD_ARGS from build_claude_command() to preserve:
+        # - --allowedTools (tool permissions)
+        # - --append-system-prompt (loop context)
+        # - --continue (session continuity)
+        # - -p (prompt content)
+
+        # Check dependencies for live mode
+        if ! command -v jq &> /dev/null; then
+            log_status "ERROR" "Live mode requires 'jq' but it's not installed. Falling back to background mode."
+            LIVE_OUTPUT=false
+        elif ! command -v stdbuf &> /dev/null; then
+            log_status "ERROR" "Live mode requires 'stdbuf' (from coreutils) but it's not installed. Falling back to background mode."
+            LIVE_OUTPUT=false
         fi
     fi
 
-    # Fall back to legacy stdin piping if modern mode failed or not enabled
-    if [[ "$use_modern_cli" == "false" ]]; then
-        if portable_timeout ${timeout_seconds}s $CLAUDE_CODE_CMD < "$PROMPT_FILE" > "$output_file" 2>&1 &
-        then
-            :  # Continue to wait loop
-        else
-            log_status "ERROR" "❌ Failed to start Claude Code process"
-            return 1
+    if [[ "$LIVE_OUTPUT" == "true" ]]; then
+        # Safety check: live mode requires a successfully built modern command
+        if [[ "$use_modern_cli" != "true" || ${#CLAUDE_CMD_ARGS[@]} -eq 0 ]]; then
+            log_status "ERROR" "Live mode requires a built Claude command. Falling back to background mode."
+            LIVE_OUTPUT=false
         fi
     fi
 
-    # Get PID and monitor progress
-    local claude_pid=$!
-    local progress_counter=0
+    if [[ "$LIVE_OUTPUT" == "true" ]]; then
+        log_status "INFO" "📺 Live output mode enabled - showing Claude Code streaming..."
+        echo -e "${PURPLE}━━━━━━━━━━━━━━━━ Claude Code Output ━━━━━━━━━━━━━━━━${NC}"
 
-    # Show progress while Claude Code is running
-    while kill -0 $claude_pid 2>/dev/null; do
-        progress_counter=$((progress_counter + 1))
-        case $((progress_counter % 4)) in
-            1) progress_indicator="⠋" ;;
-            2) progress_indicator="⠙" ;;
-            3) progress_indicator="⠹" ;;
-            0) progress_indicator="⠸" ;;
-        esac
+        # Modify CLAUDE_CMD_ARGS: replace --output-format value with stream-json
+        # and add streaming-specific flags
+        local -a LIVE_CMD_ARGS=()
+        local skip_next=false
+        for arg in "${CLAUDE_CMD_ARGS[@]}"; do
+            if [[ "$skip_next" == "true" ]]; then
+                # Replace "json" with "stream-json" for output format
+                LIVE_CMD_ARGS+=("stream-json")
+                skip_next=false
+            elif [[ "$arg" == "--output-format" ]]; then
+                LIVE_CMD_ARGS+=("$arg")
+                skip_next=true
+            else
+                LIVE_CMD_ARGS+=("$arg")
+            fi
+        done
 
-        # Get last line from output if available
-        local last_line=""
-        if [[ -f "$output_file" && -s "$output_file" ]]; then
-            last_line=$(tail -1 "$output_file" 2>/dev/null | head -c 80)
+        # Add streaming-specific flags (--verbose and --include-partial-messages)
+        # These are required for stream-json to work properly
+        LIVE_CMD_ARGS+=("--verbose" "--include-partial-messages")
+
+        # jq filter: show text + tool names + newlines for readability
+        local jq_filter='
+            if .type == "stream_event" then
+                if .event.type == "content_block_delta" and .event.delta.type == "text_delta" then
+                    .event.delta.text
+                elif .event.type == "content_block_start" and .event.content_block.type == "tool_use" then
+                    "\n\n⚡ [" + .event.content_block.name + "]\n"
+                elif .event.type == "content_block_stop" then
+                    "\n"
+                else
+                    empty
+                end
+            else
+                empty
+            end'
+
+        # Execute with streaming, preserving all flags from build_claude_command()
+        # Use stdbuf to disable buffering for real-time output
+        # Use portable_timeout for consistent timeout protection (Issue: missing timeout)
+        # Capture all pipeline exit codes for proper error handling
+        # stdin must be redirected from /dev/null because newer Claude CLI versions
+        # read from stdin even in -p (print) mode, causing the process to hang
+        set -o pipefail
+        portable_timeout ${timeout_seconds}s stdbuf -oL "${LIVE_CMD_ARGS[@]}" \
+            < /dev/null 2>&1 | stdbuf -oL tee "$output_file" | stdbuf -oL jq --unbuffered -j "$jq_filter" 2>/dev/null | tee "$LIVE_LOG_FILE"
+
+        # Capture exit codes from pipeline
+        local -a pipe_status=("${PIPESTATUS[@]}")
+        set +o pipefail
+
+        # Primary exit code is from Claude/timeout (first command in pipeline)
+        exit_code=${pipe_status[0]}
+
+        # Check for tee failures (second command) - could break logging/session
+        if [[ ${pipe_status[1]} -ne 0 ]]; then
+            log_status "WARN" "Failed to write stream output to log file (exit code ${pipe_status[1]})"
         fi
 
-        # Update progress file for monitor
-        cat > "$PROGRESS_FILE" << EOF
+        # Check for jq failures (third command) - warn but don't fail
+        if [[ ${pipe_status[2]} -ne 0 ]]; then
+            log_status "WARN" "jq filter had issues parsing some stream events (exit code ${pipe_status[2]})"
+        fi
+
+        echo ""
+        echo -e "${PURPLE}━━━━━━━━━━━━━━━━ End of Output ━━━━━━━━━━━━━━━━━━━${NC}"
+
+        # Extract session ID from stream-json output for session continuity
+        # Stream-json format has session_id in the final "result" type message
+        # Keep full stream output in _stream.log, extract session data separately
+        if [[ "$CLAUDE_USE_CONTINUE" == "true" && -f "$output_file" ]]; then
+            # Preserve full stream output for analysis (don't overwrite output_file)
+            local stream_output_file="${output_file%.log}_stream.log"
+            cp "$output_file" "$stream_output_file"
+
+            # Extract the result message and convert to standard JSON format
+            # Use flexible regex to match various JSON formatting styles
+            # Matches: "type":"result", "type": "result", "type" : "result"
+            local result_line=$(grep -E '"type"[[:space:]]*:[[:space:]]*"result"' "$output_file" 2>/dev/null | tail -1)
+
+            if [[ -n "$result_line" ]]; then
+                # Validate that extracted line is valid JSON before using it
+                if echo "$result_line" | jq -e . >/dev/null 2>&1; then
+                    # Write validated result as the output_file for downstream processing
+                    # (save_claude_session and analyze_response expect JSON format)
+                    echo "$result_line" > "$output_file"
+                    log_status "INFO" "Extracted and validated session data from stream output"
+                else
+                    log_status "WARN" "Extracted result line is not valid JSON, keeping stream output"
+                    # Restore original stream output
+                    cp "$stream_output_file" "$output_file"
+                fi
+            else
+                log_status "WARN" "Could not find result message in stream output"
+                # Keep stream output as-is for debugging
+            fi
+        fi
+    else
+        # BACKGROUND MODE: Original behavior with progress monitoring
+        if [[ "$use_modern_cli" == "true" ]]; then
+            # Modern execution with command array (shell-injection safe)
+            # Execute array directly without bash -c to prevent shell metacharacter interpretation
+            # stdin must be redirected from /dev/null because newer Claude CLI versions
+            # read from stdin even in -p (print) mode, causing SIGTTIN suspension
+            # when the process is backgrounded
+            if portable_timeout ${timeout_seconds}s "${CLAUDE_CMD_ARGS[@]}" < /dev/null > "$output_file" 2>&1 &
+            then
+                :  # Continue to wait loop
+            else
+                log_status "ERROR" "❌ Failed to start Claude Code process (modern mode)"
+                # Fall back to legacy mode
+                log_status "INFO" "Falling back to legacy mode..."
+                use_modern_cli=false
+            fi
+        fi
+
+        # Fall back to legacy stdin piping if modern mode failed or not enabled
+        # Note: Legacy mode doesn't use --allowedTools, so tool permissions
+        # will be handled by Claude Code's default permission system
+        if [[ "$use_modern_cli" == "false" ]]; then
+            if portable_timeout ${timeout_seconds}s $CLAUDE_CODE_CMD < "$PROMPT_FILE" > "$output_file" 2>&1 &
+            then
+                :  # Continue to wait loop
+            else
+                log_status "ERROR" "❌ Failed to start Claude Code process"
+                return 1
+            fi
+        fi
+
+        # Get PID and monitor progress
+        local claude_pid=$!
+        local progress_counter=0
+
+        # Show progress while Claude Code is running
+        while kill -0 $claude_pid 2>/dev/null; do
+            progress_counter=$((progress_counter + 1))
+            case $((progress_counter % 4)) in
+                1) progress_indicator="⠋" ;;
+                2) progress_indicator="⠙" ;;
+                3) progress_indicator="⠹" ;;
+                0) progress_indicator="⠸" ;;
+            esac
+
+            # Get last line from output if available
+            local last_line=""
+            if [[ -f "$output_file" && -s "$output_file" ]]; then
+                last_line=$(tail -1 "$output_file" 2>/dev/null | head -c 80)
+                # Copy to live.log for tmux monitoring
+                cp "$output_file" "$LIVE_LOG_FILE" 2>/dev/null
+            fi
+
+            # Update progress file for monitor
+            cat > "$PROGRESS_FILE" << EOF
 {
     "status": "executing",
     "indicator": "$progress_indicator",
@@ -945,21 +1268,22 @@ execute_claude_code() {
 }
 EOF
 
-        # Only log if verbose mode is enabled
-        if [[ "$VERBOSE_PROGRESS" == "true" ]]; then
-            if [[ -n "$last_line" ]]; then
-                log_status "INFO" "$progress_indicator Claude Code: $last_line... (${progress_counter}0s)"
-            else
-                log_status "INFO" "$progress_indicator Claude Code working... (${progress_counter}0s elapsed)"
+            # Only log if verbose mode is enabled
+            if [[ "$VERBOSE_PROGRESS" == "true" ]]; then
+                if [[ -n "$last_line" ]]; then
+                    log_status "INFO" "$progress_indicator Claude Code: $last_line... (${progress_counter}0s)"
+                else
+                    log_status "INFO" "$progress_indicator Claude Code working... (${progress_counter}0s elapsed)"
+                fi
             fi
-        fi
 
-        sleep 10
-    done
+            sleep 10
+        done
 
-    # Wait for the process to finish and get exit code
-    wait $claude_pid
-    local exit_code=$?
+        # Wait for the process to finish and get exit code
+        wait $claude_pid
+        exit_code=$?
+    fi
 
     if [ $exit_code -eq 0 ]; then
         # Only increment counter on successful execution
@@ -987,7 +1311,41 @@ EOF
         log_analysis_summary
 
         # Get file change count for circuit breaker
-        local files_changed=$(git diff --name-only 2>/dev/null | wc -l || echo 0)
+        # Fix #141: Detect both uncommitted changes AND committed changes
+        local files_changed=0
+        local loop_start_sha=""
+        local current_sha=""
+
+        if [[ -f "$RALPH_DIR/.loop_start_sha" ]]; then
+            loop_start_sha=$(cat "$RALPH_DIR/.loop_start_sha" 2>/dev/null || echo "")
+        fi
+
+        if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null 2>&1; then
+            current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+            # Check if commits were made (HEAD changed)
+            if [[ -n "$loop_start_sha" && -n "$current_sha" && "$loop_start_sha" != "$current_sha" ]]; then
+                # Commits were made - count union of committed files AND working tree changes
+                # This catches cases where Claude commits some files but still has other modified files
+                files_changed=$(
+                    {
+                        git diff --name-only "$loop_start_sha" "$current_sha" 2>/dev/null
+                        git diff --name-only HEAD 2>/dev/null           # unstaged changes
+                        git diff --name-only --cached 2>/dev/null       # staged changes
+                    } | sort -u | wc -l
+                )
+                [[ "$VERBOSE_PROGRESS" == "true" ]] && log_status "DEBUG" "Detected $files_changed unique files changed (commits + working tree) since loop start"
+            else
+                # No commits - check for uncommitted changes (staged + unstaged)
+                files_changed=$(
+                    {
+                        git diff --name-only 2>/dev/null                # unstaged changes
+                        git diff --name-only --cached 2>/dev/null       # staged changes
+                    } | sort -u | wc -l
+                )
+            fi
+        fi
+
         local has_errors="false"
 
         # Two-stage error detection to avoid JSON field false positives
@@ -1053,6 +1411,12 @@ loop_count=0
 
 # Main loop
 main() {
+    # Load project-specific configuration from .ralphrc
+    if load_ralphrc; then
+        if [[ "$RALPHRC_LOADED" == "true" ]]; then
+            log_status "INFO" "Loaded configuration from .ralphrc"
+        fi
+    fi
 
     log_status "SUCCESS" "🚀 Ralph loop starting with Claude Code"
     log_status "INFO" "Max calls per hour: $MAX_CALLS_PER_HOUR"
@@ -1078,7 +1442,7 @@ main() {
         echo ""
         
         # Check if this looks like a partial Ralph project
-        if [[ -f "$RALPH_DIR/@fix_plan.md" ]] || [[ -d "$RALPH_DIR/specs" ]] || [[ -f "$RALPH_DIR/@AGENT.md" ]]; then
+        if [[ -f "$RALPH_DIR/fix_plan.md" ]] || [[ -d "$RALPH_DIR/specs" ]] || [[ -f "$RALPH_DIR/AGENT.md" ]]; then
             echo "This appears to be a Ralph project but is missing .ralph/PROMPT.md."
             echo "You may need to create or restore the PROMPT.md file."
         else
@@ -1087,12 +1451,13 @@ main() {
 
         echo ""
         echo "To fix this:"
-        echo "  1. Create a new project: ralph-setup my-project"
-        echo "  2. Import existing requirements: ralph-import requirements.md"
-        echo "  3. Navigate to an existing Ralph project directory"
-        echo "  4. Or create .ralph/PROMPT.md manually in this directory"
+        echo "  1. Enable Ralph in existing project: ralph-enable"
+        echo "  2. Create a new project: ralph-setup my-project"
+        echo "  3. Import existing requirements: ralph-import requirements.md"
+        echo "  4. Navigate to an existing Ralph project directory"
+        echo "  5. Or create .ralph/PROMPT.md manually in this directory"
         echo ""
-        echo "Ralph projects should contain: .ralph/PROMPT.md, .ralph/@fix_plan.md, .ralph/specs/, src/, etc."
+        echo "Ralph projects should contain: .ralph/PROMPT.md, .ralph/fix_plan.md, .ralph/specs/, src/, etc."
         exit 1
     fi
 
@@ -1100,11 +1465,9 @@ main() {
     init_session_tracking
 
     log_status "INFO" "Starting main loop..."
-    log_status "INFO" "DEBUG: About to enter while loop, loop_count=$loop_count"
     
     while true; do
         loop_count=$((loop_count + 1))
-        log_status "INFO" "DEBUG: Successfully incremented loop_count to $loop_count"
 
         # Update session last_used timestamp
         update_session_last_used
@@ -1131,6 +1494,45 @@ main() {
         # Check for graceful exit conditions
         local exit_reason=$(should_exit_gracefully)
         if [[ "$exit_reason" != "" ]]; then
+            # Handle permission_denied specially (Issue #101)
+            if [[ "$exit_reason" == "permission_denied" ]]; then
+                log_status "ERROR" "🚫 Permission denied - halting loop"
+                reset_session "permission_denied"
+                update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "permission_denied" "halted" "permission_denied"
+
+                # Display helpful guidance for resolving permission issues
+                echo ""
+                echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
+                echo -e "${RED}║  PERMISSION DENIED - Loop Halted                          ║${NC}"
+                echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
+                echo ""
+                echo -e "${YELLOW}Claude Code was denied permission to execute commands.${NC}"
+                echo ""
+                echo -e "${YELLOW}To fix this:${NC}"
+                echo "  1. Edit .ralphrc and update ALLOWED_TOOLS to include the required tools"
+                echo "  2. Common patterns:"
+                echo "     - Bash(npm *)     - All npm commands"
+                echo "     - Bash(npm install) - Only npm install"
+                echo "     - Bash(pnpm *)    - All pnpm commands"
+                echo "     - Bash(yarn *)    - All yarn commands"
+                echo ""
+                echo -e "${YELLOW}After updating .ralphrc:${NC}"
+                echo "  ralph --reset-session  # Clear stale session state"
+                echo "  ralph --monitor        # Restart the loop"
+                echo ""
+
+                # Show current ALLOWED_TOOLS if .ralphrc exists
+                if [[ -f ".ralphrc" ]]; then
+                    local current_tools=$(grep "^ALLOWED_TOOLS=" ".ralphrc" 2>/dev/null | cut -d= -f2- | tr -d '"')
+                    if [[ -n "$current_tools" ]]; then
+                        echo -e "${BLUE}Current ALLOWED_TOOLS:${NC} $current_tools"
+                        echo ""
+                    fi
+                fi
+
+                break
+            fi
+
             log_status "SUCCESS" "🏁 Graceful exit triggered: $exit_reason"
             reset_session "project_complete"
             update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "graceful_exit" "completed" "$exit_reason"
@@ -1227,13 +1629,16 @@ Options:
     -s, --status            Show current status and exit
     -m, --monitor           Start with tmux session and live monitor (requires tmux)
     -v, --verbose           Show detailed progress updates during execution
+    -l, --live              Show Claude Code output in real-time (auto-switches to JSON output)
     -t, --timeout MIN       Set Claude Code execution timeout in minutes (default: $CLAUDE_TIMEOUT_MINUTES)
     --reset-circuit         Reset circuit breaker to CLOSED state
     --circuit-status        Show circuit breaker status and exit
+    --auto-reset-circuit    Auto-reset circuit breaker on startup (bypasses cooldown)
     --reset-session         Reset session state and exit (clears session continuity)
 
 Modern CLI Options (Phase 1.1):
     --output-format FORMAT  Set Claude output format: json or text (default: $CLAUDE_OUTPUT_FORMAT)
+                            Note: --live mode requires JSON and will auto-switch
     --allowed-tools TOOLS   Comma-separated list of allowed tools (default: $CLAUDE_ALLOWED_TOOLS)
     --no-continue           Disable session continuity across loops
     --session-expiry HOURS  Set session expiration time in hours (default: $CLAUDE_SESSION_EXPIRY_HOURS)
@@ -1255,6 +1660,8 @@ Example workflow:
 Examples:
     $0 --calls 50 --prompt my_prompt.md
     $0 --monitor             # Start with integrated tmux monitoring
+    $0 --live                # Show Claude Code output in real-time (streaming)
+    $0 --live --verbose      # Live streaming + verbose logging
     $0 --monitor --timeout 30   # 30-minute timeout for complex tasks
     $0 --verbose --timeout 5    # 5-minute timeout with detailed progress
     $0 --output-format text     # Use legacy text output format
@@ -1294,6 +1701,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -v|--verbose)
             VERBOSE_PROGRESS=true
+            shift
+            ;;
+        -l|--live)
+            LIVE_OUTPUT=true
             shift
             ;;
         -t|--timeout)
@@ -1356,6 +1767,10 @@ while [[ $# -gt 0 ]]; do
             fi
             CLAUDE_SESSION_EXPIRY_HOURS="$2"
             shift 2
+            ;;
+        --auto-reset-circuit)
+            CB_AUTO_RESET=true
+            shift
             ;;
         *)
             echo "Unknown option: $1"
