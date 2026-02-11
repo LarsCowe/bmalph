@@ -475,6 +475,14 @@ describe("installer", () => {
       expect(content).toMatch(/# bmalph-version: \d+\.\d+\.\d+/);
     });
 
+    it("ralph_loop.sh references @fix_plan.md for completion detection", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
+      // bmalph writes .ralph/@fix_plan.md (with @ prefix)
+      // ralph_loop.sh must check @fix_plan.md, not fix_plan.md
+      expect(content).toContain('"$RALPH_DIR/@fix_plan.md"');
+    });
+
     it("config.yaml has valid structure with output_folder", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");

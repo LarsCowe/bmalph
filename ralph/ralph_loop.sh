@@ -499,18 +499,18 @@ should_exit_gracefully() {
         return 0
     fi
     
-    # 5. Check fix_plan.md for completion
+    # 5. Check @fix_plan.md for completion
     # Fix #144: Only match valid markdown checkboxes, not date entries like [2026-01-29]
     # Valid patterns: "- [ ]" (uncompleted) and "- [x]" or "- [X]" (completed)
-    if [[ -f "$RALPH_DIR/fix_plan.md" ]]; then
-        local uncompleted_items=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/fix_plan.md" 2>/dev/null || true)
+    if [[ -f "$RALPH_DIR/@fix_plan.md" ]]; then
+        local uncompleted_items=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || true)
         [[ -z "$uncompleted_items" ]] && uncompleted_items=0
-        local completed_items=$(grep -cE "^[[:space:]]*- \[[xX]\]" "$RALPH_DIR/fix_plan.md" 2>/dev/null || true)
+        local completed_items=$(grep -cE "^[[:space:]]*- \[[xX]\]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || true)
         [[ -z "$completed_items" ]] && completed_items=0
         local total_items=$((uncompleted_items + completed_items))
 
         if [[ $total_items -gt 0 ]] && [[ $completed_items -eq $total_items ]]; then
-            log_status "WARN" "Exit condition: All fix_plan.md items completed ($completed_items/$total_items)" >&2
+            log_status "WARN" "Exit condition: All @fix_plan.md items completed ($completed_items/$total_items)" >&2
             echo "plan_complete"
             return 0
         fi
@@ -609,10 +609,10 @@ build_loop_context() {
     # Add loop number
     context="Loop #${loop_count}. "
 
-    # Extract incomplete tasks from fix_plan.md
+    # Extract incomplete tasks from @fix_plan.md
     # Bug #3 Fix: Support indented markdown checkboxes with [[:space:]]* pattern
-    if [[ -f "$RALPH_DIR/fix_plan.md" ]]; then
-        local incomplete_tasks=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/fix_plan.md" 2>/dev/null || true)
+    if [[ -f "$RALPH_DIR/@fix_plan.md" ]]; then
+        local incomplete_tasks=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || true)
         [[ -z "$incomplete_tasks" ]] && incomplete_tasks=0
         context+="Remaining tasks: ${incomplete_tasks}. "
     fi
@@ -1442,7 +1442,7 @@ main() {
         echo ""
         
         # Check if this looks like a partial Ralph project
-        if [[ -f "$RALPH_DIR/fix_plan.md" ]] || [[ -d "$RALPH_DIR/specs" ]] || [[ -f "$RALPH_DIR/AGENT.md" ]]; then
+        if [[ -f "$RALPH_DIR/@fix_plan.md" ]] || [[ -d "$RALPH_DIR/specs" ]] || [[ -f "$RALPH_DIR/AGENT.md" ]]; then
             echo "This appears to be a Ralph project but is missing .ralph/PROMPT.md."
             echo "You may need to create or restore the PROMPT.md file."
         else
@@ -1457,7 +1457,7 @@ main() {
         echo "  4. Navigate to an existing Ralph project directory"
         echo "  5. Or create .ralph/PROMPT.md manually in this directory"
         echo ""
-        echo "Ralph projects should contain: .ralph/PROMPT.md, .ralph/fix_plan.md, .ralph/specs/, src/, etc."
+        echo "Ralph projects should contain: .ralph/PROMPT.md, .ralph/@fix_plan.md, .ralph/specs/, src/, etc."
         exit 1
     fi
 
