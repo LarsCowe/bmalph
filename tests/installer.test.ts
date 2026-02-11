@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   installProject,
   copyBundledAssets,
@@ -388,6 +388,26 @@ describe("installer", () => {
       await expect(
         access(join(testDir, "_bmad/_config/task-manifest.csv"))
       ).resolves.toBeUndefined();
+    });
+
+    it("does not warn when CSV headers differ only by trailing comma", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await copyBundledAssets(testDir);
+
+      expect(errorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("CSV header mismatch")
+      );
+      errorSpy.mockRestore();
+    });
+
+    it("strips trailing commas from manifest rows", async () => {
+      await copyBundledAssets(testDir);
+      const manifest = await readFile(join(testDir, "_bmad/_config/task-manifest.csv"), "utf-8");
+      const lines = manifest.split("\n").filter((l) => l.trim());
+      for (const line of lines) {
+        expect(line).not.toMatch(/,$/);
+      }
     });
   });
 

@@ -236,8 +236,10 @@ async function generateManifests(projectDir: string): Promise<void> {
   const coreLines = coreContent.trimEnd().split(/\r?\n/);
   const bmmLines = bmmContent.trimEnd().split(/\r?\n/);
 
-  const header = coreLines[0];
-  const bmmHeader = bmmLines[0];
+  const normalize = (line: string): string => line.replace(/,+$/, "");
+
+  const header = normalize(coreLines[0]);
+  const bmmHeader = normalize(bmmLines[0]);
 
   // Validate headers match (warn if mismatch but continue)
   if (header && bmmHeader && header !== bmmHeader) {
@@ -250,8 +252,8 @@ async function generateManifests(projectDir: string): Promise<void> {
     );
   }
 
-  const coreData = coreLines.slice(1).filter((l) => l.trim());
-  const bmmData = bmmLines.slice(1).filter((l) => l.trim());
+  const coreData = coreLines.slice(1).filter((l) => l.trim()).map(normalize);
+  const bmmData = bmmLines.slice(1).filter((l) => l.trim()).map(normalize);
 
   const combined = [header, ...coreData, ...bmmData].join("\n") + "\n";
 
