@@ -3,6 +3,7 @@ import { join } from "path";
 import { randomUUID } from "crypto";
 import { readJsonFile } from "./json.js";
 import { validateState, validateRalphLoopStatus } from "./validate.js";
+import type { RalphLoopStatus } from "./validate.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -204,21 +205,17 @@ export function getPhaseInfo(phase: number): PhaseInfo {
   return info[phase] ?? { name: "Unknown", agent: "Unknown", commands: [] };
 }
 
-export interface RalphStatus {
-  loopCount: number;
-  status: "running" | "blocked" | "completed" | "not_started";
-  tasksCompleted: number;
-  tasksTotal: number;
-}
+/** @deprecated Use RalphLoopStatus from validate.ts instead */
+export type RalphStatus = RalphLoopStatus;
 
-const DEFAULT_RALPH_STATUS: RalphStatus = {
+const DEFAULT_RALPH_STATUS: RalphLoopStatus = {
   loopCount: 0,
   status: "not_started",
   tasksCompleted: 0,
   tasksTotal: 0,
 };
 
-export async function readRalphStatus(projectDir: string): Promise<RalphStatus> {
+export async function readRalphStatus(projectDir: string): Promise<RalphLoopStatus> {
   const data = await readJsonFile<unknown>(join(projectDir, ".ralph/status.json"));
   if (data === null) {
     return DEFAULT_RALPH_STATUS;

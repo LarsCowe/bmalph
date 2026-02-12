@@ -135,10 +135,19 @@ export function extractProjectContext(artifacts: Map<string, string>): ExtractPr
     },
   ];
 
-  const context: Record<string, string> = {};
+  const context: ProjectContext = {
+    projectGoals: "",
+    successMetrics: "",
+    architectureConstraints: "",
+    technicalRisks: "",
+    scopeBoundaries: "",
+    targetUsers: "",
+    nonFunctionalRequirements: "",
+  };
+
   for (const { field, source, patterns } of fields) {
     const result = extractFromPatternsWithInfo(source, patterns);
-    context[field] = result.content;
+    context[field as keyof ProjectContext] = result.content;
     if (result.wasTruncated) {
       truncated.push({
         field,
@@ -149,7 +158,7 @@ export function extractProjectContext(artifacts: Map<string, string>): ExtractPr
   }
 
   return {
-    context: context as unknown as ProjectContext,
+    context,
     truncated,
   };
 }
