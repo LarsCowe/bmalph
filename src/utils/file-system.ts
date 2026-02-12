@@ -1,6 +1,26 @@
-import { readFile, readdir, stat } from "fs/promises";
+import { readFile, readdir, stat, writeFile, rename, unlink } from "fs/promises";
 import { join, extname } from "path";
+import { randomUUID } from "crypto";
 import { isEnoent } from "./errors.js";
+
+/**
+ * Writes content to a file atomically using a temp file + rename.
+ * Prevents partial writes from corrupting the target file.
+ */
+export async function atomicWriteFile(target: string, content: string): Promise<void> {
+  const tmp = `${target}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(tmp, content, { flag: "wx" });
+    await rename(tmp, target);
+  } catch (err) {
+    try {
+      await unlink(tmp);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw err;
+  }
+}
 
 /**
  * Recursively gets all files from a directory.

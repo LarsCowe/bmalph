@@ -1,10 +1,12 @@
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { isInitialized, copyBundledAssets, mergeClaudeMd, previewUpgrade } from "../installer.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 import { withErrorHandling } from "../utils/errors.js";
 
 interface UpgradeOptions {
   dryRun?: boolean;
+  force?: boolean;
   projectDir?: string;
 }
 
@@ -23,12 +25,31 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
   // Handle dry-run mode
   if (options.dryRun) {
     const preview = await previewUpgrade(projectDir);
-    const actions: DryRunAction[] = preview.wouldUpdate.map((p) => ({
-      type: "modify" as const,
-      path: p,
-    }));
+    const actions: DryRunAction[] = [
+      ...preview.wouldUpdate.map((p) => ({ type: "modify" as const, path: p })),
+      ...preview.wouldCreate.map((p) => ({ type: "create" as const, path: p })),
+    ];
     console.log(formatDryRunSummary(actions));
     return;
+  }
+
+  // Confirm unless --force or non-interactive
+  if (!options.force) {
+    if (!process.stdin.isTTY) {
+      throw new Error("Non-interactive mode requires --force flag for upgrade");
+    }
+    const { confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "confirm",
+        message: "This will overwrite managed files. Continue?",
+        default: false,
+      },
+    ]);
+    if (!confirm) {
+      console.log("Aborted.");
+      return;
+    }
   }
 
   console.log(chalk.blue("Upgrading bundled assets..."));

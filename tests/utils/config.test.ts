@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readConfig, writeConfig, type BmalphConfig } from "../../src/utils/config.js";
-import { mkdir, rm } from "fs/promises";
+import { mkdir, rm, readdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -48,5 +48,19 @@ describe("config", () => {
     const result = await readConfig(testDir);
 
     expect(result).toEqual(config);
+  });
+
+  it("leaves no temp files after write", async () => {
+    const config: BmalphConfig = {
+      name: "atomic-project",
+      description: "Test atomic write",
+      createdAt: "2025-01-01T00:00:00.000Z",
+    };
+
+    await writeConfig(testDir, config);
+
+    const files = await readdir(join(testDir, "bmalph"));
+    const tmpFiles = files.filter((f) => f.endsWith(".tmp"));
+    expect(tmpFiles).toHaveLength(0);
   });
 });

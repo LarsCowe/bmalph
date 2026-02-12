@@ -80,7 +80,7 @@ export async function runInitDryRun(cwd: string): Promise<CliResult> {
  * Run upgrade command
  */
 export async function runUpgrade(cwd: string): Promise<CliResult> {
-  return runCli(["upgrade"], { cwd });
+  return runCli(["upgrade", "--force"], { cwd });
 }
 
 /**

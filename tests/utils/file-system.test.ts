@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, writeFile, rm } from "fs/promises";
+import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { getFilesRecursive, getMarkdownFilesWithContent } from "../../src/utils/file-system.js";
+import {
+  getFilesRecursive,
+  getMarkdownFilesWithContent,
+  atomicWriteFile,
+} from "../../src/utils/file-system.js";
 
 describe("file-system utilities", () => {
   let testDir: string;
@@ -115,6 +119,34 @@ describe("file-system utilities", () => {
     it("re-throws non-ENOENT errors", async () => {
       await writeFile(join(testDir, "not-a-dir"), "content");
       await expect(getMarkdownFilesWithContent(join(testDir, "not-a-dir"))).rejects.toThrow();
+    });
+  });
+
+  describe("atomicWriteFile", () => {
+    it("writes content to the target file", async () => {
+      const target = join(testDir, "output.json");
+      await atomicWriteFile(target, '{"key":"value"}\n');
+
+      const content = await readFile(target, "utf-8");
+      expect(content).toBe('{"key":"value"}\n');
+    });
+
+    it("leaves no temp files after successful write", async () => {
+      const target = join(testDir, "output.json");
+      await atomicWriteFile(target, "content");
+
+      const files = await readdir(testDir);
+      const tmpFiles = files.filter((f) => f.endsWith(".tmp"));
+      expect(tmpFiles).toHaveLength(0);
+    });
+
+    it("overwrites existing file", async () => {
+      const target = join(testDir, "output.json");
+      await writeFile(target, "old content");
+      await atomicWriteFile(target, "new content");
+
+      const content = await readFile(target, "utf-8");
+      expect(content).toBe("new content");
     });
   });
 });

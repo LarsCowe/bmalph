@@ -11,6 +11,12 @@ vi.mock("chalk", () => ({
   },
 }));
 
+vi.mock("inquirer", () => ({
+  default: {
+    prompt: vi.fn(),
+  },
+}));
+
 vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
   copyBundledAssets: vi.fn(),
@@ -80,7 +86,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       expect(copyBundledAssets).toHaveBeenCalled();
     });
@@ -95,7 +101,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       expect(mergeClaudeMd).toHaveBeenCalled();
     });
@@ -110,7 +116,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Upgrading"));
     });
@@ -125,7 +131,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("_bmad/");
@@ -143,7 +149,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("Preserved");
@@ -165,7 +171,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Upgrade complete"));
     });
@@ -182,7 +188,7 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({ projectDir: "/custom/path" });
+      await upgradeCommand({ projectDir: "/custom/path", force: true });
 
       expect(isInitialized).toHaveBeenCalledWith("/custom/path");
       expect(copyBundledAssets).toHaveBeenCalledWith("/custom/path");
@@ -197,7 +203,7 @@ describe("upgrade command", () => {
       vi.mocked(copyBundledAssets).mockRejectedValue(new Error("Copy failed"));
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Copy failed"));
     });
@@ -210,9 +216,64 @@ describe("upgrade command", () => {
       process.exitCode = undefined;
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
-      await upgradeCommand({});
+      await upgradeCommand({ force: true });
 
       expect(process.exitCode).toBe(1);
+    });
+  });
+
+  describe("force option", () => {
+    let originalIsTTY: boolean | undefined;
+
+    beforeEach(() => {
+      originalIsTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true as unknown as true;
+    });
+
+    afterEach(() => {
+      process.stdin.isTTY = originalIsTTY as unknown as true;
+    });
+
+    it("shows confirmation prompt without --force", async () => {
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
+      const inquirer = await import("inquirer");
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(inquirer.default.prompt).mockResolvedValue({ confirm: true });
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({});
+
+      expect(inquirer.default.prompt).toHaveBeenCalled();
+    });
+
+    it("skips prompt with --force", async () => {
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
+      const inquirer = await import("inquirer");
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true });
+
+      expect(inquirer.default.prompt).not.toHaveBeenCalled();
+    });
+
+    it("aborts when user declines confirmation", async () => {
+      const { isInitialized, copyBundledAssets } = await import("../../src/installer.js");
+      const inquirer = await import("inquirer");
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(inquirer.default.prompt).mockResolvedValue({ confirm: false });
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({});
+
+      expect(copyBundledAssets).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Aborted"));
     });
   });
 
@@ -223,6 +284,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(previewUpgrade).mockResolvedValue({
         wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],
+        wouldCreate: [],
       });
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
@@ -236,6 +298,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(previewUpgrade).mockResolvedValue({
         wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],
+        wouldCreate: [],
       });
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");

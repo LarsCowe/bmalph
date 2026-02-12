@@ -48,6 +48,10 @@ async function runInit(options: InitOptions): Promise<void> {
   let description = options.description;
 
   if (!name || !description) {
+    if (!process.stdin.isTTY) {
+      throw new Error("Non-interactive mode requires --name and --description flags");
+    }
+
     // Derive default name from directory, with fallback for edge cases
     const dirName = projectDir.split(/[/\\]/).pop();
     const defaultName = dirName && dirName.trim() ? dirName : "my-project";

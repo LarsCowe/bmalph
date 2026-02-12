@@ -1,8 +1,9 @@
-import { writeFile, mkdir } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
 import { validateConfig } from "./validate.js";
 import { CONFIG_FILE } from "./constants.js";
+import { atomicWriteFile } from "./file-system.js";
 
 export interface UpstreamVersions {
   bmadCommit: string;
@@ -24,5 +25,5 @@ export async function readConfig(projectDir: string): Promise<BmalphConfig | nul
 
 export async function writeConfig(projectDir: string, config: BmalphConfig): Promise<void> {
   await mkdir(join(projectDir, "bmalph"), { recursive: true });
-  await writeFile(join(projectDir, CONFIG_FILE), JSON.stringify(config, null, 2) + "\n");
+  await atomicWriteFile(join(projectDir, CONFIG_FILE), JSON.stringify(config, null, 2) + "\n");
 }

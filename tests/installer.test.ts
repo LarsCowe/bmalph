@@ -853,7 +853,18 @@ Old stale content with /tea agent reference.
   });
 
   describe("previewUpgrade", () => {
-    it("returns all bundled asset paths that would be updated", async () => {
+    it("classifies all paths as wouldCreate on empty project", async () => {
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldCreate).toContain("_bmad/");
+      expect(result.wouldCreate).toContain(".ralph/ralph_loop.sh");
+      expect(result.wouldCreate).toContain(".claude/commands/");
+      expect(result.wouldCreate).toContain(".gitignore");
+      expect(result.wouldUpdate).toHaveLength(0);
+    });
+
+    it("classifies all paths as wouldUpdate on initialized project", async () => {
+      await installProject(testDir);
       const result = await previewUpgrade(testDir);
 
       expect(result.wouldUpdate).toContain("_bmad/");
@@ -866,17 +877,20 @@ Old stale content with /tea agent reference.
       expect(result.wouldUpdate).toContain(".ralph/RALPH-REFERENCE.md");
       expect(result.wouldUpdate).toContain(".claude/commands/");
       expect(result.wouldUpdate).toContain(".gitignore");
+      expect(result.wouldCreate).toHaveLength(0);
     });
 
-    it("returns consistent results regardless of project state", async () => {
-      // Empty project
-      const result1 = await previewUpgrade(testDir);
+    it("splits paths between wouldCreate and wouldUpdate for partial project", async () => {
+      // Create only some paths
+      await mkdir(join(testDir, "_bmad"), { recursive: true });
+      await writeFile(join(testDir, ".gitignore"), "node_modules\n");
 
-      // Initialized project
-      await installProject(testDir);
-      const result2 = await previewUpgrade(testDir);
+      const result = await previewUpgrade(testDir);
 
-      expect(result1.wouldUpdate).toEqual(result2.wouldUpdate);
+      expect(result.wouldUpdate).toContain("_bmad/");
+      expect(result.wouldUpdate).toContain(".gitignore");
+      expect(result.wouldCreate).toContain(".ralph/ralph_loop.sh");
+      expect(result.wouldCreate).toContain(".claude/commands/");
     });
   });
 });

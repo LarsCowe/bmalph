@@ -71,6 +71,7 @@ export interface PreviewInstallResult {
 
 export interface PreviewUpgradeResult {
   wouldUpdate: string[];
+  wouldCreate: string[];
 }
 
 export async function copyBundledAssets(projectDir: string): Promise<UpgradeResult> {
@@ -457,20 +458,31 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
   return { wouldCreate, wouldModify, wouldSkip };
 }
 
-export async function previewUpgrade(_projectDir: string): Promise<PreviewUpgradeResult> {
-  // In upgrade, we update the bundled assets
-  const wouldUpdate = [
-    "_bmad/",
-    ".ralph/ralph_loop.sh",
-    ".ralph/ralph_import.sh",
-    ".ralph/ralph_monitor.sh",
-    ".ralph/lib/",
-    ".ralph/PROMPT.md",
-    ".ralph/@AGENT.md",
-    ".ralph/RALPH-REFERENCE.md",
-    ".claude/commands/",
-    ".gitignore",
+export async function previewUpgrade(projectDir: string): Promise<PreviewUpgradeResult> {
+  const managedPaths = [
+    { path: "_bmad/", isDir: true },
+    { path: ".ralph/ralph_loop.sh", isDir: false },
+    { path: ".ralph/ralph_import.sh", isDir: false },
+    { path: ".ralph/ralph_monitor.sh", isDir: false },
+    { path: ".ralph/lib/", isDir: true },
+    { path: ".ralph/PROMPT.md", isDir: false },
+    { path: ".ralph/@AGENT.md", isDir: false },
+    { path: ".ralph/RALPH-REFERENCE.md", isDir: false },
+    { path: ".claude/commands/", isDir: true },
+    { path: ".gitignore", isDir: false },
   ];
 
-  return { wouldUpdate };
+  const wouldUpdate: string[] = [];
+  const wouldCreate: string[] = [];
+
+  for (const { path: p } of managedPaths) {
+    try {
+      await access(join(projectDir, p.replace(/\/$/, "")));
+      wouldUpdate.push(p);
+    } catch {
+      wouldCreate.push(p);
+    }
+  }
+
+  return { wouldUpdate, wouldCreate };
 }

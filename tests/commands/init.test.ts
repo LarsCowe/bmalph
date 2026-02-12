@@ -124,6 +124,9 @@ describe("init command", () => {
       description: "prompted-desc",
     });
 
+    const originalIsTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true as unknown as true;
+
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({});
 
@@ -135,6 +138,8 @@ describe("init command", () => {
         description: "prompted-desc",
       })
     );
+
+    process.stdin.isTTY = originalIsTTY;
   });
 
   it("dry-run does not install files", async () => {
@@ -246,12 +251,61 @@ describe("init command", () => {
     process.exitCode = undefined;
   });
 
+  it("throws in non-interactive mode without --name and --description", async () => {
+    const { isInitialized } = await import("../../src/installer.js");
+    vi.mocked(isInitialized).mockResolvedValue(false);
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const originalIsTTY = process.stdin.isTTY;
+    process.stdin.isTTY = false as unknown as true;
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({});
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Non-interactive"));
+    expect(process.exitCode).toBe(1);
+
+    process.stdin.isTTY = originalIsTTY;
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  it("succeeds in non-interactive mode with --name and --description", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+    const originalIsTTY = process.stdin.isTTY;
+    process.stdin.isTTY = false as unknown as true;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "ci-project", description: "CI build" });
+
+    expect(installProject).toHaveBeenCalled();
+    expect(writeConfig).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ name: "ci-project" })
+    );
+
+    process.stdin.isTTY = originalIsTTY;
+  });
+
   it("rejects empty project names", async () => {
     const { isInitialized } = await import("../../src/installer.js");
     vi.mocked(isInitialized).mockResolvedValue(false);
 
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const originalIsTTY = process.stdin.isTTY;
+    process.stdin.isTTY = true as unknown as true;
     process.exitCode = undefined;
+
+    const inquirer = await import("inquirer");
+    vi.mocked(inquirer.default.prompt).mockResolvedValue({ name: "", description: "A project" });
 
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({ name: "", description: "A project" });
@@ -259,6 +313,7 @@ describe("init command", () => {
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("empty"));
     expect(process.exitCode).toBe(1);
 
+    process.stdin.isTTY = originalIsTTY;
     errorSpy.mockRestore();
     process.exitCode = undefined;
   });

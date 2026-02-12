@@ -1,10 +1,10 @@
-import { writeFile, mkdir, rename, unlink } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { join } from "path";
-import { randomUUID } from "crypto";
 import { readJsonFile } from "./json.js";
 import { validateState, validateRalphLoopStatus } from "./validate.js";
 import type { RalphLoopStatus } from "./validate.js";
 import { STATE_DIR, RALPH_STATUS_FILE } from "./constants.js";
+import { atomicWriteFile } from "./file-system.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -36,21 +36,7 @@ export async function readState(projectDir: string): Promise<BmalphState | null>
 export async function writeState(projectDir: string, state: BmalphState): Promise<void> {
   await mkdir(join(projectDir, STATE_DIR), { recursive: true });
   const target = join(projectDir, STATE_DIR, "current-phase.json");
-  // Use UUID for temp filename to prevent race conditions during concurrent writes
-  const tmp = `${target}.${randomUUID()}.tmp`;
-  try {
-    // Use exclusive write flag to fail if file already exists (collision detection)
-    await writeFile(tmp, JSON.stringify(state, null, 2) + "\n", { flag: "wx" });
-    await rename(tmp, target);
-  } catch (err) {
-    // Clean up temp file on failure
-    try {
-      await unlink(tmp);
-    } catch {
-      // Ignore cleanup errors (file may not exist)
-    }
-    throw err;
-  }
+  await atomicWriteFile(target, JSON.stringify(state, null, 2) + "\n");
 }
 
 export function getPhaseLabel(phase: number): string {
