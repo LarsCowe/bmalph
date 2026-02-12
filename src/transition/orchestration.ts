@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir, cp, mkdir, access } from "fs/promises";
+import { readFile, writeFile, readdir, cp, mkdir, access, rm } from "fs/promises";
 import { join } from "path";
 import { debug } from "../utils/logger.js";
 import { readConfig } from "../utils/config.js";
@@ -109,6 +109,9 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   if (bmadOutputExists) {
+    // Clean stale files from specs before copying fresh artifacts
+    await rm(join(projectDir, ".ralph/specs"), { recursive: true, force: true });
+    await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
     await cp(bmadOutputDir, join(projectDir, ".ralph/specs"), { recursive: true });
     debug("Copied _bmad-output/ to .ralph/specs/");
   } else {

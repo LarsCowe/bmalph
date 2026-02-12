@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm, writeFile } from "fs/promises";
+import { mkdir, rm, writeFile, access } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { runTransition } from "../../src/transition/orchestration.js";
@@ -130,6 +130,36 @@ describe("orchestration", () => {
       expect(result.warnings).toContainEqual(
         expect.stringMatching(/story.*1\.1.*renumber|id.*change|Login Feature.*moved/i)
       );
+    });
+  });
+
+  describe("stale file cleanup", () => {
+    it("removes stale files from .ralph/specs/ on re-transition", async () => {
+      // First transition: copy artifact to specs
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/old-artifact.md"),
+        `# Old Artifact\nThis will be removed.\n`
+      );
+      await runTransition(testDir);
+
+      // Verify old-artifact.md was copied
+      await expect(
+        access(join(testDir, ".ralph/specs/planning-artifacts/old-artifact.md"))
+      ).resolves.toBeUndefined();
+
+      // Second transition: old-artifact.md removed from source
+      await rm(join(testDir, "_bmad-output/planning-artifacts/old-artifact.md"));
+      await runTransition(testDir);
+
+      // Stale file should be gone from specs
+      await expect(
+        access(join(testDir, ".ralph/specs/planning-artifacts/old-artifact.md"))
+      ).rejects.toThrow();
     });
   });
 
