@@ -67,6 +67,15 @@ export const RALPH_SPECS_DIR = ".ralph/specs";
 /** Claude Code slash commands directory */
 export const CLAUDE_COMMANDS_DIR = ".claude/commands";
 
+/** bmalph state subdirectory (inside BMALPH_DIR) */
+export const STATE_DIR = "bmalph/state";
+
+/** bmalph config file path */
+export const CONFIG_FILE = "bmalph/config.json";
+
+/** Ralph status file path */
+export const RALPH_STATUS_FILE = ".ralph/status.json";
+
 /**
  * Get absolute path to Ralph directory for a project.
  */

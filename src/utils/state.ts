@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { readJsonFile } from "./json.js";
 import { validateState, validateRalphLoopStatus } from "./validate.js";
 import type { RalphLoopStatus } from "./validate.js";
+import { STATE_DIR, RALPH_STATUS_FILE } from "./constants.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -25,8 +26,6 @@ export interface PhaseInfo {
   agent: string;
   commands: PhaseCommand[];
 }
-
-const STATE_DIR = "bmalph/state";
 
 export async function readState(projectDir: string): Promise<BmalphState | null> {
   const data = await readJsonFile<unknown>(join(projectDir, STATE_DIR, "current-phase.json"));
@@ -216,7 +215,7 @@ const DEFAULT_RALPH_STATUS: RalphLoopStatus = {
 };
 
 export async function readRalphStatus(projectDir: string): Promise<RalphLoopStatus> {
-  const data = await readJsonFile<unknown>(join(projectDir, ".ralph/status.json"));
+  const data = await readJsonFile<unknown>(join(projectDir, RALPH_STATUS_FILE));
   if (data === null) {
     return DEFAULT_RALPH_STATUS;
   }

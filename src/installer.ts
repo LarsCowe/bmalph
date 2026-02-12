@@ -4,6 +4,7 @@ import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
 import { debug } from "./utils/logger.js";
 import { formatError } from "./utils/errors.js";
+import { STATE_DIR, CONFIG_FILE } from "./utils/constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,11 +47,11 @@ export function getBundledVersions(): BundledVersions {
   }
 }
 
-export function getBmadDir(): string {
+export function getBundledBmadDir(): string {
   return join(__dirname, "..", "bmad");
 }
 
-export function getRalphDir(): string {
+export function getBundledRalphDir(): string {
   return join(__dirname, "..", "ralph");
 }
 
@@ -73,8 +74,8 @@ export interface PreviewUpgradeResult {
 }
 
 export async function copyBundledAssets(projectDir: string): Promise<UpgradeResult> {
-  const bmadDir = getBmadDir();
-  const ralphDir = getRalphDir();
+  const bmadDir = getBundledBmadDir();
+  const ralphDir = getBundledRalphDir();
   const slashCommandsDir = getSlashCommandsDir();
 
   // Validate source directories exist
@@ -198,7 +199,7 @@ modules:
 
 export async function installProject(projectDir: string): Promise<void> {
   // Create user directories (not overwritten by upgrade)
-  await mkdir(join(projectDir, "bmalph/state"), { recursive: true });
+  await mkdir(join(projectDir, STATE_DIR), { recursive: true });
   await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
   await mkdir(join(projectDir, ".ralph/logs"), { recursive: true });
   await mkdir(join(projectDir, ".ralph/docs/generated"), { recursive: true });
@@ -208,7 +209,7 @@ export async function installProject(projectDir: string): Promise<void> {
 
 async function deriveProjectName(projectDir: string): Promise<string> {
   try {
-    const configPath = join(projectDir, "bmalph/config.json");
+    const configPath = join(projectDir, CONFIG_FILE);
     const raw = await readFile(configPath, "utf-8");
     const config = JSON.parse(raw);
     if (config.name) return config.name;
@@ -380,7 +381,7 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
 
 export async function isInitialized(projectDir: string): Promise<boolean> {
   try {
-    await access(join(projectDir, "bmalph/config.json"));
+    await access(join(projectDir, CONFIG_FILE));
     return true;
   } catch {
     return false;
@@ -394,7 +395,7 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
 
   // Directories that would be created
   const dirsToCreate = [
-    "bmalph/state/",
+    `${STATE_DIR}/`,
     ".ralph/specs/",
     ".ralph/logs/",
     ".ralph/docs/generated/",
@@ -419,7 +420,7 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
     { path: ".ralph/PROMPT.md", isTemplate: true },
     { path: ".ralph/@AGENT.md", isTemplate: true },
     { path: ".ralph/ralph_loop.sh", isTemplate: false },
-    { path: "bmalph/config.json", isTemplate: false },
+    { path: CONFIG_FILE, isTemplate: false },
   ];
 
   for (const file of filesToCheck) {

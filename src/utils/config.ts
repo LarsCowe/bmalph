@@ -2,6 +2,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
 import { validateConfig } from "./validate.js";
+import { CONFIG_FILE } from "./constants.js";
 
 export interface UpstreamVersions {
   bmadCommit: string;
@@ -14,8 +15,6 @@ export interface BmalphConfig {
   createdAt: string;
   upstreamVersions?: UpstreamVersions;
 }
-
-const CONFIG_FILE = "bmalph/config.json";
 
 export async function readConfig(projectDir: string): Promise<BmalphConfig | null> {
   const data = await readJsonFile<unknown>(join(projectDir, CONFIG_FILE));

@@ -11,7 +11,12 @@ import {
   validateRalphSession,
   validateRalphApiStatus,
 } from "../utils/validate.js";
-import { SESSION_AGE_WARNING_MS, API_USAGE_WARNING_PERCENT } from "../utils/constants.js";
+import {
+  SESSION_AGE_WARNING_MS,
+  API_USAGE_WARNING_PERCENT,
+  CONFIG_FILE,
+  RALPH_STATUS_FILE,
+} from "../utils/constants.js";
 
 /**
  * Result of a single doctor check.
@@ -183,7 +188,7 @@ async function checkSlashCommand(projectDir: string): Promise<CheckResult> {
 async function checkConfig(projectDir: string): Promise<CheckResult> {
   const label = "bmalph/config.json exists and valid";
   const hint = "Run: bmalph init";
-  const path = join(projectDir, "bmalph/config.json");
+  const path = join(projectDir, CONFIG_FILE);
   try {
     const data = await readJsonFile<unknown>(path);
     if (data === null) {
@@ -424,7 +429,7 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
 
 async function checkApiCalls(projectDir: string): Promise<CheckResult> {
   const label = "API calls this hour";
-  const statusPath = join(projectDir, ".ralph/status.json");
+  const statusPath = join(projectDir, RALPH_STATUS_FILE);
   try {
     const content = await readFile(statusPath, "utf-8");
     const parsed = JSON.parse(content);
