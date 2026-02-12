@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from "fs/promises";
 import { join, extname } from "path";
+import { isEnoent } from "./errors.js";
 
 /**
  * Recursively gets all files from a directory.
@@ -21,8 +22,8 @@ export async function getFilesRecursive(dir: string, basePath = ""): Promise<str
         files.push(relativePath);
       }
     }
-  } catch {
-    // Directory doesn't exist or can't be read
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
   }
 
   return files;
@@ -64,8 +65,8 @@ export async function getMarkdownFilesWithContent(
         });
       }
     }
-  } catch {
-    // Directory doesn't exist or can't be read
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
   }
 
   return files;

@@ -5,6 +5,7 @@ import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
 import { getBundledVersions } from "../installer.js";
 import { checkUpstream, type GitHubError } from "../utils/github.js";
+import { formatError, isEnoent } from "../utils/errors.js";
 import {
   validateCircuitBreakerState,
   validateRalphSession,
@@ -50,8 +51,7 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       process.exitCode = 1;
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(chalk.red(`Error: ${message}`));
+    console.error(chalk.red(`Error: ${formatError(err)}`));
     process.exitCode = 1;
   }
 }
@@ -360,11 +360,9 @@ async function checkCircuitBreaker(projectDir: string): Promise<CheckResult> {
       hint: "Ralph detected stagnation. Review logs with: bmalph status",
     };
   } catch (err) {
-    // Distinguish between "file not found" and "corrupt file"
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+    if (isEnoent(err)) {
       return { label, passed: true, detail: "not running" };
     }
-    // Parse or validation error - warn about corrupt state
     return {
       label,
       passed: false,
@@ -412,11 +410,9 @@ async function checkRalphSession(projectDir: string): Promise<CheckResult> {
     }
     return { label, passed: true, detail: ageStr };
   } catch (err) {
-    // Distinguish between "file not found" and "corrupt file"
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+    if (isEnoent(err)) {
       return { label, passed: true, detail: "no active session" };
     }
-    // Parse or validation error - warn about corrupt state
     return {
       label,
       passed: false,
@@ -454,11 +450,9 @@ async function checkApiCalls(projectDir: string): Promise<CheckResult> {
     }
     return { label, passed: true, detail: `${calls}/${max}` };
   } catch (err) {
-    // Distinguish between "file not found" and "corrupt file"
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+    if (isEnoent(err)) {
       return { label, passed: true, detail: "not running" };
     }
-    // Parse or validation error - warn about corrupt state
     return {
       label,
       passed: false,

@@ -2,6 +2,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import type { SpecsChange } from "./types.js";
 import { debug } from "../utils/logger.js";
+import { formatError } from "../utils/errors.js";
 import { getFilesRecursive } from "../utils/file-system.js";
 import { DIFF_LINE_PREVIEW_LENGTH } from "../utils/constants.js";
 
@@ -41,9 +42,7 @@ export async function generateSpecsChangelog(
     } else {
       // Compare content
       const oldContent = await readFile(join(oldSpecsDir, file), "utf-8").catch((err) => {
-        debug(
-          `Could not read old spec file ${file}: ${err instanceof Error ? err.message : String(err)}`
-        );
+        debug(`Could not read old spec file ${file}: ${formatError(err)}`);
         return "";
       });
       const newContent = await readFile(join(newSourceDir, file), "utf-8");

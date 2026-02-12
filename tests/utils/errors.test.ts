@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { formatError, formatErrorMessage, withErrorHandling } from "../../src/utils/errors.js";
+import {
+  formatError,
+  formatErrorMessage,
+  isEnoent,
+  withErrorHandling,
+} from "../../src/utils/errors.js";
 
 describe("errors", () => {
   describe("formatError", () => {
@@ -31,6 +36,33 @@ describe("errors", () => {
     it("extracts message from Error subclasses", () => {
       const error = new TypeError("Type mismatch");
       expect(formatError(error)).toBe("Type mismatch");
+    });
+  });
+
+  describe("isEnoent", () => {
+    it("returns true for ENOENT error", () => {
+      const err = Object.assign(new Error("ENOENT: no such file"), { code: "ENOENT" });
+      expect(isEnoent(err)).toBe(true);
+    });
+
+    it("returns false for EACCES error", () => {
+      const err = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+      expect(isEnoent(err)).toBe(false);
+    });
+
+    it("returns false for Error without code", () => {
+      expect(isEnoent(new Error("generic error"))).toBe(false);
+    });
+
+    it("returns false for non-Error values", () => {
+      expect(isEnoent("not an error")).toBe(false);
+      expect(isEnoent(null)).toBe(false);
+      expect(isEnoent(undefined)).toBe(false);
+      expect(isEnoent(42)).toBe(false);
+    });
+
+    it("returns false for plain object with code ENOENT", () => {
+      expect(isEnoent({ code: "ENOENT" })).toBe(false);
     });
   });
 

@@ -1,4 +1,5 @@
 import type { BundledVersions } from "../installer.js";
+import { formatError } from "./errors.js";
 
 export interface RepoInfo {
   owner: string;
@@ -259,12 +260,11 @@ export class GitHubClient {
         };
       }
 
-      const message = err instanceof Error ? err.message : String(err);
       return {
         success: false,
         error: {
           type: "network",
-          message: `Network error: ${message}`,
+          message: `Network error: ${formatError(err)}`,
         },
       };
     }

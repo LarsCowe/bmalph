@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
 import { debug } from "./utils/logger.js";
+import { formatError } from "./utils/errors.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,9 +14,7 @@ export function getPackageVersion(): string {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
     return pkg.version;
   } catch (err) {
-    throw new Error(
-      `Failed to read package.json at ${pkgPath}: ${err instanceof Error ? err.message : String(err)}`
-    );
+    throw new Error(`Failed to read package.json at ${pkgPath}: ${formatError(err)}`);
   }
 }
 
@@ -43,9 +42,7 @@ export function getBundledVersions(): BundledVersions {
     if (err instanceof Error && err.message.includes("Invalid bundled-versions.json")) {
       throw err;
     }
-    throw new Error(
-      `Failed to read bundled-versions.json at ${versionsPath}: ${err instanceof Error ? err.message : String(err)}`
-    );
+    throw new Error(`Failed to read bundled-versions.json at ${versionsPath}: ${formatError(err)}`);
   }
 }
 
@@ -373,9 +370,7 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
     const afterSection = existing.slice(sectionStart);
     // Find the next level-2 heading after the BMAD section start
     const nextHeadingMatch = afterSection.match(/\n## (?!BMAD-METHOD Integration)/);
-    const after = nextHeadingMatch
-      ? afterSection.slice(nextHeadingMatch.index!)
-      : "";
+    const after = nextHeadingMatch ? afterSection.slice(nextHeadingMatch.index!) : "";
     await writeFile(claudeMdPath, before.trimEnd() + "\n" + snippet + after);
     return;
   }

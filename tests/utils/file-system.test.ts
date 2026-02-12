@@ -48,6 +48,12 @@ describe("file-system utilities", () => {
       expect(normalized).toEqual(["root.txt", "sub1/a.txt", "sub2/b.txt", "sub2/deep/c.txt"]);
     });
 
+    it("re-throws non-ENOENT errors", async () => {
+      // Use a file path (not a directory) to trigger ENOTDIR
+      await writeFile(join(testDir, "not-a-dir"), "content");
+      await expect(getFilesRecursive(join(testDir, "not-a-dir"))).rejects.toThrow();
+    });
+
     it("uses forward slashes in paths on all platforms", async () => {
       await mkdir(join(testDir, "sub"), { recursive: true });
       await writeFile(join(testDir, "sub", "file.txt"), "");
@@ -104,6 +110,11 @@ describe("file-system utilities", () => {
 
       const files = await getMarkdownFilesWithContent(testDir);
       expect(files[0].path).toBe("sub/file.md");
+    });
+
+    it("re-throws non-ENOENT errors", async () => {
+      await writeFile(join(testDir, "not-a-dir"), "content");
+      await expect(getMarkdownFilesWithContent(join(testDir, "not-a-dir"))).rejects.toThrow();
     });
   });
 });

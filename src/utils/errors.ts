@@ -20,6 +20,16 @@
  * }
  * ```
  */
+/**
+ * Check if an error is an ENOENT (file not found) filesystem error.
+ *
+ * @param err - Any caught error value
+ * @returns true if the error is an Error with code "ENOENT"
+ */
+export function isEnoent(err: unknown): boolean {
+  return err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT";
+}
+
 export function formatError(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
