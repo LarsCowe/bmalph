@@ -395,9 +395,7 @@ describe("installer", () => {
 
       await copyBundledAssets(testDir);
 
-      expect(errorSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining("CSV header mismatch")
-      );
+      expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining("CSV header mismatch"));
       errorSpy.mockRestore();
     });
 

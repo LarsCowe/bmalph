@@ -252,8 +252,14 @@ async function generateManifests(projectDir: string): Promise<void> {
     );
   }
 
-  const coreData = coreLines.slice(1).filter((l) => l.trim()).map(normalize);
-  const bmmData = bmmLines.slice(1).filter((l) => l.trim()).map(normalize);
+  const coreData = coreLines
+    .slice(1)
+    .filter((l) => l.trim())
+    .map(normalize);
+  const bmmData = bmmLines
+    .slice(1)
+    .filter((l) => l.trim())
+    .map(normalize);
 
   const combined = [header, ...coreData, ...bmmData].join("\n") + "\n";
 

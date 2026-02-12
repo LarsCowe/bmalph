@@ -59,11 +59,11 @@ This installs:
 
 Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash command to see your current phase, available commands, and advance phases.
 
-| Phase         | Agent    | Commands                   |
-| ------------- | -------- | -------------------------- |
-| 1 Analysis    | Analyst  | BP, MR, DR, TR, CB         |
-| 2 Planning    | PM / UX Designer | CP, VP, EP, CU             |
-| 3 Solutioning | Architect / PM | CA, CE, IR           |
+| Phase         | Agent            | Commands           |
+| ------------- | ---------------- | ------------------ |
+| 1 Analysis    | Analyst          | BP, MR, DR, TR, CB |
+| 2 Planning    | PM / UX Designer | CP, VP, EP, CU     |
+| 3 Solutioning | Architect / PM   | CA, CE, IR         |
 
 Validation commands (`/validate-brief`, `/validate-prd`, `/validate-ux`, `/validate-architecture`, `/validate-epics-stories`) run the same workflow in Validate mode.
 
@@ -149,24 +149,24 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ## CLI Reference
 
-| Command                | Description                                          |
-| ---------------------- | ---------------------------------------------------- |
-| `bmalph init`          | Install BMAD + Ralph into project                    |
-| `bmalph upgrade`       | Update bundled assets to current version             |
-| `bmalph doctor`        | Check installation health                            |
+| Command                | Description                                         |
+| ---------------------- | --------------------------------------------------- |
+| `bmalph init`          | Install BMAD + Ralph into project                   |
+| `bmalph upgrade`       | Update bundled assets to current version            |
+| `bmalph doctor`        | Check installation health                           |
 | `bmalph check-updates` | Check if bundled BMAD/Ralph versions are up to date |
-| `bmalph status`        | Show current project status and phase                |
+| `bmalph status`        | Show current project status and phase               |
 
 ### Global options
 
-| Flag                       | Description                    |
-| -------------------------- | ------------------------------ |
-| `--verbose`                | Enable debug logging           |
-| `--no-color`               | Disable colored output         |
-| `--quiet`                  | Suppress non-essential output  |
-| `-C, --project-dir <path>` | Run in specified directory     |
-| `--version`                | Show version                   |
-| `--help`                   | Show help                      |
+| Flag                       | Description                   |
+| -------------------------- | ----------------------------- |
+| `--verbose`                | Enable debug logging          |
+| `--no-color`               | Disable colored output        |
+| `--quiet`                  | Suppress non-essential output |
+| `-C, --project-dir <path>` | Run in specified directory    |
+| `--version`                | Show version                  |
+| `--help`                   | Show help                     |
 
 ### init options
 
@@ -177,31 +177,31 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ### upgrade options
 
-| Flag        | Description              |
-| ----------- | ------------------------ |
+| Flag        | Description               |
+| ----------- | ------------------------- |
 | `--force`   | Skip confirmation prompts |
-| `--dry-run` | Preview changes          |
+| `--dry-run` | Preview changes           |
 
 ## Slash Commands
 
 bmalph installs 47 BMAD slash commands. Key commands:
 
-| Command                 | Description                          |
-| ----------------------- | ------------------------------------ |
-| `/bmalph`               | BMAD master agent — navigate phases  |
-| `/analyst`              | Analyst agent                        |
-| `/pm`                   | Product Manager agent                |
-| `/architect`            | Architect agent                      |
-| `/dev`                  | Developer agent                      |
-| `/sm`                   | Scrum Master agent                   |
-| `/qa`                   | QA agent                             |
-| `/ux-designer`          | UX Designer agent                    |
-| `/tech-writer`          | Tech Writer agent                    |
-| `/quick-flow-solo-dev`  | Quick Flow solo developer agent      |
-| `/create-prd`           | Create PRD workflow                  |
-| `/create-architecture`  | Create architecture workflow         |
-| `/create-epics-stories` | Create epics and stories             |
-| `/bmad-help`            | List all BMAD commands               |
+| Command                 | Description                         |
+| ----------------------- | ----------------------------------- |
+| `/bmalph`               | BMAD master agent — navigate phases |
+| `/analyst`              | Analyst agent                       |
+| `/pm`                   | Product Manager agent               |
+| `/architect`            | Architect agent                     |
+| `/dev`                  | Developer agent                     |
+| `/sm`                   | Scrum Master agent                  |
+| `/qa`                   | QA agent                            |
+| `/ux-designer`          | UX Designer agent                   |
+| `/tech-writer`          | Tech Writer agent                   |
+| `/quick-flow-solo-dev`  | Quick Flow solo developer agent     |
+| `/create-prd`           | Create PRD workflow                 |
+| `/create-architecture`  | Create architecture workflow        |
+| `/create-epics-stories` | Create epics and stories            |
+| `/bmad-help`            | List all BMAD commands              |
 
 For full list, run `/bmad-help` in Claude Code.
 
@@ -302,12 +302,12 @@ ls -la .ralph/
 
 ### Common Issues
 
-| Scenario                         | Solution                                                    |
-| -------------------------------- | ----------------------------------------------------------- |
-| Commands fail before init        | Run `bmalph init` first                                     |
-| Transition finds no stories      | Create stories in Phase 3 with `/create-epics-stories`      |
-| Ralph stops mid-loop             | Circuit breaker detected stagnation. Check `.ralph/logs/`   |
-| Doctor reports version drift     | Run `bmalph upgrade` to update bundled assets               |
+| Scenario                     | Solution                                                  |
+| ---------------------------- | --------------------------------------------------------- |
+| Commands fail before init    | Run `bmalph init` first                                   |
+| Transition finds no stories  | Create stories in Phase 3 with `/create-epics-stories`    |
+| Ralph stops mid-loop         | Circuit breaker detected stagnation. Check `.ralph/logs/` |
+| Doctor reports version drift | Run `bmalph upgrade` to update bundled assets             |
 
 ### Reset Installation
 
