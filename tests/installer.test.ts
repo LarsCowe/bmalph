@@ -342,6 +342,52 @@ describe("installer", () => {
       await expect(access(join(testDir, ".ralph/lib/wizard_utils.sh"))).resolves.toBeUndefined();
     });
 
+    it("removes stale files from _bmad/ on upgrade", async () => {
+      // First install
+      await copyBundledAssets(testDir);
+
+      // Simulate a stale file from a previous version
+      await writeFile(join(testDir, "_bmad/removed-agent.yaml"), "stale content");
+      await expect(access(join(testDir, "_bmad/removed-agent.yaml"))).resolves.toBeUndefined();
+
+      // Second install (upgrade)
+      await copyBundledAssets(testDir);
+
+      // Stale file should be gone
+      await expect(access(join(testDir, "_bmad/removed-agent.yaml"))).rejects.toThrow();
+      // Fresh files should still be present
+      await expect(access(join(testDir, "_bmad/core"))).resolves.toBeUndefined();
+    });
+
+    it("removes stale files from .ralph/lib/ on upgrade", async () => {
+      await copyBundledAssets(testDir);
+
+      // Simulate a stale lib file
+      await writeFile(join(testDir, ".ralph/lib/old_helper.sh"), "stale");
+      await expect(access(join(testDir, ".ralph/lib/old_helper.sh"))).resolves.toBeUndefined();
+
+      await copyBundledAssets(testDir);
+
+      // Stale file should be gone
+      await expect(access(join(testDir, ".ralph/lib/old_helper.sh"))).rejects.toThrow();
+      // Fresh files should still be present
+      await expect(access(join(testDir, ".ralph/lib/circuit_breaker.sh"))).resolves.toBeUndefined();
+    });
+
+    it("removes stale slash commands from .claude/commands/ on upgrade", async () => {
+      await copyBundledAssets(testDir);
+
+      // Simulate a removed slash command
+      await writeFile(join(testDir, ".claude/commands/deprecated-cmd.md"), "old command");
+
+      await copyBundledAssets(testDir);
+
+      // Stale command should be gone
+      await expect(access(join(testDir, ".claude/commands/deprecated-cmd.md"))).rejects.toThrow();
+      // Fresh commands should still be present
+      await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
+    });
+
     it("is idempotent (twice = same result)", async () => {
       await copyBundledAssets(testDir);
       const firstRun = await readFile(join(testDir, ".ralph/ralph_loop.sh"), "utf-8");
@@ -653,6 +699,47 @@ describe("installer", () => {
       expect(content).toContain("/ux-designer");
       expect(content).toContain("/qa");
       expect(content).not.toContain("/tea");
+    });
+
+    it("preserves user content after BMAD section on upgrade", async () => {
+      const claudeMd = `# My Project
+
+Some project info.
+
+## BMAD-METHOD Integration
+
+Old BMAD content that will be replaced.
+
+## My Custom Section
+
+This user content must survive the upgrade.
+
+## Another Section
+
+More user content here.
+`;
+      await writeFile(join(testDir, "CLAUDE.md"), claudeMd);
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+
+      // Project header preserved
+      expect(content).toContain("# My Project");
+      expect(content).toContain("Some project info.");
+
+      // BMAD section replaced with fresh content
+      expect(content).toContain("## BMAD-METHOD Integration");
+      expect(content).not.toContain("Old BMAD content");
+      expect(content).toContain("/qa");
+
+      // User content after BMAD section preserved
+      expect(content).toContain("## My Custom Section");
+      expect(content).toContain("This user content must survive the upgrade.");
+      expect(content).toContain("## Another Section");
+      expect(content).toContain("More user content here.");
+
+      // Exactly one BMAD section
+      const matches = content.match(/## BMAD-METHOD Integration/g);
+      expect(matches).toHaveLength(1);
     });
 
     it("replaces stale BMAD section on upgrade instead of skipping", async () => {

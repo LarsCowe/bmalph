@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, readdir, writeFile, access } from "fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile, access, rm } from "fs/promises";
 import { readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -99,6 +99,9 @@ export async function copyBundledAssets(projectDir: string): Promise<UpgradeResu
     );
   }
 
+  // Clean stale files from managed directories before copying
+  await rm(join(projectDir, "_bmad"), { recursive: true, force: true });
+
   // Copy BMAD files → _bmad/
   await cp(bmadDir, join(projectDir, "_bmad"), { recursive: true });
 
@@ -149,6 +152,7 @@ modules:
     ? loopContent.replace(/# bmalph-version:.*/, markerLine)
     : loopContent.replace(/^(#!.+\r?\n)/, `$1${markerLine}\n`);
   await writeFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
+  await rm(join(projectDir, ".ralph/lib"), { recursive: true, force: true });
   await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true });
 
   // Copy Ralph utilities → .ralph/
@@ -156,11 +160,23 @@ modules:
   await cp(join(ralphDir, "ralph_monitor.sh"), join(projectDir, ".ralph/ralph_monitor.sh"));
 
   // Install all slash commands → .claude/commands/
-  await mkdir(join(projectDir, ".claude/commands"), { recursive: true });
+  // Clean stale commands before copying (remove only .md files to preserve user files)
+  const commandsDir = join(projectDir, ".claude/commands");
+  await mkdir(commandsDir, { recursive: true });
+  try {
+    const existingCommands = await readdir(commandsDir);
+    for (const file of existingCommands) {
+      if (file.endsWith(".md")) {
+        await rm(join(commandsDir, file), { force: true });
+      }
+    }
+  } catch {
+    // Directory might not exist yet
+  }
   const slashFiles = await readdir(slashCommandsDir);
   for (const file of slashFiles) {
     if (file.endsWith(".md")) {
-      await cp(join(slashCommandsDir, file), join(projectDir, ".claude/commands", file));
+      await cp(join(slashCommandsDir, file), join(commandsDir, file));
     }
   }
 
@@ -351,9 +367,16 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
   }
 
   if (existing.includes("## BMAD-METHOD Integration")) {
-    // Replace stale section with current content
-    const before = existing.slice(0, existing.indexOf("## BMAD-METHOD Integration"));
-    await writeFile(claudeMdPath, before.trimEnd() + "\n" + snippet);
+    // Replace stale section with current content, preserving content after it
+    const sectionStart = existing.indexOf("## BMAD-METHOD Integration");
+    const before = existing.slice(0, sectionStart);
+    const afterSection = existing.slice(sectionStart);
+    // Find the next level-2 heading after the BMAD section start
+    const nextHeadingMatch = afterSection.match(/\n## (?!BMAD-METHOD Integration)/);
+    const after = nextHeadingMatch
+      ? afterSection.slice(nextHeadingMatch.index!)
+      : "";
+    await writeFile(claudeMdPath, before.trimEnd() + "\n" + snippet + after);
     return;
   }
 
