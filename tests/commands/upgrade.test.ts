@@ -171,6 +171,25 @@ describe("upgrade command", () => {
     });
   });
 
+  describe("projectDir option", () => {
+    it("uses projectDir instead of process.cwd() when provided", async () => {
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({
+        updatedPaths: ["_bmad/"],
+      });
+      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ projectDir: "/custom/path" });
+
+      expect(isInitialized).toHaveBeenCalledWith("/custom/path");
+      expect(copyBundledAssets).toHaveBeenCalledWith("/custom/path");
+      expect(mergeClaudeMd).toHaveBeenCalledWith("/custom/path");
+    });
+  });
+
   describe("error handling", () => {
     it("catches and displays errors", async () => {
       const { isInitialized, copyBundledAssets } = await import("../../src/installer.js");

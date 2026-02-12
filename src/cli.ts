@@ -1,10 +1,11 @@
+import { resolve } from "path";
 import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { upgradeCommand } from "./commands/upgrade.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { checkUpdatesCommand } from "./commands/check-updates.js";
 import { statusCommand } from "./commands/status.js";
-import { setVerbose } from "./utils/logger.js";
+import { setVerbose, setQuiet } from "./utils/logger.js";
 import { getPackageVersion } from "./installer.js";
 
 const program = new Command();
@@ -22,11 +23,18 @@ program
     if (opts.verbose) {
       setVerbose(true);
     }
+    if (opts.quiet) {
+      setQuiet(true);
+    }
     if (opts.color === false) {
-      // Disable chalk colors by setting FORCE_COLOR environment variable
       process.env.FORCE_COLOR = "0";
     }
   });
+
+function resolveProjectDir(): string | undefined {
+  const dir = program.opts().projectDir;
+  return dir ? resolve(dir) : undefined;
+}
 
 program
   .command("init")
@@ -34,20 +42,20 @@ program
   .option("-n, --name <name>", "Project name")
   .option("-d, --description <desc>", "Project description")
   .option("--dry-run", "Preview changes without writing files")
-  .action(initCommand);
+  .action((opts) => initCommand({ ...opts, projectDir: resolveProjectDir() }));
 
 program
   .command("upgrade")
   .description("Update bundled assets to current version")
   .option("--dry-run", "Preview changes without writing files")
   .option("--force", "Skip confirmation prompts")
-  .action(upgradeCommand);
+  .action((opts) => upgradeCommand({ ...opts, projectDir: resolveProjectDir() }));
 
 program
   .command("doctor")
   .description("Check installation health")
   .option("--json", "Output as JSON")
-  .action(doctorCommand);
+  .action((opts) => doctorCommand({ ...opts, projectDir: resolveProjectDir() }));
 
 program
   .command("check-updates")
@@ -59,6 +67,6 @@ program
   .command("status")
   .description("Show current project status and phase")
   .option("--json", "Output as JSON")
-  .action(statusCommand);
+  .action((opts) => statusCommand({ ...opts, projectDir: resolveProjectDir() }));
 
 program.parse();

@@ -5,6 +5,7 @@ import { withErrorHandling } from "../utils/errors.js";
 
 interface UpgradeOptions {
   dryRun?: boolean;
+  projectDir?: string;
 }
 
 export async function upgradeCommand(options: UpgradeOptions = {}): Promise<void> {
@@ -12,7 +13,7 @@ export async function upgradeCommand(options: UpgradeOptions = {}): Promise<void
 }
 
 async function runUpgrade(options: UpgradeOptions): Promise<void> {
-  const projectDir = process.cwd();
+  const projectDir = options.projectDir ?? process.cwd();
 
   if (!(await isInitialized(projectDir))) {
     console.log(chalk.red("bmalph is not initialized. Run 'bmalph init' first."));

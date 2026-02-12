@@ -40,13 +40,12 @@ export interface CheckDefinition {
 
 interface DoctorOptions {
   json?: boolean;
+  projectDir?: string;
 }
 
 export async function doctorCommand(options: DoctorOptions = {}): Promise<void> {
   try {
     const { failed } = await runDoctor(options);
-    // Set exit code to 1 if checks failed (but not in JSON mode - let caller handle)
-    // Use process.exitCode instead of process.exit() to allow graceful cleanup
     if (!options.json && failed > 0) {
       process.exitCode = 1;
     }
@@ -63,7 +62,7 @@ interface DoctorResult {
 }
 
 export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
-  const projectDir = process.cwd();
+  const projectDir = options.projectDir ?? process.cwd();
 
   // Run all checks from the registry
   const results: CheckResult[] = await Promise.all(

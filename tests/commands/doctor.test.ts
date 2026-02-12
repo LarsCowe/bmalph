@@ -899,6 +899,29 @@ describe("doctor command", () => {
     });
   });
 
+  describe("projectDir option", () => {
+    it("uses projectDir instead of process.cwd() when provided", async () => {
+      await setupFullProject();
+      const { getPackageVersion } = await import("../../src/installer.js");
+      const version = getPackageVersion();
+      await writeFile(
+        join(testDir, ".ralph/ralph_loop.sh"),
+        `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
+      );
+
+      // Change to a different directory so process.cwd() would be wrong
+      const wrongDir = join(testDir, "..");
+      process.chdir(wrongDir);
+
+      const { runDoctor } = await import("../../src/commands/doctor.js");
+      const result = await runDoctor({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("bmalph/config.json exists and valid");
+      expect(result.failed).toBeLessThanOrEqual(2); // upstream checks may vary
+    });
+  });
+
   describe("check registry pattern", () => {
     it("exports CHECK_REGISTRY with all expected checks", async () => {
       const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");

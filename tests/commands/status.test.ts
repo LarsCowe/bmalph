@@ -165,6 +165,24 @@ describe("status command", () => {
     });
   });
 
+  describe("projectDir option", () => {
+    it("uses projectDir instead of process.cwd() when provided", async () => {
+      await setupProject();
+      await setupState({ currentPhase: 1, status: "planning" });
+
+      // Change to a different directory so process.cwd() would be wrong
+      const wrongDir = join(testDir, "..");
+      process.chdir(wrongDir);
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("1 - Analysis");
+      expect(output).not.toContain("not initialized");
+    });
+  });
+
   describe("JSON output", () => {
     it("outputs valid JSON when json flag is true", async () => {
       await setupProject();

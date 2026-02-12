@@ -177,6 +177,24 @@ describe("init command", () => {
     expect(output).toContain("dry-run");
   });
 
+  it("uses projectDir instead of process.cwd() when provided", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my-proj", description: "A project", projectDir: "/custom/path" });
+
+    expect(isInitialized).toHaveBeenCalledWith("/custom/path");
+    expect(installProject).toHaveBeenCalledWith("/custom/path");
+    expect(writeConfig).toHaveBeenCalledWith("/custom/path", expect.any(Object));
+    expect(mergeClaudeMd).toHaveBeenCalledWith("/custom/path");
+  });
+
   it("rejects invalid project names with reserved Windows name", async () => {
     const { isInitialized } = await import("../../src/installer.js");
     vi.mocked(isInitialized).mockResolvedValue(false);
