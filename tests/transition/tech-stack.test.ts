@@ -155,6 +155,50 @@ describe("tech-stack", () => {
       expect(stack!.dev).toBe("cargo run");
     });
 
+    it("does not falsely detect Go from prose containing 'go'", () => {
+      const content = `# Architecture
+
+## Tech Stack
+
+- Let's go ahead and use React
+- Redux for state management
+
+## Other
+`;
+      const stack = detectTechStack(content);
+      expect(stack).toBeNull();
+    });
+
+    it("detects Go from 'go mod' compound keyword", () => {
+      const content = `# Architecture
+
+## Tech Stack
+
+- Go mod for dependency management
+- PostgreSQL database
+
+## Other
+`;
+      const stack = detectTechStack(content);
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toBe("go mod download");
+    });
+
+    it("detects Go from 'go build' compound keyword", () => {
+      const content = `# Architecture
+
+## Tech Stack
+
+- Go build for compilation
+- gRPC for communication
+
+## Other
+`;
+      const stack = detectTechStack(content);
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toBe("go mod download");
+    });
+
     it("detects Go from 'golang' keyword", () => {
       const content = `# Architecture
 

@@ -18,7 +18,9 @@ export function detectTechStack(content: string): TechStack | null {
     /\bnpm\b/i.test(sectionContent);
   const isPython = /\bpython\b/i.test(sectionContent) || /\bpip\b/i.test(sectionContent);
   const isRust = /\brust\b/i.test(sectionContent) || /\bcargo\b/i.test(sectionContent);
-  const isGo = /\bgo\b/i.test(sectionContent) || /\bgolang\b/i.test(sectionContent);
+  const isGo =
+    /\bgo\s+(mod|build|test|run|get|install|fmt|vet)\b/i.test(sectionContent) ||
+    /\bgolang\b/i.test(sectionContent);
 
   if (isNode) {
     // Detect specific test runner

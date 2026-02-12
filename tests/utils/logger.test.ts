@@ -133,7 +133,9 @@ describe("logger", () => {
       setQuiet(true);
       warn("warning should still appear");
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("warning should still appear"));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("warning should still appear")
+      );
     });
 
     it("does not suppress error output when quiet is enabled", async () => {
@@ -143,7 +145,9 @@ describe("logger", () => {
       setQuiet(true);
       error("error should still appear");
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("error should still appear"));
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("error should still appear")
+      );
       consoleErrorSpy.mockRestore();
     });
 

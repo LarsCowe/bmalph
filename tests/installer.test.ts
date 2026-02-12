@@ -6,6 +6,7 @@ import {
   isInitialized,
   previewInstall,
   previewUpgrade,
+  getSlashCommandsDir,
 } from "../src/installer.js";
 import { mkdir, rm, access, readFile, writeFile, readdir } from "fs/promises";
 import { join } from "path";
@@ -138,7 +139,10 @@ describe("installer", () => {
     it("copies all slash commands from slash-commands/ directory", async () => {
       await installProject(testDir);
       const files = await readdir(join(testDir, ".claude/commands"));
-      expect(files.length).toBeGreaterThanOrEqual(43);
+      const expectedCount = (await readdir(getSlashCommandsDir())).filter((f) =>
+        f.endsWith(".md")
+      ).length;
+      expect(files.length).toBe(expectedCount);
       expect(files).toContain("bmalph.md");
       expect(files).toContain("analyst.md");
       expect(files).toContain("architect.md");
