@@ -98,6 +98,68 @@ describe("logger", () => {
     });
   });
 
+  describe("setQuiet", () => {
+    it("suppresses info output when quiet is enabled", async () => {
+      const { setQuiet, info } = await import("../../src/utils/logger.js");
+
+      setQuiet(true);
+      info("should not appear");
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses success output when quiet is enabled", async () => {
+      const { setQuiet, success } = await import("../../src/utils/logger.js");
+
+      setQuiet(true);
+      success("should not appear");
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+    });
+
+    it("suppresses debug output when quiet is enabled", async () => {
+      const { setVerbose, setQuiet, debug } = await import("../../src/utils/logger.js");
+
+      setVerbose(true);
+      setQuiet(true);
+      debug("should not appear");
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not suppress warn output when quiet is enabled", async () => {
+      const { setQuiet, warn } = await import("../../src/utils/logger.js");
+
+      setQuiet(true);
+      warn("warning should still appear");
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("warning should still appear"));
+    });
+
+    it("does not suppress error output when quiet is enabled", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { setQuiet, error } = await import("../../src/utils/logger.js");
+
+      setQuiet(true);
+      error("error should still appear");
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("error should still appear"));
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("resumes normal output when quiet is disabled", async () => {
+      const { setQuiet, info } = await import("../../src/utils/logger.js");
+
+      setQuiet(true);
+      info("suppressed");
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      setQuiet(false);
+      info("visible again");
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("visible again"));
+    });
+  });
+
   describe("info", () => {
     it("outputs message with blue color", async () => {
       const { info } = await import("../../src/utils/logger.js");
