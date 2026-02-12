@@ -1,16 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-vi.mock("chalk", () => ({
-  default: {
-    red: (s: string) => s,
-    green: (s: string) => s,
-    blue: (s: string) => s,
-    yellow: (s: string) => s,
-    bold: (s: string) => s,
-    dim: (s: string) => s,
-    cyan: (s: string) => s,
-  },
-}));
+vi.mock("chalk");
 
 vi.mock("inquirer", () => ({
   default: {

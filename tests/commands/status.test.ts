@@ -3,23 +3,11 @@ import { mkdir, writeFile, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-vi.mock("chalk", () => ({
-  default: {
-    red: (s: string) => s,
-    green: (s: string) => s,
-    yellow: (s: string) => s,
-    blue: (s: string) => s,
-    cyan: (s: string) => s,
-    dim: (s: string) => s,
-    bold: (s: string) => s,
-    white: (s: string) => s,
-  },
-}));
+vi.mock("chalk");
 
 describe("status command", () => {
   let testDir: string;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
-  let originalCwd: string;
 
   beforeEach(async () => {
     testDir = join(
@@ -28,8 +16,6 @@ describe("status command", () => {
     );
     await mkdir(testDir, { recursive: true });
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    originalCwd = process.cwd();
-    process.chdir(testDir);
 
     // Reset module cache for fresh imports
     vi.resetModules();
@@ -37,7 +23,6 @@ describe("status command", () => {
 
   afterEach(async () => {
     consoleSpy.mockRestore();
-    process.chdir(originalCwd);
     await rm(testDir, { recursive: true, force: true });
   });
 
@@ -83,7 +68,7 @@ describe("status command", () => {
   describe("runStatus", () => {
     it("shows error when no project is initialized", async () => {
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("not initialized");
@@ -94,7 +79,7 @@ describe("status command", () => {
       await setupState({ currentPhase: 1, status: "planning" });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("1 - Analysis");
@@ -112,7 +97,7 @@ describe("status command", () => {
       });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("4 - Implementation");
@@ -124,7 +109,7 @@ describe("status command", () => {
       await setupState({ currentPhase: 4, status: "implementing" });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("not started");
@@ -136,7 +121,7 @@ describe("status command", () => {
       await setupRalphStatus({ status: "completed", tasksCompleted: 10, tasksTotal: 10 });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("completed");
@@ -147,7 +132,7 @@ describe("status command", () => {
       await setupState({ currentPhase: 1, status: "planning" });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("/analyst");
@@ -158,7 +143,7 @@ describe("status command", () => {
       await setupState({ currentPhase: 3, status: "planning" });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus();
+      await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("/bmalph-implement");
@@ -169,10 +154,6 @@ describe("status command", () => {
     it("uses projectDir instead of process.cwd() when provided", async () => {
       await setupProject();
       await setupState({ currentPhase: 1, status: "planning" });
-
-      // Change to a different directory so process.cwd() would be wrong
-      const wrongDir = join(testDir, "..");
-      process.chdir(wrongDir);
 
       const { runStatus } = await import("../../src/commands/status.js");
       await runStatus({ projectDir: testDir });
@@ -189,7 +170,7 @@ describe("status command", () => {
       await setupState({ currentPhase: 2, status: "planning" });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus({ json: true });
+      await runStatus({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       const parsed = JSON.parse(output);
@@ -204,7 +185,7 @@ describe("status command", () => {
       await setupRalphStatus({ loopCount: 3, status: "running", tasksCompleted: 2, tasksTotal: 5 });
 
       const { runStatus } = await import("../../src/commands/status.js");
-      await runStatus({ json: true });
+      await runStatus({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       const parsed = JSON.parse(output);

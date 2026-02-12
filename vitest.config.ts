@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     include: ["tests/**/*.test.ts"],
-    fileParallelism: false,
+    fileParallelism: true,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

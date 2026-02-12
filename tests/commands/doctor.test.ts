@@ -3,16 +3,7 @@ import { mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
-vi.mock("chalk", () => ({
-  default: {
-    red: (s: string) => s,
-    green: (s: string) => s,
-    yellow: (s: string) => s,
-    blue: (s: string) => s,
-    bold: (s: string) => s,
-    dim: (s: string) => s,
-  },
-}));
+vi.mock("chalk");
 
 // Test versions for upstream version tracking
 const TEST_BMAD_COMMIT = "test1234";
@@ -40,22 +31,18 @@ vi.mock("../../src/utils/github.js", async (importOriginal) => {
 
 describe("doctor command", () => {
   let testDir: string;
-  let originalCwd: string;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     testDir = join(tmpdir(), `bmalph-doctor-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await mkdir(testDir, { recursive: true });
-    originalCwd = process.cwd();
-    process.chdir(testDir);
     vi.resetModules();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(async () => {
-    process.chdir(originalCwd);
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     vi.restoreAllMocks();
@@ -97,7 +84,7 @@ describe("doctor command", () => {
     it("passes when Node version is >= 20", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("Node version >= 20");
@@ -110,7 +97,7 @@ describe("doctor command", () => {
     it("checks for bash availability", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("bash available");
@@ -121,7 +108,7 @@ describe("doctor command", () => {
     it("passes when config.json exists and is valid JSON", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("bmalph/config.json exists and valid");
@@ -133,7 +120,7 @@ describe("doctor command", () => {
       await mkdir(join(testDir, ".ralph/lib"), { recursive: true });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("file not found");
@@ -144,7 +131,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), "{ invalid json!!!");
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("bmalph/config.json");
@@ -156,7 +143,7 @@ describe("doctor command", () => {
     it("passes when _bmad/ directory exists", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("_bmad/ directory present");
@@ -167,7 +154,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("_bmad/ directory present");
@@ -179,7 +166,7 @@ describe("doctor command", () => {
     it("passes when ralph_loop.sh exists and has content", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("ralph_loop.sh present and has content");
@@ -192,7 +179,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("ralph_loop.sh present and has content");
@@ -207,7 +194,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("ralph_loop.sh");
@@ -218,7 +205,7 @@ describe("doctor command", () => {
     it("passes when .ralph/lib/ directory exists", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain(".ralph/lib/ directory present");
@@ -232,7 +219,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain(".ralph/lib/ directory present");
@@ -244,7 +231,7 @@ describe("doctor command", () => {
     it("passes when .claude/commands/bmalph.md exists", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain(".claude/commands/bmalph.md present");
@@ -258,7 +245,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain(".claude/commands/bmalph.md present");
@@ -270,7 +257,7 @@ describe("doctor command", () => {
     it("passes when CLAUDE.md contains BMAD snippet", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("CLAUDE.md contains BMAD snippet");
@@ -286,7 +273,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("CLAUDE.md contains BMAD snippet");
@@ -304,7 +291,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("CLAUDE.md contains BMAD snippet");
@@ -316,7 +303,7 @@ describe("doctor command", () => {
     it("passes when .gitignore has all required entries", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain(".gitignore has required entries");
@@ -333,7 +320,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain(".gitignore has required entries");
@@ -352,7 +339,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("missing: .ralph/logs/");
@@ -370,7 +357,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ name: "test" }));
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("missing: _bmad-output/");
@@ -389,7 +376,7 @@ describe("doctor command", () => {
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("version marker matches");
@@ -402,7 +389,7 @@ describe("doctor command", () => {
       await writeFile(join(testDir, ".ralph/ralph_loop.sh"), "#!/bin/bash\necho hello\n");
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("version marker matches");
@@ -417,7 +404,7 @@ describe("doctor command", () => {
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("version marker matches");
@@ -429,7 +416,7 @@ describe("doctor command", () => {
     it("outputs title", async () => {
       await setupFullProject();
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("bmalph doctor");
@@ -446,7 +433,7 @@ describe("doctor command", () => {
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("passed");
@@ -455,7 +442,7 @@ describe("doctor command", () => {
     it("shows failed count when checks fail", async () => {
       // Empty project - most checks will fail
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("failed");
@@ -471,7 +458,7 @@ describe("doctor command", () => {
       );
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("all checks OK");
@@ -488,7 +475,7 @@ describe("doctor command", () => {
       const { runDoctor } = await import("../../src/commands/doctor.js");
 
       // Should complete without throwing an unhandled exception
-      await expect(runDoctor()).resolves.not.toThrow();
+      await expect(runDoctor({ projectDir: testDir })).resolves.not.toThrow();
 
       // Unmock for subsequent tests
       vi.doUnmock("../../src/utils/json.js");
@@ -521,7 +508,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       expect(process.exitCode).toBe(1);
     });
@@ -554,7 +541,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       // Should NOT set exit code when all checks pass
       expect(process.exitCode).toBeUndefined();
@@ -570,7 +557,7 @@ describe("doctor command", () => {
       });
 
       const { runDoctor } = await import("../../src/commands/doctor.js");
-      await runDoctor({ json: true });
+      await runDoctor({ json: true, projectDir: testDir });
 
       // JSON mode should not set exit code - let the caller decide based on output
       expect(process.exitCode).toBeUndefined();
@@ -591,7 +578,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("circuit breaker");
@@ -610,7 +597,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("circuit breaker");
@@ -629,7 +616,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("circuit breaker");
@@ -640,7 +627,7 @@ describe("doctor command", () => {
         await setupFullProject();
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("circuit breaker");
@@ -652,7 +639,7 @@ describe("doctor command", () => {
         await writeFile(join(testDir, ".ralph/.circuit_breaker_state"), "{ invalid json syntax");
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("circuit breaker");
@@ -670,7 +657,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("circuit breaker");
@@ -693,7 +680,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("session");
@@ -704,7 +691,7 @@ describe("doctor command", () => {
         await setupFullProject();
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("session");
@@ -725,7 +712,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("session");
@@ -737,7 +724,7 @@ describe("doctor command", () => {
         await writeFile(join(testDir, ".ralph/.ralph_session"), "not valid json {{{");
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("session");
@@ -757,7 +744,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("session");
@@ -781,7 +768,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("API calls");
@@ -792,7 +779,7 @@ describe("doctor command", () => {
         await setupFullProject();
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("API calls");
@@ -813,7 +800,7 @@ describe("doctor command", () => {
         );
 
         const { doctorCommand } = await import("../../src/commands/doctor.js");
-        await doctorCommand();
+        await doctorCommand({ projectDir: testDir });
 
         const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
         expect(output).toContain("API calls");
@@ -826,7 +813,7 @@ describe("doctor command", () => {
     it("outputs valid JSON when json flag is true", async () => {
       await setupFullProject();
       const { runDoctor } = await import("../../src/commands/doctor.js");
-      await runDoctor({ json: true });
+      await runDoctor({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       // Should be valid JSON
@@ -838,7 +825,7 @@ describe("doctor command", () => {
     it("JSON output contains check results with expected shape", async () => {
       await setupFullProject();
       const { runDoctor } = await import("../../src/commands/doctor.js");
-      await runDoctor({ json: true });
+      await runDoctor({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       const parsed = JSON.parse(output);
@@ -857,7 +844,7 @@ describe("doctor command", () => {
     it("JSON output includes summary counts", async () => {
       await setupFullProject();
       const { runDoctor } = await import("../../src/commands/doctor.js");
-      await runDoctor({ json: true });
+      await runDoctor({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       const parsed = JSON.parse(output);
@@ -873,7 +860,7 @@ describe("doctor command", () => {
     it("JSON output includes hints when checks fail", async () => {
       // Empty project - most checks will fail
       const { runDoctor } = await import("../../src/commands/doctor.js");
-      await runDoctor({ json: true });
+      await runDoctor({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       const parsed = JSON.parse(output);
@@ -888,7 +875,7 @@ describe("doctor command", () => {
     it("does not output colored text in JSON mode", async () => {
       await setupFullProject();
       const { runDoctor } = await import("../../src/commands/doctor.js");
-      await runDoctor({ json: true });
+      await runDoctor({ json: true, projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       // Should not contain ANSI escape codes (ESC[)
@@ -908,10 +895,6 @@ describe("doctor command", () => {
         join(testDir, ".ralph/ralph_loop.sh"),
         `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
       );
-
-      // Change to a different directory so process.cwd() would be wrong
-      const wrongDir = join(testDir, "..");
-      process.chdir(wrongDir);
 
       const { runDoctor } = await import("../../src/commands/doctor.js");
       const result = await runDoctor({ projectDir: testDir });
@@ -1012,7 +995,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("upstream status");
@@ -1039,7 +1022,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("upstream status");
@@ -1059,7 +1042,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("upstream status");
@@ -1080,7 +1063,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("upstream status");
@@ -1101,7 +1084,7 @@ describe("doctor command", () => {
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
-      await doctorCommand();
+      await doctorCommand({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       // Upstream status check should pass even when network fails
