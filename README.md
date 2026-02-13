@@ -1,5 +1,8 @@
 # bmalph
 
+[![npm](https://img.shields.io/npm/v/bmalph)](https://www.npmjs.com/package/bmalph)
+[![license](https://img.shields.io/npm/l/bmalph)](LICENSE)
+
 [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) planning + [Ralph](https://github.com/snarktank/ralph) autonomous implementation, glued by slash commands.
 
 ## What is bmalph?
