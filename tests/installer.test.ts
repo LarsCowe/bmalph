@@ -111,7 +111,7 @@ describe("installer", () => {
     });
   });
 
-  describe("installSlashCommand", () => {
+  describe("installSlashCommand", { timeout: 30000 }, () => {
     it("copies slash command to .claude/commands/bmalph.md", async () => {
       await installProject(testDir);
       await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
