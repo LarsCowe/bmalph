@@ -46,12 +46,16 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "exports": {
+    ".": "./dist/cli.js"
+  },
   "files": [
     "bin/",
     "dist/",
     "bmad/",
     "ralph/",
-    "slash-commands/"
+    "slash-commands/",
+    "bundled-versions.json"
   ],
   "dependencies": {
     "chalk": "^5.6.2",
