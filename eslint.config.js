@@ -5,7 +5,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    ignores: ["dist/", "node_modules/", "scaffold/"],
+    ignores: ["dist/", "node_modules/"],
   },
   // Source files - strict rules with type checking
   {
