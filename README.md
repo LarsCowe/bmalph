@@ -1,7 +1,9 @@
 # bmalph
 
 [![npm](https://img.shields.io/npm/v/bmalph)](https://www.npmjs.com/package/bmalph)
+[![npm downloads](https://img.shields.io/npm/dm/bmalph)](https://www.npmjs.com/package/bmalph)
 [![license](https://img.shields.io/npm/l/bmalph)](LICENSE)
+[![node](https://img.shields.io/node/v/bmalph)](https://nodejs.org)
 [![CI](https://github.com/LarsCowe/bmalph/actions/workflows/ci.yml/badge.svg)](https://github.com/LarsCowe/bmalph/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/LarsCowe/bmalph/branch/main/graph/badge.svg)](https://codecov.io/gh/LarsCowe/bmalph)
 

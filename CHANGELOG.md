@@ -80,3 +80,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ralph loop and lib installation
 - Automatic CLAUDE.md snippet merging
 - Version marker in ralph_loop.sh for upgrade tracking
+
+[2.0.0]: https://github.com/LarsCowe/bmalph/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/LarsCowe/bmalph/releases/tag/v1.0.0
