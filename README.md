@@ -2,6 +2,8 @@
 
 [![npm](https://img.shields.io/npm/v/bmalph)](https://www.npmjs.com/package/bmalph)
 [![license](https://img.shields.io/npm/l/bmalph)](LICENSE)
+[![CI](https://github.com/LarsCowe/bmalph/actions/workflows/ci.yml/badge.svg)](https://github.com/LarsCowe/bmalph/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/LarsCowe/bmalph/branch/main/graph/badge.svg)](https://codecov.io/gh/LarsCowe/bmalph)
 
 [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) planning + [Ralph](https://github.com/snarktank/ralph) autonomous implementation, glued by slash commands.
 
@@ -380,6 +382,10 @@ claude
 # 5. Start autonomous implementation
 bash .ralph/ralph_loop.sh
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, test workflow, and commit guidelines.
 
 ## License
 
