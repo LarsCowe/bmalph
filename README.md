@@ -9,6 +9,10 @@
 
 [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) planning + [Ralph](https://github.com/snarktank/ralph) autonomous implementation, glued by slash commands.
 
+<p align="center">
+  <img src="docs/bmalph-diagram-light.svg" alt="bmalph workflow diagram" width="800" />
+</p>
+
 ## What is bmalph?
 
 bmalph bundles and installs two AI development systems:

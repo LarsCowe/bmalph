@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" font-family="'Segoe UI', 'Helvetica Neue', sans-serif">
+  <defs>
+    <linearGradient id="phase1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1" />
+      <stop offset="100%" style="stop-color:#818cf8" />
+    </linearGradient>
+    <linearGradient id="phase2Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6" />
+      <stop offset="100%" style="stop-color:#a78bfa" />
+    </linearGradient>
+    <linearGradient id="phase3Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d946ef" />
+      <stop offset="100%" style="stop-color:#e879f9" />
+    </linearGradient>
+    <linearGradient id="phase4Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981" />
+      <stop offset="100%" style="stop-color:#34d399" />
+    </linearGradient>
+    <linearGradient id="transGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b" />
+      <stop offset="100%" style="stop-color:#fbbf24" />
+    </linearGradient>
+    <filter id="softShadow">
+      <feDropShadow dx="0" dy="1" stdDeviation="4" flood-color="#94a3b8" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="580" fill="#f8fafc" rx="12"/>
+
+  <!-- Dot grid -->
+  <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+    <circle cx="12" cy="12" r="0.6" fill="#cbd5e1" opacity="0.5"/>
+  </pattern>
+  <rect width="960" height="580" fill="url(#dots)" rx="12"/>
+
+  <!-- Title -->
+  <text x="480" y="48" text-anchor="middle" fill="#1e293b" font-size="26" font-weight="700" letter-spacing="0.3">Bmalph</text>
+  <text x="480" y="72" text-anchor="middle" fill="#64748b" font-size="13" letter-spacing="0.3">BMAD Planning + Ralph Implementation for Claude Code</text>
+
+  <!-- ==================== BMAD BRACKET ==================== -->
+  <text x="275" y="108" text-anchor="middle" fill="#64748b" font-size="10" font-weight="600" letter-spacing="1.5">BMAD-METHOD</text>
+  <line x1="80" y1="115" x2="470" y2="115" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- ==================== PHASE 1: Analysis ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="40" y="130" width="180" height="200" rx="10" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.2"/>
+  </g>
+  <!-- Header -->
+  <rect x="40" y="130" width="180" height="46" rx="10" fill="url(#phase1Grad)" opacity="0.1"/>
+  <rect x="40" y="166" width="180" height="10" fill="#ffffff"/>
+  <text x="56" y="148" fill="#4f46e5" font-size="8" font-weight="700" letter-spacing="1">PHASE 1</text>
+  <text x="56" y="160" fill="#4f46e5" font-size="12" font-weight="700">Analysis</text>
+
+  <!-- Agent -->
+  <rect x="56" y="178" width="148" height="24" rx="5" fill="#eef2ff" stroke="#c7d2fe" stroke-width="0.5"/>
+  <circle cx="70" cy="190" r="4" fill="#6366f1" opacity="0.6"/>
+  <text x="80" y="194" fill="#4338ca" font-size="10" font-weight="600">Analyst Agent</text>
+
+  <!-- Commands -->
+  <text x="56" y="222" fill="#64748b" font-size="9">BP  Brainstorm Project</text>
+  <text x="56" y="238" fill="#64748b" font-size="9">MR  Market Research</text>
+  <text x="56" y="254" fill="#64748b" font-size="9">DR  Domain Research</text>
+  <text x="56" y="270" fill="#64748b" font-size="9">TR  Technical Research</text>
+  <text x="56" y="286" fill="#64748b" font-size="9">CB  Create Brief</text>
+  <text x="56" y="302" fill="#64748b" font-size="9">VB  Validate Brief</text>
+
+  <!-- Output badge -->
+  <rect x="56" y="312" width="148" height="10" rx="3" fill="#eef2ff"/>
+  <text x="130" y="320" text-anchor="middle" fill="#6366f1" font-size="7" font-weight="600">Product Brief</text>
+
+  <!-- Arrow 1->2 -->
+  <line x1="220" y1="230" x2="248" y2="230" stroke="#94a3b8" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="248,226 258,230 248,234" fill="#94a3b8" opacity="0.6"/>
+
+  <!-- ==================== PHASE 2: Planning ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="260" y="130" width="180" height="200" rx="10" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  </g>
+  <rect x="260" y="130" width="180" height="46" rx="10" fill="url(#phase2Grad)" opacity="0.1"/>
+  <rect x="260" y="166" width="180" height="10" fill="#ffffff"/>
+  <text x="276" y="148" fill="#7c3aed" font-size="8" font-weight="700" letter-spacing="1">PHASE 2</text>
+  <text x="276" y="160" fill="#7c3aed" font-size="12" font-weight="700">Planning</text>
+
+  <rect x="276" y="178" width="148" height="24" rx="5" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="0.5"/>
+  <circle cx="290" cy="190" r="4" fill="#8b5cf6" opacity="0.6"/>
+  <text x="300" y="194" fill="#6d28d9" font-size="10" font-weight="600">PM Agent (John)</text>
+
+  <text x="276" y="222" fill="#64748b" font-size="9">CP  Create PRD</text>
+  <text x="276" y="238" fill="#64748b" font-size="9">VP  Validate PRD</text>
+  <text x="276" y="254" fill="#64748b" font-size="9">CU  Create UX</text>
+  <text x="276" y="270" fill="#64748b" font-size="9">VU  Validate UX</text>
+
+  <rect x="276" y="312" width="148" height="10" rx="3" fill="#f5f3ff"/>
+  <text x="350" y="320" text-anchor="middle" fill="#7c3aed" font-size="7" font-weight="600">PRD + UX Design</text>
+
+  <!-- Arrow 2->3 -->
+  <line x1="440" y1="230" x2="468" y2="230" stroke="#94a3b8" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="468,226 478,230 468,234" fill="#94a3b8" opacity="0.6"/>
+
+  <!-- ==================== PHASE 3: Solutioning ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="480" y="130" width="180" height="200" rx="10" fill="#ffffff" stroke="#f0abfc" stroke-width="1.2"/>
+  </g>
+  <rect x="480" y="130" width="180" height="46" rx="10" fill="url(#phase3Grad)" opacity="0.1"/>
+  <rect x="480" y="166" width="180" height="10" fill="#ffffff"/>
+  <text x="496" y="148" fill="#c026d3" font-size="8" font-weight="700" letter-spacing="1">PHASE 3</text>
+  <text x="496" y="160" fill="#c026d3" font-size="12" font-weight="700">Solutioning</text>
+
+  <rect x="496" y="178" width="148" height="24" rx="5" fill="#fdf4ff" stroke="#f0abfc" stroke-width="0.5"/>
+  <circle cx="510" cy="190" r="4" fill="#d946ef" opacity="0.6"/>
+  <text x="520" y="194" fill="#a21caf" font-size="10" font-weight="600">Architect Agent</text>
+
+  <text x="496" y="222" fill="#64748b" font-size="9">CA  Create Architecture</text>
+  <text x="496" y="238" fill="#64748b" font-size="9">VA  Validate Architecture</text>
+  <text x="496" y="254" fill="#64748b" font-size="9">CE  Create Epics/Stories</text>
+  <text x="496" y="270" fill="#64748b" font-size="9">VE  Validate Epics/Stories</text>
+  <text x="496" y="286" fill="#64748b" font-size="9">TD  Test Design</text>
+  <text x="496" y="302" fill="#64748b" font-size="9">IR  Implementation Readiness</text>
+
+  <rect x="496" y="312" width="148" height="10" rx="3" fill="#fdf4ff"/>
+  <text x="570" y="320" text-anchor="middle" fill="#c026d3" font-size="7" font-weight="600">Architecture + Stories</text>
+
+  <!-- ==================== TRANSITION: /bmalph-implement ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="680" y="195" width="30" height="70" rx="6" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5"/>
+  </g>
+  <rect x="680" y="195" width="30" height="70" rx="6" fill="url(#transGrad)" opacity="0.1"/>
+  <text x="695" y="220" text-anchor="middle" fill="#b45309" font-size="16" font-weight="700">/</text>
+  <text x="695" y="238" text-anchor="middle" fill="#b45309" font-size="7" font-weight="600">impl</text>
+
+  <!-- Arrow 3 -> transition -->
+  <line x1="660" y1="230" x2="678" y2="230" stroke="#f59e0b" stroke-width="2" opacity="0.5"/>
+  <polygon points="676,226 684,230 676,234" fill="#f59e0b" opacity="0.6"/>
+
+  <!-- Arrow transition -> phase 4 -->
+  <line x1="710" y1="230" x2="728" y2="230" stroke="#10b981" stroke-width="2" opacity="0.5"/>
+  <polygon points="726,226 734,230 726,234" fill="#10b981" opacity="0.6"/>
+
+  <!-- Label under transition -->
+  <text x="695" y="282" text-anchor="middle" fill="#92400e" font-size="7" font-weight="500">/bmalph-</text>
+  <text x="695" y="292" text-anchor="middle" fill="#92400e" font-size="7" font-weight="500">implement</text>
+
+  <!-- ==================== PHASE 4: Ralph ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="736" y="130" width="184" height="200" rx="10" fill="#ffffff" stroke="#6ee7b7" stroke-width="1.2"/>
+  </g>
+  <rect x="736" y="130" width="184" height="46" rx="10" fill="url(#phase4Grad)" opacity="0.1"/>
+  <rect x="736" y="166" width="184" height="10" fill="#ffffff"/>
+  <text x="752" y="148" fill="#059669" font-size="8" font-weight="700" letter-spacing="1">PHASE 4</text>
+  <text x="752" y="160" fill="#059669" font-size="12" font-weight="700">Implementation</text>
+
+  <!-- Ralph label -->
+  <text x="752" y="108" fill="#059669" font-size="10" font-weight="600" letter-spacing="1.5">RALPH</text>
+  <line x1="736" y1="115" x2="920" y2="115" stroke="#d1fae5" stroke-width="1"/>
+
+  <rect x="752" y="178" width="152" height="24" rx="5" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="0.5"/>
+  <circle cx="766" cy="190" r="4" fill="#10b981" opacity="0.6"/>
+  <text x="776" y="194" fill="#047857" font-size="10" font-weight="600">Ralph Loop (bash)</text>
+
+  <!-- Ralph cycle -->
+  <text x="752" y="222" fill="#64748b" font-size="9">1. Pick next story</text>
+  <text x="752" y="238" fill="#64748b" font-size="9">2. TDD: tests first</text>
+  <text x="752" y="254" fill="#64748b" font-size="9">3. Implement code</text>
+  <text x="752" y="270" fill="#64748b" font-size="9">4. Commit changes</text>
+  <text x="752" y="286" fill="#64748b" font-size="9">5. Next story (repeat)</text>
+
+  <!-- Safety badges -->
+  <rect x="752" y="298" width="72" height="16" rx="4" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.5"/>
+  <text x="788" y="309" text-anchor="middle" fill="#92400e" font-size="7" font-weight="600">Circuit Breaker</text>
+  <rect x="830" y="298" width="72" height="16" rx="4" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.5"/>
+  <text x="866" y="309" text-anchor="middle" fill="#92400e" font-size="7" font-weight="600">Stall Detection</text>
+
+  <rect x="752" y="318" width="152" height="10" rx="3" fill="#ecfdf5"/>
+  <text x="828" y="326" text-anchor="middle" fill="#059669" font-size="7" font-weight="600">Working Code + Commits</text>
+
+  <!-- ==================== BOTTOM: Iterative loop arrow ==================== -->
+  <!-- Curved return arrow from Phase 4 back to BMAD -->
+  <path d="M 828 340 L 828 370 Q 828 385 813 385 L 147 385 Q 130 385 130 370 L 130 340"
+        fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="6,3" opacity="0.4"/>
+  <polygon points="126,342 130,332 134,342" fill="#94a3b8" opacity="0.5"/>
+  <text x="480" y="380" text-anchor="middle" fill="#64748b" font-size="9" font-weight="500">Iterative: add new epics, /bmalph-implement merges progress</text>
+
+  <!-- ==================== BOTTOM: Artifacts flow ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="120" y="410" width="720" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  </g>
+  <text x="140" y="434" fill="#475569" font-size="10" font-weight="600">Artifacts flow:</text>
+  
+  <!-- Mini flow -->
+  <rect x="250" y="420" width="80" height="26" rx="5" fill="#eef2ff" stroke="#c7d2fe" stroke-width="0.5"/>
+  <text x="290" y="437" text-anchor="middle" fill="#4338ca" font-size="8" font-weight="600">Brief</text>
+  
+  <text x="340" y="437" fill="#94a3b8" font-size="10">&#8594;</text>
+  
+  <rect x="355" y="420" width="80" height="26" rx="5" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="0.5"/>
+  <text x="395" y="437" text-anchor="middle" fill="#6d28d9" font-size="8" font-weight="600">PRD + UX</text>
+  
+  <text x="445" y="437" fill="#94a3b8" font-size="10">&#8594;</text>
+  
+  <rect x="460" y="420" width="100" height="26" rx="5" fill="#fdf4ff" stroke="#f0abfc" stroke-width="0.5"/>
+  <text x="510" y="437" text-anchor="middle" fill="#a21caf" font-size="8" font-weight="600">Arch + Stories</text>
+  
+  <text x="570" y="437" fill="#94a3b8" font-size="10">&#8594;</text>
+  
+  <rect x="585" y="420" width="100" height="26" rx="5" fill="#fef3c7" stroke="#fcd34d" stroke-width="0.5"/>
+  <text x="635" y="437" text-anchor="middle" fill="#92400e" font-size="8" font-weight="600">@fix_plan.md</text>
+  
+  <text x="695" y="437" fill="#94a3b8" font-size="10">&#8594;</text>
+  
+  <rect x="710" y="420" width="110" height="26" rx="5" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="0.5"/>
+  <text x="765" y="437" text-anchor="middle" fill="#047857" font-size="8" font-weight="600">Commits (TDD)</text>
+
+  <text x="480" y="458" text-anchor="middle" fill="#94a3b8" font-size="8">_bmad-output/ &#8594; .ralph/specs/ &#8594; git</text>
+
+  <!-- ==================== BOTTOM: Quick start ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="120" y="480" width="720" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  </g>
+  <text x="140" y="504" fill="#6366f1" font-size="11" font-weight="600" font-family="'Fira Code', 'SF Mono', monospace">$</text>
+  <text x="158" y="504" fill="#1e293b" font-size="11" font-family="'Fira Code', 'SF Mono', monospace">npm install -g bmalph &amp;&amp; bmalph init &amp;&amp; claude</text>
+  <text x="140" y="524" fill="#94a3b8" font-size="9">Use /bmalph in Claude Code to navigate phases, /bmalph-implement to start Ralph</text>
+
+  <!-- Footer -->
+  <text x="480" y="566" text-anchor="middle" fill="#94a3b8" font-size="10">github.com/LarsCowe/bmalph</text>
+</svg>
