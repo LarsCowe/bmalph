@@ -58,8 +58,8 @@ export function parseFixPlan(content: string): FixPlanItemWithTitle[] {
   let match;
   while ((match = pattern.exec(content)) !== null) {
     items.push({
-      id: match[2],
-      completed: match[1].toLowerCase() === "x",
+      id: match[2]!,
+      completed: match[1]!.toLowerCase() === "x",
       title: match[3]?.trim(),
     });
   }

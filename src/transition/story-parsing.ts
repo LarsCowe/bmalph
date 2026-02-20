@@ -69,14 +69,14 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
     const line = lines[i];
 
     // Match Epic headers: ## Epic N: Title
-    const epicMatch = line.match(EPIC_HEADER_PATTERN);
+    const epicMatch = line?.match(EPIC_HEADER_PATTERN);
     if (epicMatch) {
-      currentEpic = epicMatch[1].trim();
+      currentEpic = epicMatch[1]!.trim();
       // Collect all non-empty lines between epic header and first story/next heading
       const descLines: string[] = [];
       for (let j = i + 1; j < lines.length; j++) {
-        if (HEADING_PATTERN.test(lines[j])) break;
-        const trimmed = lines[j].trim();
+        if (HEADING_PATTERN.test(lines[j]!)) break;
+        const trimmed = lines[j]!.trim();
         if (trimmed) descLines.push(trimmed);
       }
       currentEpicDescription = descLines.join(" ");
@@ -84,10 +84,10 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
     }
 
     // Match Story headers: ### Story N.M: Title
-    const storyMatch = line.match(STORY_HEADER_PATTERN);
+    const storyMatch = line?.match(STORY_HEADER_PATTERN);
     if (storyMatch) {
-      const id = storyMatch[1];
-      const title = storyMatch[2].trim();
+      const id = storyMatch[1]!;
+      const title = storyMatch[2]!.trim();
 
       // Validate story ID format (should be like "1.1", "2.3", etc.)
       if (!STORY_ID_PATTERN.test(id)) {
@@ -97,8 +97,8 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
       // Collect all body lines until next heading
       const bodyLines: string[] = [];
       for (let j = i + 1; j < lines.length; j++) {
-        if (HEADING_PATTERN.test(lines[j])) break;
-        bodyLines.push(lines[j]);
+        if (HEADING_PATTERN.test(lines[j]!)) break;
+        bodyLines.push(lines[j]!);
       }
 
       // Find where AC starts: either "**Acceptance Criteria:**" heading or first Given line

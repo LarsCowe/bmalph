@@ -131,7 +131,7 @@ async function checkBashAvailable(): Promise<boolean> {
 // =============================================================================
 
 async function checkNodeVersion(_projectDir: string): Promise<CheckResult> {
-  const major = parseInt(process.versions.node.split(".")[0]);
+  const major = parseInt(process.versions.node.split(".")[0]!);
   return {
     label: "Node version >= 20",
     passed: major >= 20,
@@ -290,13 +290,13 @@ async function checkVersionMarker(projectDir: string): Promise<CheckResult> {
     }
     const { getPackageVersion } = await import("../installer.js");
     const current = getPackageVersion();
-    if (match[1].trim() === current) {
+    if (match[1]!.trim() === current) {
       return { label, passed: true, detail: `v${current}` };
     }
     return {
       label,
       passed: false,
-      detail: `installed: ${match[1].trim()}, current: ${current}`,
+      detail: `installed: ${match[1]!.trim()}, current: ${current}`,
       hint,
     };
   } catch {

@@ -30,7 +30,7 @@ export function extractSectionWithInfo(
 
   // Determine heading level from the match
   const headingLevelMatch = match[0].match(/^(#{1,6})\s/);
-  const level = headingLevelMatch ? headingLevelMatch[1].length : 2;
+  const level = headingLevelMatch ? headingLevelMatch[1]!.length : 2;
 
   const startIndex = (match.index ?? 0) + match[0].length;
   const rest = content.slice(startIndex);

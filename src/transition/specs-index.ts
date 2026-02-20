@@ -58,7 +58,7 @@ export function extractDescription(
   // Try to find a heading (# or ##)
   const headingMatch = /^#{1,2}\s+(.+)$/m.exec(trimmed);
   if (headingMatch) {
-    let heading = headingMatch[1];
+    let heading = headingMatch[1]!;
     // Remove markdown formatting
     heading = heading.replace(/\*\*([^*]+)\*\*/g, "$1");
     heading = heading.replace(/\*([^*]+)\*/g, "$1");
@@ -72,7 +72,7 @@ export function extractDescription(
   }
 
   // Fall back to first non-empty line
-  const firstLine = trimmed.split("\n")[0].trim();
+  const firstLine = trimmed.split("\n")[0]!.trim();
   if (firstLine.length > maxLength) {
     return firstLine.slice(0, maxLength - 3) + "...";
   }
