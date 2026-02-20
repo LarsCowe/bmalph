@@ -1,6 +1,6 @@
 import { readFile, writeFile, readdir, cp, mkdir, access, rm } from "fs/promises";
 import { join } from "path";
-import { debug, warn } from "../utils/logger.js";
+import { debug, info, warn } from "../utils/logger.js";
 import { isEnoent, formatError } from "../utils/errors.js";
 import { readConfig } from "../utils/config.js";
 import { readState, writeState, type BmalphState } from "../utils/state.js";
@@ -25,6 +25,7 @@ import { generateSpecsChangelog, formatChangelog } from "./specs-changelog.js";
 import { generateSpecsIndex, formatSpecsIndexMd } from "./specs-index.js";
 
 export async function runTransition(projectDir: string): Promise<TransitionResult> {
+  info("Locating BMAD artifacts...");
   const artifactsDir = await findArtifactsDir(projectDir);
   if (!artifactsDir) {
     throw new Error(
@@ -46,6 +47,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   debug(`Using stories file: ${storiesFile}`);
 
   const storiesContent = await readFile(join(artifactsDir, storiesFile), "utf-8");
+  info("Parsing stories...");
   const { stories, warnings: parseWarnings } = parseStoriesWithWarnings(storiesContent);
 
   if (stories.length === 0) {
@@ -71,11 +73,18 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   // Detect orphaned completed stories (Bug #2)
   const newStoryIds = new Set(stories.map((s) => s.id));
   const orphanWarnings = detectOrphanedCompletedStories(existingItems, newStoryIds);
+  for (const w of orphanWarnings) {
+    warn(w);
+  }
 
   // Detect renumbered stories (Bug #3)
   const renumberWarnings = detectRenumberedStories(existingItems, stories);
+  for (const w of renumberWarnings) {
+    warn(w);
+  }
 
   // Generate new fix_plan from current stories, preserving completion status
+  info(`Generating fix plan for ${stories.length} stories...`);
   const newFixPlan = generateFixPlan(stories);
   const mergedFixPlan = mergeFixPlanProgress(newFixPlan, completedIds);
   await writeFile(fixPlanPath, mergedFixPlan);
@@ -115,6 +124,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     }
   }
 
+  info("Copying specs to .ralph/specs/...");
   if (bmadOutputExists) {
     // Clean stale files from specs before copying fresh artifacts
     await rm(join(projectDir, ".ralph/specs"), { recursive: true, force: true });
@@ -132,6 +142,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   // Generate SPECS_INDEX.md for intelligent spec reading
+  info("Generating SPECS_INDEX.md...");
   try {
     const specsIndex = await generateSpecsIndex(specsDir);
     if (specsIndex.totalFiles > 0) {
@@ -167,6 +178,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   // Extract project context for both PROJECT_CONTEXT.md and PROMPT.md
+  info("Generating PROJECT_CONTEXT.md...");
   let projectContext = null;
   let truncationWarnings: string[] = [];
   if (artifactContents.size > 0) {
@@ -179,6 +191,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   // Generate PROMPT.md with embedded context
+  info("Generating PROMPT.md...");
   // Try to preserve rich PROMPT.md template if it has the placeholder
   let prompt: string;
   try {
@@ -234,7 +247,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     lastUpdated: now,
   };
   await writeState(projectDir, newState);
-  debug("Updated phase state to 4 (implementing)");
+  info("Transition complete: phase 4 (implementing)");
 
   return { storiesCount: stories.length, warnings, fixPlanPreserved };
 }
