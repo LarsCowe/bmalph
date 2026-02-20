@@ -1,6 +1,13 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { isInitialized, copyBundledAssets, mergeClaudeMd, previewUpgrade } from "../installer.js";
+import {
+  isInitialized,
+  copyBundledAssets,
+  mergeClaudeMd,
+  previewUpgrade,
+  getBundledVersions,
+} from "../installer.js";
+import { readConfig, writeConfig } from "../utils/config.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 import { withErrorHandling } from "../utils/errors.js";
 
@@ -56,6 +63,13 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
 
   const result = await copyBundledAssets(projectDir);
   await mergeClaudeMd(projectDir);
+
+  // Update upstreamVersions in config to match bundled versions
+  const config = await readConfig(projectDir);
+  if (config) {
+    config.upstreamVersions = getBundledVersions();
+    await writeConfig(projectDir, config);
+  }
 
   console.log(chalk.green("\nUpdated:"));
   for (const path of result.updatedPaths) {

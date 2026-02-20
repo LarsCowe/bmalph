@@ -13,6 +13,12 @@ vi.mock("../../src/installer.js", () => ({
   copyBundledAssets: vi.fn(),
   mergeClaudeMd: vi.fn(),
   previewUpgrade: vi.fn(),
+  getBundledVersions: vi.fn(),
+}));
+
+vi.mock("../../src/utils/config.js", () => ({
+  readConfig: vi.fn(),
+  writeConfig: vi.fn(),
 }));
 
 describe("upgrade command", () => {
@@ -165,6 +171,86 @@ describe("upgrade command", () => {
       await upgradeCommand({ force: true });
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Upgrade complete"));
+    });
+
+    it("updates upstreamVersions in config after upgrade", async () => {
+      const { isInitialized, copyBundledAssets, mergeClaudeMd, getBundledVersions } =
+        await import("../../src/installer.js");
+      const { readConfig, writeConfig } = await import("../../src/utils/config.js");
+
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(getBundledVersions).mockReturnValue({
+        bmadCommit: "abc12345",
+        ralphCommit: "def67890",
+      });
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "test-project",
+        description: "A test project",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        upstreamVersions: { bmadCommit: "old11111", ralphCommit: "old22222" },
+      });
+      vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true });
+
+      expect(writeConfig).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          upstreamVersions: { bmadCommit: "abc12345", ralphCommit: "def67890" },
+        })
+      );
+    });
+
+    it("preserves existing config fields when updating upstreamVersions", async () => {
+      const { isInitialized, copyBundledAssets, mergeClaudeMd, getBundledVersions } =
+        await import("../../src/installer.js");
+      const { readConfig, writeConfig } = await import("../../src/utils/config.js");
+
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(getBundledVersions).mockReturnValue({
+        bmadCommit: "abc12345",
+        ralphCommit: "def67890",
+      });
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "my-app",
+        description: "My application",
+        createdAt: "2025-06-15T10:30:00.000Z",
+        upstreamVersions: { bmadCommit: "old11111", ralphCommit: "old22222" },
+      });
+      vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true });
+
+      expect(writeConfig).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          name: "my-app",
+          description: "My application",
+          createdAt: "2025-06-15T10:30:00.000Z",
+        })
+      );
+    });
+
+    it("skips config update when config cannot be read", async () => {
+      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+        await import("../../src/installer.js");
+      const { readConfig, writeConfig } = await import("../../src/utils/config.js");
+
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(readConfig).mockResolvedValue(null);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true });
+
+      expect(writeConfig).not.toHaveBeenCalled();
     });
   });
 
