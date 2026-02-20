@@ -134,4 +134,16 @@ describe("CLI entry point", () => {
     const { stdout } = runCli(["upgrade", "--help"]);
     expect(stdout).toContain("--force");
   });
+
+  it("errors when --project-dir points to non-existent path", () => {
+    const { stderr, exitCode } = runCli(["-C", "/nonexistent/path/that/does/not/exist", "doctor"]);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Project directory not found");
+  });
+
+  it("errors when --project-dir points to a file", () => {
+    const { stderr, exitCode } = runCli(["-C", CLI_PATH, "doctor"]);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("not a directory");
+  });
 });

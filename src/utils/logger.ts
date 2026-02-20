@@ -32,6 +32,7 @@ export function info(message: string): void {
 }
 
 export function warn(message: string): void {
+  if (quiet) return;
   console.log(chalk.yellow(message));
 }
 

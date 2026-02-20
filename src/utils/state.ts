@@ -32,7 +32,12 @@ export interface PhaseInfo {
 export async function readState(projectDir: string): Promise<BmalphState | null> {
   const data = await readJsonFile<unknown>(join(projectDir, STATE_DIR, "current-phase.json"));
   if (data === null) return null;
-  return validateState(data);
+  try {
+    return validateState(data);
+  } catch (err) {
+    warn(`State file is corrupted, treating as uninitialized: ${formatError(err)}`);
+    return null;
+  }
 }
 
 export async function writeState(projectDir: string, state: BmalphState): Promise<void> {

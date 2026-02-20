@@ -1,4 +1,5 @@
 import { resolve } from "path";
+import { stat } from "fs/promises";
 import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { upgradeCommand } from "./commands/upgrade.js";
@@ -7,6 +8,7 @@ import { checkUpdatesCommand } from "./commands/check-updates.js";
 import { statusCommand } from "./commands/status.js";
 import { setVerbose, setQuiet } from "./utils/logger.js";
 import { getPackageVersion } from "./installer.js";
+import { isEnoent } from "./utils/errors.js";
 
 const program = new Command();
 
@@ -36,26 +38,42 @@ function resolveProjectDir(): string {
   return dir ? resolve(dir) : process.cwd();
 }
 
+async function resolveAndValidateProjectDir(): Promise<string> {
+  const dir = resolveProjectDir();
+  try {
+    const stats = await stat(dir);
+    if (!stats.isDirectory()) {
+      throw new Error(`Path is not a directory: ${dir}`);
+    }
+  } catch (err) {
+    if (isEnoent(err)) {
+      throw new Error(`Project directory not found: ${dir}`);
+    }
+    throw err;
+  }
+  return dir;
+}
+
 program
   .command("init")
   .description("Initialize bmalph in the current project")
   .option("-n, --name <name>", "Project name")
   .option("-d, --description <desc>", "Project description")
   .option("--dry-run", "Preview changes without writing files")
-  .action((opts) => initCommand({ ...opts, projectDir: resolveProjectDir() }));
+  .action(async (opts) => initCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
 
 program
   .command("upgrade")
   .description("Update bundled assets to current version")
   .option("--dry-run", "Preview changes without writing files")
   .option("--force", "Skip confirmation prompts")
-  .action((opts) => upgradeCommand({ ...opts, projectDir: resolveProjectDir() }));
+  .action(async (opts) => upgradeCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
 
 program
   .command("doctor")
   .description("Check installation health")
   .option("--json", "Output as JSON")
-  .action((opts) => doctorCommand({ ...opts, projectDir: resolveProjectDir() }));
+  .action(async (opts) => doctorCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
 
 program
   .command("check-updates")
@@ -67,6 +85,6 @@ program
   .command("status")
   .description("Show current project status and phase")
   .option("--json", "Output as JSON")
-  .action((opts) => statusCommand({ ...opts, projectDir: resolveProjectDir() }));
+  .action(async (opts) => statusCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
 
-program.parse();
+program.parseAsync();

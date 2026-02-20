@@ -6,7 +6,7 @@ import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
 import { getBundledVersions } from "../installer.js";
 import { checkUpstream, getSkipReason } from "../utils/github.js";
-import { isEnoent, withErrorHandling } from "../utils/errors.js";
+import { isEnoent, formatError, withErrorHandling } from "../utils/errors.js";
 import {
   validateCircuitBreakerState,
   validateRalphSession,
@@ -203,8 +203,11 @@ async function checkDir(dirPath: string, label: string, hint?: string): Promise<
   try {
     const s = await stat(dirPath);
     return { label, passed: s.isDirectory() };
-  } catch {
-    return { label, passed: false, detail: "not found", hint };
+  } catch (err) {
+    if (isEnoent(err)) {
+      return { label, passed: false, detail: "not found", hint };
+    }
+    return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
 }
 
@@ -227,8 +230,11 @@ async function checkFileHasContent(
   try {
     const content = await readFile(filePath, "utf-8");
     return { label, passed: content.trim().length > 0 };
-  } catch {
-    return { label, passed: false, detail: "not found", hint };
+  } catch (err) {
+    if (isEnoent(err)) {
+      return { label, passed: false, detail: "not found", hint };
+    }
+    return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
 }
 
@@ -241,8 +247,11 @@ async function checkClaudeMd(projectDir: string): Promise<CheckResult> {
       return { label, passed: true };
     }
     return { label, passed: false, detail: "missing BMAD-METHOD Integration section", hint };
-  } catch {
-    return { label, passed: false, detail: "CLAUDE.md not found", hint };
+  } catch (err) {
+    if (isEnoent(err)) {
+      return { label, passed: false, detail: "CLAUDE.md not found", hint };
+    }
+    return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
 }
 
@@ -268,12 +277,20 @@ async function checkGitignore(projectDir: string): Promise<CheckResult> {
       detail: `missing: ${missing.join(", ")}`,
       hint: `Add to .gitignore: ${missing.join(" ")}`,
     };
-  } catch {
+  } catch (err) {
+    if (isEnoent(err)) {
+      return {
+        label,
+        passed: false,
+        detail: ".gitignore not found",
+        hint: "Create .gitignore with: .ralph/logs/ _bmad-output/",
+      };
+    }
     return {
       label,
       passed: false,
-      detail: ".gitignore not found",
-      hint: "Create .gitignore with: .ralph/logs/ _bmad-output/",
+      detail: `error: ${formatError(err)}`,
+      hint: "Check file permissions on .gitignore",
     };
   }
 }
@@ -298,8 +315,11 @@ async function checkVersionMarker(projectDir: string): Promise<CheckResult> {
       detail: `installed: ${match[1]!.trim()}, current: ${current}`,
       hint,
     };
-  } catch {
-    return { label, passed: true, detail: "no marker found" };
+  } catch (err) {
+    if (isEnoent(err)) {
+      return { label, passed: true, detail: "no marker found" };
+    }
+    return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
 }
 
@@ -331,8 +351,8 @@ async function checkUpstreamVersions(projectDir: string): Promise<CheckResult> {
     if (!ralphMatch)
       mismatches.push(`Ralph:${ralphCommit.slice(0, 8)}→${bundled.ralphCommit.slice(0, 8)}`);
     return { label, passed: false, detail: `outdated: ${mismatches.join(", ")}`, hint };
-  } catch {
-    return { label, passed: false, detail: "error reading versions", hint };
+  } catch (err) {
+    return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
 }
 
@@ -485,8 +505,8 @@ async function checkUpstreamGitHubStatus(_projectDir: string): Promise<CheckResu
     }
 
     return { label, passed: true, detail: statuses.join(", ") };
-  } catch {
-    return { label, passed: true, detail: "skipped: error" };
+  } catch (err) {
+    return { label, passed: true, detail: `skipped: ${formatError(err)}` };
   }
 }
 

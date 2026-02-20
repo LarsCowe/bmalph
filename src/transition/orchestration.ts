@@ -1,7 +1,8 @@
-import { readFile, writeFile, readdir, cp, mkdir, access, rm } from "fs/promises";
+import { readFile, readdir, cp, mkdir, access, rm, rename } from "fs/promises";
 import { join } from "path";
 import { debug, info, warn } from "../utils/logger.js";
 import { isEnoent, formatError } from "../utils/errors.js";
+import { atomicWriteFile } from "../utils/file-system.js";
 import { readConfig } from "../utils/config.js";
 import { readState, writeState, type BmalphState } from "../utils/state.js";
 import type { TransitionResult } from "./types.js";
@@ -65,9 +66,12 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     existingItems = parseFixPlan(existingFixPlan);
     completedIds = new Set(existingItems.filter((i) => i.completed).map((i) => i.id));
     debug(`Found ${completedIds.size} completed stories in existing fix_plan`);
-  } catch {
-    // No existing file, start fresh
-    debug("No existing fix_plan found, starting fresh");
+  } catch (err) {
+    if (isEnoent(err)) {
+      debug("No existing fix_plan found, starting fresh");
+    } else {
+      warn(`Could not read existing fix_plan: ${formatError(err)}`);
+    }
   }
 
   // Detect orphaned completed stories (Bug #2)
@@ -87,7 +91,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   info(`Generating fix plan for ${stories.length} stories...`);
   const newFixPlan = generateFixPlan(stories);
   const mergedFixPlan = mergeFixPlanProgress(newFixPlan, completedIds);
-  await writeFile(fixPlanPath, mergedFixPlan);
+  await atomicWriteFile(fixPlanPath, mergedFixPlan);
 
   // Track whether progress was preserved for return value
   const fixPlanPreserved = completedIds.size > 0;
@@ -100,7 +104,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     const changes = await generateSpecsChangelog(specsDir, bmadOutputDir);
     if (changes.length > 0) {
       const changelog = formatChangelog(changes, new Date().toISOString());
-      await writeFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
+      await atomicWriteFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
       debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
     }
   } catch (err) {
@@ -125,20 +129,30 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   }
 
   info("Copying specs to .ralph/specs/...");
+  const specsTmpDir = join(projectDir, ".ralph/specs.new");
   if (bmadOutputExists) {
-    // Clean stale files from specs before copying fresh artifacts
-    await rm(join(projectDir, ".ralph/specs"), { recursive: true, force: true });
-    await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
-    await cp(bmadOutputDir, join(projectDir, ".ralph/specs"), { recursive: true });
-    debug("Copied _bmad-output/ to .ralph/specs/");
+    // Atomic copy: write to temp dir, verify, then swap
+    await rm(specsTmpDir, { recursive: true, force: true });
+    await mkdir(specsTmpDir, { recursive: true });
+    await cp(bmadOutputDir, specsTmpDir, { recursive: true, dereference: false });
+    // Verify the copy succeeded before swapping
+    await access(specsTmpDir);
+    await rm(specsDir, { recursive: true, force: true });
+    await rename(specsTmpDir, specsDir);
+    debug("Copied _bmad-output/ to .ralph/specs/ (atomic)");
   } else {
     // Fall back to just artifactsDir if _bmad-output root doesn't exist
-    await mkdir(join(projectDir, ".ralph/specs"), { recursive: true });
+    await rm(specsTmpDir, { recursive: true, force: true });
+    await mkdir(specsTmpDir, { recursive: true });
     for (const file of files) {
-      await cp(join(artifactsDir, file), join(projectDir, ".ralph/specs", file), {
+      await cp(join(artifactsDir, file), join(specsTmpDir, file), {
         recursive: true,
+        dereference: false,
       });
     }
+    await access(specsTmpDir);
+    await rm(specsDir, { recursive: true, force: true });
+    await rename(specsTmpDir, specsDir);
   }
 
   // Generate SPECS_INDEX.md for intelligent spec reading
@@ -146,7 +160,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   try {
     const specsIndex = await generateSpecsIndex(specsDir);
     if (specsIndex.totalFiles > 0) {
-      await writeFile(join(projectDir, ".ralph/SPECS_INDEX.md"), formatSpecsIndexMd(specsIndex));
+      await atomicWriteFile(join(projectDir, ".ralph/SPECS_INDEX.md"), formatSpecsIndexMd(specsIndex));
       debug(`Generated SPECS_INDEX.md with ${specsIndex.totalFiles} files`);
     }
   } catch (err) {
@@ -172,9 +186,8 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     if (config?.name) {
       projectName = config.name;
     }
-  } catch {
-    // Invalid config, use default project name
-    debug("Could not read config for project name, using default");
+  } catch (err) {
+    debug(`Could not read config for project name: ${formatError(err)}`);
   }
 
   // Extract project context for both PROJECT_CONTEXT.md and PROMPT.md
@@ -186,7 +199,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
     projectContext = context;
     truncationWarnings = detectTruncation(truncated);
     const contextMd = generateProjectContextMd(projectContext, projectName);
-    await writeFile(join(projectDir, ".ralph/PROJECT_CONTEXT.md"), contextMd);
+    await atomicWriteFile(join(projectDir, ".ralph/PROJECT_CONTEXT.md"), contextMd);
     debug("Generated PROJECT_CONTEXT.md");
   }
 
@@ -202,12 +215,15 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
       // Pass context to embed critical specs directly in PROMPT.md
       prompt = generatePrompt(projectName, projectContext ?? undefined);
     }
-  } catch {
-    // No existing PROMPT.md or read failed, generate new one
-    debug("No existing PROMPT.md found, generating from template");
+  } catch (err) {
+    if (isEnoent(err)) {
+      debug("No existing PROMPT.md found, generating from template");
+    } else {
+      warn(`Could not read existing PROMPT.md: ${formatError(err)}`);
+    }
     prompt = generatePrompt(projectName, projectContext ?? undefined);
   }
-  await writeFile(join(projectDir, ".ralph/PROMPT.md"), prompt);
+  await atomicWriteFile(join(projectDir, ".ralph/PROMPT.md"), prompt);
 
   // Customize @AGENT.md based on detected tech stack from architecture
   const architectureFile = files.find((f) => /architect/i.test(f));
@@ -219,7 +235,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
         const agentPath = join(projectDir, ".ralph/@AGENT.md");
         const agentTemplate = await readFile(agentPath, "utf-8");
         const customized = customizeAgentMd(agentTemplate, stack);
-        await writeFile(agentPath, customized);
+        await atomicWriteFile(agentPath, customized);
         debug("Customized @AGENT.md with detected tech stack");
       }
     } catch (err) {

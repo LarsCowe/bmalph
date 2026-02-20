@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { readConfig, writeConfig, type BmalphConfig } from "../../src/utils/config.js";
-import { mkdir, rm, readdir } from "fs/promises";
+import { mkdir, rm, readdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -48,6 +48,23 @@ describe("config", () => {
     const result = await readConfig(testDir);
 
     expect(result).toEqual(config);
+  });
+
+  it("returns null and warns when config file has invalid structure", async () => {
+    await writeFile(
+      join(testDir, "bmalph/config.json"),
+      JSON.stringify({ garbage: true })
+    );
+
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const result = await readConfig(testDir);
+
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Config file is corrupted")
+    );
+    warnSpy.mockRestore();
   });
 
   it("leaves no temp files after write", async () => {

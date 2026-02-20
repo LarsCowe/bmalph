@@ -52,12 +52,21 @@ describe("state", () => {
       await expect(readState(testDir)).rejects.toThrow("Invalid JSON");
     });
 
-    it("throws on invalid state structure", async () => {
+    it("returns null and warns when state file has invalid structure", async () => {
       await writeFile(
         join(testDir, "bmalph/state/current-phase.json"),
-        JSON.stringify({ currentPhase: "not-a-number" })
+        JSON.stringify({ garbage: true })
       );
-      await expect(readState(testDir)).rejects.toThrow();
+
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const result = await readState(testDir);
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("State file is corrupted")
+      );
+      warnSpy.mockRestore();
     });
   });
 

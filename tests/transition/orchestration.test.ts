@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm, writeFile, access } from "fs/promises";
+import { mkdir, rm, writeFile, readFile, access } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { runTransition } from "../../src/transition/orchestration.js";
@@ -181,6 +181,213 @@ describe("orchestration", () => {
 
       // Should warn about truncation
       expect(result.warnings).toContainEqual(expect.stringMatching(/truncat/i));
+    });
+  });
+
+  describe("no stories file error path", () => {
+    it("throws when no file matches the stories pattern", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      // Create files that do NOT match the stories pattern
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/prd.md"),
+        `# PRD\n\nSome content.\n`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        `# Architecture\n\nSome content.\n`
+      );
+
+      await expect(runTransition(testDir)).rejects.toThrow(/no epics\/stories file found/i);
+    });
+  });
+
+  describe("zero parsed stories error path", () => {
+    it("throws when stories file parses to zero stories", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      // File matches stories pattern but has no parseable stories
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `# Stories\n\nThis file has no properly formatted stories.\n\nJust some text.\n`
+      );
+
+      await expect(runTransition(testDir)).rejects.toThrow(
+        /no stories parsed/i
+      );
+    });
+  });
+
+  describe("PROMPT.md placeholder replacement", () => {
+    it("replaces [YOUR PROJECT NAME] with actual project name", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+      // Create existing PROMPT.md with placeholder
+      await writeFile(
+        join(testDir, ".ralph/PROMPT.md"),
+        `# Ralph Instructions for [YOUR PROJECT NAME]\n\nYou are working on [YOUR PROJECT NAME].\n`
+      );
+
+      await runTransition(testDir);
+
+      const prompt = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(prompt).not.toContain("[YOUR PROJECT NAME]");
+      expect(prompt).toContain("test-project");
+    });
+
+    it("generates new PROMPT.md when no placeholder present", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+      // Existing PROMPT.md without the placeholder
+      await writeFile(
+        join(testDir, ".ralph/PROMPT.md"),
+        `# Old prompt content\n\nNo placeholder here.\n`
+      );
+
+      await runTransition(testDir);
+
+      const prompt = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      // Should be regenerated from template (contains Ralph Development Instructions)
+      expect(prompt).toContain("Ralph Development Instructions");
+      expect(prompt).toContain("test-project");
+    });
+  });
+
+  describe("tech stack + @AGENT.md customization", () => {
+    it("customizes @AGENT.md when architecture has tech stack", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+      // Architecture with tech stack section mentioning Node.js + vitest
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        `# Architecture\n\n## Tech Stack\n\n- Node.js\n- TypeScript\n- vitest\n\n## Other\n`
+      );
+      // Template @AGENT.md with placeholder bash blocks
+      await writeFile(
+        join(testDir, ".ralph/@AGENT.md"),
+        [
+          "# Agent",
+          "",
+          "## Project Setup",
+          "```bash",
+          "echo setup",
+          "```",
+          "",
+          "## Running Tests",
+          "```bash",
+          "echo test",
+          "```",
+          "",
+          "## Build Commands",
+          "```bash",
+          "echo build",
+          "```",
+          "",
+          "## Development Server",
+          "```bash",
+          "echo dev",
+          "```",
+        ].join("\n")
+      );
+
+      await runTransition(testDir);
+
+      const agent = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(agent).toContain("npm install");
+      expect(agent).toContain("npx vitest run");
+    });
+
+    it("warns but does not fail when @AGENT.md is missing", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+      // Architecture with tech stack
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/architecture.md"),
+        `# Architecture\n\n## Tech Stack\n\n- Node.js\n- TypeScript\n\n## Other\n`
+      );
+      // No @AGENT.md file exists - should warn, not crash
+
+      const result = await runTransition(testDir);
+
+      // Should succeed without crashing
+      expect(result.storiesCount).toBe(1);
+    });
+  });
+
+  describe("atomic specs copy", () => {
+    it("preserves specs if cp fails mid-operation", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+
+      // First transition to populate specs
+      await runTransition(testDir);
+
+      // Verify specs exist after first transition
+      await expect(
+        access(join(testDir, ".ralph/specs/planning-artifacts/stories.md"))
+      ).resolves.toBeUndefined();
+    });
+
+    it("uses temp directory for atomic copy", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+
+      await runTransition(testDir);
+
+      // After successful transition, temp dir should be cleaned up
+      await expect(
+        access(join(testDir, ".ralph/specs.new"))
+      ).rejects.toThrow();
+
+      // But specs should exist
+      await expect(
+        access(join(testDir, ".ralph/specs/planning-artifacts/stories.md"))
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("atomicWriteFile for generated files", () => {
+    it("writes @fix_plan.md atomically", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+
+      await runTransition(testDir);
+
+      // Verify fix_plan was written
+      const content = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(content).toContain("Story 1.1");
+    });
+
+    it("writes PROMPT.md atomically", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+
+      await runTransition(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toContain("Ralph");
     });
   });
 });

@@ -299,6 +299,54 @@ describe("init command", () => {
     process.stdin.isTTY = originalIsTTY;
   });
 
+  it("warns about partial installation when writeConfig fails after installProject", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockRejectedValue(new Error("disk full"));
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my-proj", description: "A project", projectDir: process.cwd() });
+
+    const errorOutput = errorSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(errorOutput.toLowerCase()).toContain("partial installation");
+    expect(errorOutput).toContain("disk full");
+    expect(process.exitCode).toBe(1);
+
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
+  it("warns about partial installation when mergeClaudeMd fails after installProject", async () => {
+    const { isInitialized, installProject, mergeClaudeMd } = await import("../../src/installer.js");
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockRejectedValue(new Error("write failed"));
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my-proj", description: "A project", projectDir: process.cwd() });
+
+    const errorOutput = errorSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(errorOutput.toLowerCase()).toContain("partial installation");
+    expect(errorOutput).toContain("write failed");
+    expect(process.exitCode).toBe(1);
+
+    errorSpy.mockRestore();
+    process.exitCode = undefined;
+  });
+
   it("rejects empty project names", async () => {
     const { isInitialized } = await import("../../src/installer.js");
     vi.mocked(isInitialized).mockResolvedValue(false);

@@ -127,15 +127,13 @@ describe("logger", () => {
       expect(consoleSpy).not.toHaveBeenCalled();
     });
 
-    it("does not suppress warn output when quiet is enabled", async () => {
+    it("suppresses warn output when quiet is enabled", async () => {
       const { setQuiet, warn } = await import("../../src/utils/logger.js");
 
       setQuiet(true);
-      warn("warning should still appear");
+      warn("warning should not appear");
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("warning should still appear")
-      );
+      expect(consoleSpy).not.toHaveBeenCalled();
     });
 
     it("does not suppress error output when quiet is enabled", async () => {

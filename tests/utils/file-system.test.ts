@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mkdir, writeFile, readFile, readdir, rm, symlink } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
@@ -165,5 +165,78 @@ describe("file-system utilities", () => {
       const content = await readFile(target, "utf-8");
       expect(content).toBe("new content");
     });
+  });
+
+  describe("getFilesRecursive with symlinks", () => {
+    it("skips symlinked directories", async () => {
+      const realDir = join(testDir, "real-sub");
+      await mkdir(realDir, { recursive: true });
+      await writeFile(join(realDir, "secret.txt"), "data");
+      await writeFile(join(testDir, "root.txt"), "root");
+
+      await symlink(realDir, join(testDir, "link-sub"), "dir");
+
+      const files = await getFilesRecursive(testDir);
+      const normalized = files.map((f) => f.replace(/\\/g, "/")).sort();
+      expect(normalized).toContain("root.txt");
+      expect(normalized).toContain("real-sub/secret.txt");
+      expect(normalized).not.toContain("link-sub/secret.txt");
+    });
+
+    it("skips symlinked files", async () => {
+      const realFile = join(testDir, "real-file.txt");
+      await writeFile(realFile, "content");
+      await symlink(realFile, join(testDir, "link-file.txt"));
+
+      const files = await getFilesRecursive(testDir);
+      expect(files).toContain("real-file.txt");
+      expect(files).not.toContain("link-file.txt");
+    });
+  });
+
+  describe("getMarkdownFilesWithContent with symlinks", () => {
+    it("skips symlinked directories", async () => {
+      const realDir = join(testDir, "real-docs");
+      await mkdir(realDir, { recursive: true });
+      await writeFile(join(realDir, "guide.md"), "real guide");
+      await writeFile(join(testDir, "readme.md"), "root readme");
+
+      await symlink(realDir, join(testDir, "link-docs"), "dir");
+
+      const files = await getMarkdownFilesWithContent(testDir);
+      const paths = files.map((f) => f.path).sort();
+      expect(paths).toContain("readme.md");
+      expect(paths).toContain("real-docs/guide.md");
+      expect(paths).not.toContain("link-docs/guide.md");
+    });
+
+    it("skips symlinked markdown files", async () => {
+      const realFile = join(testDir, "real.md");
+      await writeFile(realFile, "content");
+      await symlink(realFile, join(testDir, "link.md"));
+
+      const files = await getMarkdownFilesWithContent(testDir);
+      const paths = files.map((f) => f.path);
+      expect(paths).toContain("real.md");
+      expect(paths).not.toContain("link.md");
+    });
+  });
+});
+
+describe("exists() with mocked fs", () => {
+  it("re-throws non-ENOENT errors like EACCES", async () => {
+    vi.resetModules();
+    const eaccesError = Object.assign(new Error("permission denied"), { code: "EACCES" });
+
+    vi.doMock("fs/promises", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("fs/promises")>();
+      return { ...actual, access: vi.fn().mockRejectedValue(eaccesError) };
+    });
+
+    const { exists: mockedExists } = await import("../../src/utils/file-system.js");
+    await expect(mockedExists("/some/path")).rejects.toThrow("permission denied");
+
+    vi.doUnmock("fs/promises");
+    vi.resetModules();
   });
 });

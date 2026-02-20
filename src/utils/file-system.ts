@@ -10,8 +10,9 @@ export async function exists(path: string): Promise<boolean> {
   try {
     await access(path);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    if (isEnoent(err)) return false;
+    throw err;
   }
 }
 
@@ -45,6 +46,7 @@ export async function getFilesRecursive(dir: string, basePath = ""): Promise<str
     const entries = await readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
       const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
 
       if (entry.isDirectory()) {
@@ -81,6 +83,7 @@ export async function getMarkdownFilesWithContent(
     const entries = await readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
       const fullPath = join(dir, entry.name);
       const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
 

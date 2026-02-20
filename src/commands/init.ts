@@ -100,8 +100,16 @@ async function runInit(options: InitOptions): Promise<void> {
     upstreamVersions: bundledVersions,
   };
 
-  await writeConfig(projectDir, config);
-  await mergeClaudeMd(projectDir);
+  try {
+    await writeConfig(projectDir, config);
+    await mergeClaudeMd(projectDir);
+  } catch (err) {
+    throw new Error(
+      `Partial installation: files were copied but configuration failed. ` +
+        `Run 'bmalph init' again to retry. ` +
+        `Cause: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
 
   console.log(chalk.green("\nbmalph initialized successfully!"));
   console.log(`\n  Project: ${chalk.bold(config.name)}`);

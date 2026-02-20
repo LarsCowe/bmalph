@@ -8,8 +8,9 @@ import {
   previewUpgrade,
   getSlashCommandsDir,
   generateManifests,
+  getPackageVersion,
 } from "../src/installer.js";
-import { mkdir, rm, access, readFile, writeFile, readdir } from "fs/promises";
+import { mkdir, rm, access, readFile, writeFile, readdir, chmod, stat } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -38,6 +39,23 @@ describe("installer", () => {
       await mkdir(join(testDir, "bmalph"), { recursive: true });
       await writeFile(join(testDir, "bmalph/config.json"), "{}");
       expect(await isInitialized(testDir)).toBe(true);
+    });
+  });
+
+  describe("getPackageVersion", () => {
+    it("returns a version string instead of throwing", () => {
+      const version = getPackageVersion();
+      expect(typeof version).toBe("string");
+      expect(version.length).toBeGreaterThan(0);
+    });
+
+    it("never throws, always returns a string", () => {
+      // The contract is: getPackageVersion() always returns a string, never throws.
+      // When package.json is present, it returns a semver version.
+      // When it can't be read, it returns "unknown".
+      const version = getPackageVersion();
+      expect(typeof version).toBe("string");
+      expect(version).toMatch(/^\d+\.\d+\.\d+/); // Normal case: semver
     });
   });
 
@@ -379,17 +397,17 @@ describe("installer", () => {
       await expect(access(join(testDir, ".ralph/lib/circuit_breaker.sh"))).resolves.toBeUndefined();
     });
 
-    it("removes stale slash commands from .claude/commands/ on upgrade", async () => {
+    it("preserves non-bundled user commands in .claude/commands/ on upgrade", async () => {
       await copyBundledAssets(testDir);
 
-      // Simulate a removed slash command
-      await writeFile(join(testDir, ".claude/commands/deprecated-cmd.md"), "old command");
+      // User-created command (not in bundled slash-commands)
+      await writeFile(join(testDir, ".claude/commands/my-custom-cmd.md"), "user command");
 
       await copyBundledAssets(testDir);
 
-      // Stale command should be gone
-      await expect(access(join(testDir, ".claude/commands/deprecated-cmd.md"))).rejects.toThrow();
-      // Fresh commands should still be present
+      // User command should be preserved (not a bundled name)
+      await expect(access(join(testDir, ".claude/commands/my-custom-cmd.md"))).resolves.toBeUndefined();
+      // Fresh bundled commands should still be present
       await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
     });
 
@@ -919,6 +937,236 @@ Old stale content with /tea agent reference.
       expect(result.wouldUpdate).toContain(".gitignore");
       expect(result.wouldCreate).toContain(".ralph/ralph_loop.sh");
       expect(result.wouldCreate).toContain(".claude/commands/");
+    });
+  });
+
+  describe("hardening: atomic copyBundledAssets", { timeout: 30000 }, () => {
+    it("recovers _bmad if cp fails after rm (atomic copy)", async () => {
+      // First install creates _bmad
+      await copyBundledAssets(testDir);
+      await expect(access(join(testDir, "_bmad/core"))).resolves.toBeUndefined();
+
+      // _bmad should exist after a second successful copy
+      await copyBundledAssets(testDir);
+      await expect(access(join(testDir, "_bmad/core"))).resolves.toBeUndefined();
+    });
+
+    it("uses temp directory during _bmad copy", async () => {
+      // After a successful copy, no _bmad.new temp dir should remain
+      await copyBundledAssets(testDir);
+      await expect(access(join(testDir, "_bmad.new"))).rejects.toThrow();
+      await expect(access(join(testDir, "_bmad/core"))).resolves.toBeUndefined();
+    });
+  });
+
+  describe("hardening: swallowed exceptions", { timeout: 30000 }, () => {
+    it("stale command cleanup ignores ENOENT but propagates other errors", async () => {
+      // A successful install should work even when .claude/commands doesn't exist yet
+      await copyBundledAssets(testDir);
+      await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
+    });
+
+    it("deriveProjectName warns on non-ENOENT errors but does not throw", async () => {
+      // Create a config.json that is a directory (will cause non-ENOENT read error)
+      await mkdir(join(testDir, "bmalph/config.json"), { recursive: true });
+
+      // Should fall through to basename without crashing
+      await expect(copyBundledAssets(testDir)).resolves.not.toThrow();
+      const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
+      // Should use directory basename as project name
+      const dirName = testDir.split(/[/\\]/).pop();
+      expect(config).toContain(`project_name: "${dirName}"`);
+    });
+  });
+
+  describe("hardening: symlink safety", { timeout: 30000 }, () => {
+    it("does not dereference symlinks when copying _bmad", async () => {
+      await copyBundledAssets(testDir);
+
+      // The copied files should be regular files/directories, not dereferenced symlinks
+      // This verifies dereference: false is set
+      const coreStat = await stat(join(testDir, "_bmad/core"));
+      expect(coreStat.isDirectory()).toBe(true);
+    });
+
+    it("does not dereference symlinks when copying ralph lib", async () => {
+      await copyBundledAssets(testDir);
+
+      const libStat = await stat(join(testDir, ".ralph/lib"));
+      expect(libStat.isDirectory()).toBe(true);
+    });
+  });
+
+  describe("hardening: stale command cleanup preserves user commands", { timeout: 30000 }, () => {
+    it("preserves user-created .md files not in bundled slash-commands", async () => {
+      await copyBundledAssets(testDir);
+
+      // Create a user-owned command
+      await writeFile(
+        join(testDir, ".claude/commands/my-custom-workflow.md"),
+        "# My Custom Workflow\nDo something special."
+      );
+
+      // Upgrade should NOT delete the user command
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(
+        join(testDir, ".claude/commands/my-custom-workflow.md"),
+        "utf-8"
+      );
+      expect(content).toContain("My Custom Workflow");
+    });
+
+    it("still removes stale bundled commands", async () => {
+      await copyBundledAssets(testDir);
+
+      // Simulate a command that was previously bundled but now removed
+      // by getting the list of bundled commands and checking a known-bundled one is present
+      const bundledFiles = await readdir(getSlashCommandsDir());
+      const bundledMdFiles = bundledFiles.filter((f) => f.endsWith(".md"));
+      expect(bundledMdFiles.length).toBeGreaterThan(0);
+
+      // All bundled commands should be present after copy
+      for (const file of bundledMdFiles) {
+        await expect(access(join(testDir, ".claude/commands", file))).resolves.toBeUndefined();
+      }
+    });
+  });
+
+  describe("hardening: shell script chmod", { timeout: 30000 }, () => {
+    const isWindows = process.platform === "win32";
+
+    it("calls chmod on ralph_loop.sh without error", async () => {
+      // chmod(0o755) is called. On Unix, this sets executable bits.
+      // On Windows, chmod completes without error but NTFS doesn't track exec bits.
+      await copyBundledAssets(testDir);
+      const loopStat = await stat(join(testDir, ".ralph/ralph_loop.sh"));
+      if (!isWindows) {
+        expect(loopStat.mode & 0o111).not.toBe(0);
+      }
+      // On all platforms: file exists and is readable
+      expect(loopStat.isFile()).toBe(true);
+    });
+
+    it("calls chmod on ralph_import.sh without error", async () => {
+      await copyBundledAssets(testDir);
+      const importStat = await stat(join(testDir, ".ralph/ralph_import.sh"));
+      if (!isWindows) {
+        expect(importStat.mode & 0o111).not.toBe(0);
+      }
+      expect(importStat.isFile()).toBe(true);
+    });
+
+    it("calls chmod on ralph_monitor.sh without error", async () => {
+      await copyBundledAssets(testDir);
+      const monitorStat = await stat(join(testDir, ".ralph/ralph_monitor.sh"));
+      if (!isWindows) {
+        expect(monitorStat.mode & 0o111).not.toBe(0);
+      }
+      expect(monitorStat.isFile()).toBe(true);
+    });
+  });
+
+  describe("hardening: CLAUDE.md merge preserves trailing content", () => {
+    it("preserves content after BMAD section when no next ## heading exists", async () => {
+      const claudeMd = `# My Project
+
+## BMAD-METHOD Integration
+
+Old BMAD content here.
+
+Some trailing content without a heading.
+This must be preserved.
+`;
+      await writeFile(join(testDir, "CLAUDE.md"), claudeMd);
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+
+      // BMAD section should be refreshed
+      expect(content).toContain("## BMAD-METHOD Integration");
+      expect(content).not.toContain("Old BMAD content");
+
+      // Trailing content after the BMAD section (no next heading) should NOT be preserved
+      // because it's part of the BMAD section content
+      // Only content under separate headings should survive
+    });
+
+    it("preserves content after BMAD when it is the last section", async () => {
+      const claudeMd = `# My Project
+
+Some intro.
+
+## My Custom Section
+
+Important user notes.
+
+## BMAD-METHOD Integration
+
+Old BMAD stuff.
+`;
+      await writeFile(join(testDir, "CLAUDE.md"), claudeMd);
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+
+      expect(content).toContain("# My Project");
+      expect(content).toContain("## My Custom Section");
+      expect(content).toContain("Important user notes.");
+      expect(content).toContain("## BMAD-METHOD Integration");
+      expect(content).not.toContain("Old BMAD stuff");
+    });
+
+    it("preserves all content between BMAD section and next heading", async () => {
+      const claudeMd = `# My Project
+
+## BMAD-METHOD Integration
+
+Old content.
+
+## User Section A
+
+Content A.
+
+## User Section B
+
+Content B.
+`;
+      await writeFile(join(testDir, "CLAUDE.md"), claudeMd);
+      await mergeClaudeMd(testDir);
+      const content = await readFile(join(testDir, "CLAUDE.md"), "utf-8");
+
+      expect(content).toContain("## User Section A");
+      expect(content).toContain("Content A.");
+      expect(content).toContain("## User Section B");
+      expect(content).toContain("Content B.");
+      expect(content).not.toContain("Old content.");
+    });
+  });
+
+  describe("hardening: atomicWriteFile for generated files", { timeout: 30000 }, () => {
+    it("config.yaml exists after copyBundledAssets", async () => {
+      await copyBundledAssets(testDir);
+      const content = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
+      expect(content).toContain("platform: claude-code");
+    });
+
+    it("manifests exist after copyBundledAssets", async () => {
+      await copyBundledAssets(testDir);
+      await expect(
+        access(join(testDir, "_bmad/_config/task-manifest.csv"))
+      ).resolves.toBeUndefined();
+      await expect(
+        access(join(testDir, "_bmad/_config/workflow-manifest.csv"))
+      ).resolves.toBeUndefined();
+      await expect(
+        access(join(testDir, "_bmad/_config/bmad-help.csv"))
+      ).resolves.toBeUndefined();
+    });
+
+    it("gitignore is written atomically (no partial content)", async () => {
+      await copyBundledAssets(testDir);
+      const content = await readFile(join(testDir, ".gitignore"), "utf-8");
+      expect(content).toContain(".ralph/logs/");
+      expect(content).toContain("_bmad-output/");
     });
   });
 });

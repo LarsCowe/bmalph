@@ -5,6 +5,17 @@ import { tmpdir } from "os";
 
 vi.mock("chalk");
 
+// Wrap fs/promises so readFile and stat are spy-able vi.fn() instances
+// that delegate to the real implementation by default.
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("fs/promises")>();
+  return {
+    ...actual,
+    readFile: vi.fn(actual.readFile),
+    stat: vi.fn(actual.stat),
+  };
+});
+
 // Test versions for upstream version tracking
 const TEST_BMAD_COMMIT = "test1234";
 const TEST_RALPH_COMMIT = "test5678";
@@ -1092,6 +1103,169 @@ describe("doctor command", () => {
       expect(output).toContain("skipped: offline");
       // The ✓ symbol indicates it passed (not ✗)
       expect(output).toMatch(/✓.*upstream status/);
+    });
+  });
+
+  describe("error discrimination in catch blocks", () => {
+    function eaccesError(syscall: string, path: string): NodeJS.ErrnoException {
+      const err = new Error(
+        `EACCES: permission denied, ${syscall} '${path}'`
+      ) as NodeJS.ErrnoException;
+      err.code = "EACCES";
+      return err;
+    }
+
+    describe("checkDir (stat errors)", () => {
+      it("reports 'not found' for ENOENT errors", async () => {
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const bmadCheck = CHECK_REGISTRY.find((c) => c.id === "bmad-dir")!;
+        const result = await bmadCheck.run(testDir);
+        expect(result.passed).toBe(false);
+        expect(result.detail).toBe("not found");
+      });
+
+      it("reports actual error detail for EACCES on stat", async () => {
+        const { stat: mockStat } = await import("fs/promises");
+        const statErr = eaccesError("stat", join(testDir, "_bmad"));
+        vi.mocked(mockStat).mockRejectedValueOnce(statErr);
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const bmadCheck = CHECK_REGISTRY.find((c) => c.id === "bmad-dir")!;
+        const result = await bmadCheck.run(testDir);
+
+        expect(result.passed).toBe(false);
+        expect(result.detail).not.toBe("not found");
+        expect(result.detail).toContain("EACCES");
+      });
+    });
+
+    describe("checkFileHasContent (readFile errors)", () => {
+      it("reports 'not found' for ENOENT errors", async () => {
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const ralphLoopCheck = CHECK_REGISTRY.find((c) => c.id === "ralph-loop")!;
+        const result = await ralphLoopCheck.run(testDir);
+        expect(result.passed).toBe(false);
+        expect(result.detail).toBe("not found");
+      });
+
+      it("reports actual error detail for EACCES on readFile", async () => {
+        const { readFile: mockReadFile } = await import("fs/promises");
+        const readErr = eaccesError("open", join(testDir, ".ralph/ralph_loop.sh"));
+        vi.mocked(mockReadFile).mockRejectedValueOnce(readErr);
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const ralphLoopCheck = CHECK_REGISTRY.find((c) => c.id === "ralph-loop")!;
+        const result = await ralphLoopCheck.run(testDir);
+
+        expect(result.passed).toBe(false);
+        expect(result.detail).not.toBe("not found");
+        expect(result.detail).toContain("EACCES");
+      });
+    });
+
+    describe("checkClaudeMd (readFile errors)", () => {
+      it("reports 'CLAUDE.md not found' for ENOENT errors", async () => {
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const claudeCheck = CHECK_REGISTRY.find((c) => c.id === "claude-md")!;
+        const result = await claudeCheck.run(testDir);
+        expect(result.passed).toBe(false);
+        expect(result.detail).toBe("CLAUDE.md not found");
+      });
+
+      it("reports actual error detail for EACCES on CLAUDE.md", async () => {
+        const { readFile: mockReadFile } = await import("fs/promises");
+        const readErr = eaccesError("open", join(testDir, "CLAUDE.md"));
+        vi.mocked(mockReadFile).mockRejectedValueOnce(readErr);
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const claudeCheck = CHECK_REGISTRY.find((c) => c.id === "claude-md")!;
+        const result = await claudeCheck.run(testDir);
+
+        expect(result.passed).toBe(false);
+        expect(result.detail).not.toBe("CLAUDE.md not found");
+        expect(result.detail).toContain("EACCES");
+      });
+    });
+
+    describe("checkGitignore (readFile errors)", () => {
+      it("reports '.gitignore not found' for ENOENT errors", async () => {
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const gitignoreCheck = CHECK_REGISTRY.find((c) => c.id === "gitignore")!;
+        const result = await gitignoreCheck.run(testDir);
+        expect(result.passed).toBe(false);
+        expect(result.detail).toBe(".gitignore not found");
+      });
+
+      it("reports actual error detail for EACCES on .gitignore", async () => {
+        const { readFile: mockReadFile } = await import("fs/promises");
+        const readErr = eaccesError("open", join(testDir, ".gitignore"));
+        vi.mocked(mockReadFile).mockRejectedValueOnce(readErr);
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const gitignoreCheck = CHECK_REGISTRY.find((c) => c.id === "gitignore")!;
+        const result = await gitignoreCheck.run(testDir);
+
+        expect(result.passed).toBe(false);
+        expect(result.detail).not.toBe(".gitignore not found");
+        expect(result.detail).toContain("EACCES");
+      });
+    });
+
+    describe("checkVersionMarker (readFile errors)", () => {
+      it("reports 'no marker found' for ENOENT errors", async () => {
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const markerCheck = CHECK_REGISTRY.find((c) => c.id === "version-marker")!;
+        const result = await markerCheck.run(testDir);
+        expect(result.passed).toBe(true);
+        expect(result.detail).toBe("no marker found");
+      });
+
+      it("reports actual error detail for EACCES on ralph_loop.sh", async () => {
+        const { readFile: mockReadFile } = await import("fs/promises");
+        const readErr = eaccesError("open", join(testDir, ".ralph/ralph_loop.sh"));
+        vi.mocked(mockReadFile).mockRejectedValueOnce(readErr);
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const markerCheck = CHECK_REGISTRY.find((c) => c.id === "version-marker")!;
+        const result = await markerCheck.run(testDir);
+
+        expect(result.passed).toBe(false);
+        expect(result.detail).not.toBe("no marker found");
+        expect(result.detail).toContain("EACCES");
+      });
+    });
+
+    describe("checkUpstreamVersions (readConfig errors)", () => {
+      it("reports actual error detail instead of generic message", async () => {
+        vi.doMock("../../src/utils/config.js", () => ({
+          readConfig: vi.fn().mockRejectedValue(new Error("disk I/O error")),
+        }));
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const versionsCheck = CHECK_REGISTRY.find((c) => c.id === "upstream-versions")!;
+        const result = await versionsCheck.run(testDir);
+
+        expect(result.passed).toBe(false);
+        expect(result.detail).toContain("disk I/O error");
+        expect(result.detail).not.toBe("error reading versions");
+
+        vi.doUnmock("../../src/utils/config.js");
+      });
+    });
+
+    describe("checkUpstreamGitHubStatus (catch errors)", () => {
+      it("reports actual error detail instead of generic 'skipped: error'", async () => {
+        const { checkUpstream } = await import("../../src/utils/github.js");
+        vi.mocked(checkUpstream).mockRejectedValueOnce(new Error("DNS resolution failed"));
+
+        const { CHECK_REGISTRY } = await import("../../src/commands/doctor.js");
+        const upstreamCheck = CHECK_REGISTRY.find((c) => c.id === "upstream-github")!;
+        const result = await upstreamCheck.run(testDir);
+
+        expect(result.passed).toBe(true);
+        expect(result.detail).toContain("DNS resolution failed");
+        expect(result.detail).not.toBe("skipped: error");
+      });
     });
   });
 });
