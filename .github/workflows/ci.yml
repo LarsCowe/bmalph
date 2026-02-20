@@ -55,3 +55,15 @@ jobs:
 
       - name: Validate npm package
         run: npm pack --dry-run
+
+  ci-success:
+    name: ci
+    if: always()
+    needs: [ci]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [[ "${{ needs.ci.result }}" != "success" ]]; then
+            echo "CI matrix failed"
+            exit 1
+          fi
