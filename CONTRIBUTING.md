@@ -38,8 +38,13 @@ bmalph/
 │   ├── transition/         # Transition logic modules
 │   │   ├── orchestration.ts # Main transition orchestrator
 │   │   ├── story-parsing.ts # Parse BMAD stories
+│   │   ├── fix-plan.ts     # Generate @fix_plan.md
+│   │   ├── artifacts.ts    # Locate BMAD artifacts
+│   │   ├── context.ts      # Generate PROJECT_CONTEXT.md
 │   │   ├── tech-stack.ts   # Detect tech stack
-│   │   └── specs-*.ts      # Spec generation modules
+│   │   ├── specs-*.ts      # Spec generation modules
+│   │   ├── types.ts        # Shared transition types
+│   │   └── index.ts        # Module barrel export
 │   └── utils/              # Shared utilities
 │       ├── config.ts       # Config file operations
 │       ├── state.ts        # State management
@@ -49,7 +54,8 @@ bmalph/
 │       ├── constants.ts    # Path constants
 │       ├── errors.ts       # Error formatting
 │       ├── logger.ts       # Debug logging
-│       └── dryrun.ts       # Dry-run utilities
+│       ├── dryrun.ts       # Dry-run utilities
+│       └── file-system.ts  # Atomic file writes, exists helper
 ├── tests/                  # Test files (mirrors src/ structure)
 │   ├── commands/           # Command unit tests
 │   ├── utils/              # Utility unit tests

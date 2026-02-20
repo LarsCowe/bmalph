@@ -36,15 +36,17 @@ project-root/
 
 ## CLI Commands
 
-| Command          | Action                                   |
-| ---------------- | ---------------------------------------- |
-| `bmalph init`    | Install BMAD + Ralph, configure project  |
-| `bmalph upgrade` | Update bundled assets to current version |
-| `bmalph doctor`  | Check installation health                |
+| Command                | Action                                   |
+| ---------------------- | ---------------------------------------- |
+| `bmalph init`          | Install BMAD + Ralph, configure project  |
+| `bmalph upgrade`       | Update bundled assets to current version |
+| `bmalph doctor`        | Check installation health                |
+| `bmalph check-updates` | Check for upstream updates               |
+| `bmalph status`        | Show project installation status         |
 
 ## Slash Commands
 
-bmalph installs 50+ BMAD slash commands. Key commands:
+bmalph installs 47 BMAD slash commands. Key commands:
 
 | Command                 | Description                         |
 | ----------------------- | ----------------------------------- |
@@ -67,7 +69,15 @@ Use `/bmalph-implement` to transition from BMAD planning to Ralph implementation
 
 - `src/cli.ts` — Commander.js CLI definition
 - `src/installer.ts` — Copies bmad/ and ralph/ into target project
-- `src/transition.ts` — Converts BMAD stories → Ralph @fix_plan.md
+- `src/transition/orchestration.ts` — Main transition orchestrator
+- `src/transition/story-parsing.ts` — Parse BMAD stories
+- `src/transition/fix-plan.ts` — Generate @fix_plan.md
+- `src/transition/artifacts.ts` — Locate BMAD artifacts
+- `src/transition/context.ts` — Generate PROJECT_CONTEXT.md
+- `src/transition/specs-changelog.ts` — Track spec changes
+- `src/transition/specs-index.ts` — Generate SPECS_INDEX.md
+- `src/transition/tech-stack.ts` — Detect tech stack
+- `src/transition/types.ts` — Shared transition types
 - `src/commands/init.ts` — CLI init handler
 - `src/commands/upgrade.ts` — CLI upgrade handler
 - `src/commands/doctor.ts` — CLI doctor handler
