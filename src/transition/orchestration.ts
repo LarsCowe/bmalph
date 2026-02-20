@@ -1,6 +1,7 @@
 import { readFile, writeFile, readdir, cp, mkdir, access, rm } from "fs/promises";
 import { join } from "path";
-import { debug } from "../utils/logger.js";
+import { debug, warn } from "../utils/logger.js";
+import { isEnoent, formatError } from "../utils/errors.js";
 import { readConfig } from "../utils/config.js";
 import { readState, writeState, type BmalphState } from "../utils/state.js";
 import type { TransitionResult } from "./types.js";
@@ -93,9 +94,12 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
       await writeFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
       debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
     }
-  } catch {
-    // No bmad-output directory yet, skip changelog
-    debug("Skipping SPECS_CHANGELOG.md (no _bmad-output directory)");
+  } catch (err) {
+    if (isEnoent(err)) {
+      debug("Skipping SPECS_CHANGELOG.md (no _bmad-output directory)");
+    } else {
+      warn(`Could not generate SPECS_CHANGELOG.md: ${formatError(err)}`);
+    }
   }
 
   // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
@@ -103,9 +107,12 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   try {
     await access(bmadOutputDir);
     bmadOutputExists = true;
-  } catch {
-    // _bmad-output doesn't exist, will fall back to artifactsDir
-    debug("_bmad-output not found, falling back to artifacts directory");
+  } catch (err) {
+    if (isEnoent(err)) {
+      debug("_bmad-output not found, falling back to artifacts directory");
+    } else {
+      warn(`Error checking _bmad-output: ${formatError(err)}`);
+    }
   }
 
   if (bmadOutputExists) {
@@ -131,8 +138,8 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
       await writeFile(join(projectDir, ".ralph/SPECS_INDEX.md"), formatSpecsIndexMd(specsIndex));
       debug(`Generated SPECS_INDEX.md with ${specsIndex.totalFiles} files`);
     }
-  } catch {
-    debug("Could not generate SPECS_INDEX.md");
+  } catch (err) {
+    warn(`Could not generate SPECS_INDEX.md: ${formatError(err)}`);
   }
 
   // Generate PROJECT_CONTEXT.md from planning artifacts
@@ -142,8 +149,8 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
       try {
         const content = await readFile(join(artifactsDir, file), "utf-8");
         artifactContents.set(file, content);
-      } catch {
-        debug(`Could not read artifact: ${file}`);
+      } catch (err) {
+        warn(`Could not read artifact ${file}: ${formatError(err)}`);
       }
     }
   }
@@ -202,8 +209,8 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
         await writeFile(agentPath, customized);
         debug("Customized @AGENT.md with detected tech stack");
       }
-    } catch {
-      debug("Could not customize @AGENT.md");
+    } catch (err) {
+      warn(`Could not customize @AGENT.md: ${formatError(err)}`);
     }
   }
 
