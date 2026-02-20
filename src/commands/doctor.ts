@@ -5,7 +5,7 @@ import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
 import { getBundledVersions } from "../installer.js";
 import { checkUpstream, type GitHubError } from "../utils/github.js";
-import { formatError, isEnoent } from "../utils/errors.js";
+import { isEnoent, withErrorHandling } from "../utils/errors.js";
 import {
   validateCircuitBreakerState,
   validateRalphSession,
@@ -50,15 +50,12 @@ interface DoctorOptions {
 }
 
 export async function doctorCommand(options: DoctorOptions = {}): Promise<void> {
-  try {
+  await withErrorHandling(async () => {
     const { failed } = await runDoctor(options);
     if (!options.json && failed > 0) {
       process.exitCode = 1;
     }
-  } catch (err) {
-    console.error(chalk.red(`Error: ${formatError(err)}`));
-    process.exitCode = 1;
-  }
+  });
 }
 
 interface DoctorResult {
