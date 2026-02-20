@@ -221,7 +221,7 @@ async function deriveProjectName(projectDir: string): Promise<string> {
   return basename(projectDir);
 }
 
-async function generateManifests(projectDir: string): Promise<void> {
+export async function generateManifests(projectDir: string): Promise<void> {
   const configDir = join(projectDir, "_bmad/_config");
   await mkdir(configDir, { recursive: true });
 
@@ -251,6 +251,13 @@ async function generateManifests(projectDir: string): Promise<void> {
   // Extract header from core (first line) and data lines from both
   const coreLines = coreContent.trimEnd().split(/\r?\n/);
   const bmmLines = bmmContent.trimEnd().split(/\r?\n/);
+
+  if (!coreLines[0]?.trim()) {
+    throw new Error(`Core module-help.csv is empty at ${coreHelpPath}`);
+  }
+  if (!bmmLines[0]?.trim()) {
+    throw new Error(`BMM module-help.csv is empty at ${bmmHelpPath}`);
+  }
 
   const normalize = (line: string): string => line.replace(/,+$/, "");
 

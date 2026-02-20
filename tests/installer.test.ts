@@ -7,6 +7,7 @@ import {
   previewInstall,
   previewUpgrade,
   getSlashCommandsDir,
+  generateManifests,
 } from "../src/installer.js";
 import { mkdir, rm, access, readFile, writeFile, readdir } from "fs/promises";
 import { join } from "path";
@@ -438,6 +439,22 @@ describe("installer", () => {
       await expect(
         access(join(testDir, "_bmad/_config/task-manifest.csv"))
       ).resolves.toBeUndefined();
+    });
+
+    it("throws when core module-help.csv is empty", async () => {
+      await mkdir(join(testDir, "_bmad/core"), { recursive: true });
+      await mkdir(join(testDir, "_bmad/bmm"), { recursive: true });
+      await writeFile(join(testDir, "_bmad/core/module-help.csv"), "");
+      await writeFile(join(testDir, "_bmad/bmm/module-help.csv"), "header\ndata");
+      await expect(generateManifests(testDir)).rejects.toThrow("empty");
+    });
+
+    it("throws when bmm module-help.csv is empty", async () => {
+      await mkdir(join(testDir, "_bmad/core"), { recursive: true });
+      await mkdir(join(testDir, "_bmad/bmm"), { recursive: true });
+      await writeFile(join(testDir, "_bmad/core/module-help.csv"), "header\ndata");
+      await writeFile(join(testDir, "_bmad/bmm/module-help.csv"), "");
+      await expect(generateManifests(testDir)).rejects.toThrow("empty");
     });
 
     it("does not warn when CSV headers differ only by trailing comma", async () => {
