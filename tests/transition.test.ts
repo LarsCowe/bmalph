@@ -22,7 +22,7 @@ import {
   type Story,
   type TechStack,
   type ProjectContext,
-} from "../src/transition.js";
+} from "../src/transition/index.js";
 
 describe("transition", () => {
   describe("parseStories", () => {

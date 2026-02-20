@@ -13,7 +13,7 @@ export type {
 } from "./types.js";
 
 // Story parsing
-export { parseStories } from "./story-parsing.js";
+export { parseStories, parseStoriesWithWarnings } from "./story-parsing.js";
 
 // Fix plan
 export {
