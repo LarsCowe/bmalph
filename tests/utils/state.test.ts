@@ -63,9 +63,7 @@ describe("state", () => {
       const result = await readState(testDir);
 
       expect(result).toBeNull();
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("State file is corrupted")
-      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("State file is corrupted"));
       warnSpy.mockRestore();
     });
   });

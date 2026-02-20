@@ -137,9 +137,15 @@ modules:
 
   // Copy Ralph templates → .ralph/
   await mkdir(join(projectDir, ".ralph"), { recursive: true });
-  await cp(join(ralphDir, "templates/PROMPT.md"), join(projectDir, ".ralph/PROMPT.md"), { dereference: false });
-  await cp(join(ralphDir, "templates/AGENT.md"), join(projectDir, ".ralph/@AGENT.md"), { dereference: false });
-  await cp(join(ralphDir, "RALPH-REFERENCE.md"), join(projectDir, ".ralph/RALPH-REFERENCE.md"), { dereference: false });
+  await cp(join(ralphDir, "templates/PROMPT.md"), join(projectDir, ".ralph/PROMPT.md"), {
+    dereference: false,
+  });
+  await cp(join(ralphDir, "templates/AGENT.md"), join(projectDir, ".ralph/@AGENT.md"), {
+    dereference: false,
+  });
+  await cp(join(ralphDir, "RALPH-REFERENCE.md"), join(projectDir, ".ralph/RALPH-REFERENCE.md"), {
+    dereference: false,
+  });
 
   // Copy .ralphrc from template (skip if user has customized it)
   const ralphrcDest = join(projectDir, ".ralph/.ralphrc");
@@ -158,12 +164,19 @@ modules:
   await atomicWriteFile(join(projectDir, ".ralph/ralph_loop.sh"), markedContent);
   await chmod(join(projectDir, ".ralph/ralph_loop.sh"), 0o755);
   await rm(join(projectDir, ".ralph/lib"), { recursive: true, force: true });
-  await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), { recursive: true, dereference: false });
+  await cp(join(ralphDir, "lib"), join(projectDir, ".ralph/lib"), {
+    recursive: true,
+    dereference: false,
+  });
 
   // Copy Ralph utilities → .ralph/
-  await cp(join(ralphDir, "ralph_import.sh"), join(projectDir, ".ralph/ralph_import.sh"), { dereference: false });
+  await cp(join(ralphDir, "ralph_import.sh"), join(projectDir, ".ralph/ralph_import.sh"), {
+    dereference: false,
+  });
   await chmod(join(projectDir, ".ralph/ralph_import.sh"), 0o755);
-  await cp(join(ralphDir, "ralph_monitor.sh"), join(projectDir, ".ralph/ralph_monitor.sh"), { dereference: false });
+  await cp(join(ralphDir, "ralph_monitor.sh"), join(projectDir, ".ralph/ralph_monitor.sh"), {
+    dereference: false,
+  });
   await chmod(join(projectDir, ".ralph/ralph_monitor.sh"), 0o755);
 
   // Install all slash commands → .claude/commands/

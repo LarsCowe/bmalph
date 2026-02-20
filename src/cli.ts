@@ -60,20 +60,26 @@ program
   .option("-n, --name <name>", "Project name")
   .option("-d, --description <desc>", "Project description")
   .option("--dry-run", "Preview changes without writing files")
-  .action(async (opts) => initCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
+  .action(async (opts) =>
+    initCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  );
 
 program
   .command("upgrade")
   .description("Update bundled assets to current version")
   .option("--dry-run", "Preview changes without writing files")
   .option("--force", "Skip confirmation prompts")
-  .action(async (opts) => upgradeCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
+  .action(async (opts) =>
+    upgradeCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  );
 
 program
   .command("doctor")
   .description("Check installation health")
   .option("--json", "Output as JSON")
-  .action(async (opts) => doctorCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
+  .action(async (opts) =>
+    doctorCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  );
 
 program
   .command("check-updates")
@@ -85,6 +91,8 @@ program
   .command("status")
   .description("Show current project status and phase")
   .option("--json", "Output as JSON")
-  .action(async (opts) => statusCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
+  .action(async (opts) =>
+    statusCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  );
 
-program.parseAsync();
+void program.parseAsync();

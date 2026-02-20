@@ -210,9 +210,7 @@ describe("orchestration", () => {
         `# Stories\n\nThis file has no properly formatted stories.\n\nJust some text.\n`
       );
 
-      await expect(runTransition(testDir)).rejects.toThrow(
-        /no stories parsed/i
-      );
+      await expect(runTransition(testDir)).rejects.toThrow(/no stories parsed/i);
     });
   });
 
@@ -351,9 +349,7 @@ describe("orchestration", () => {
       await runTransition(testDir);
 
       // After successful transition, temp dir should be cleaned up
-      await expect(
-        access(join(testDir, ".ralph/specs.new"))
-      ).rejects.toThrow();
+      await expect(access(join(testDir, ".ralph/specs.new"))).rejects.toThrow();
 
       // But specs should exist
       await expect(
