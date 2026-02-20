@@ -29,7 +29,6 @@ bmalph/
 ├── src/                    # TypeScript source
 │   ├── cli.ts              # Commander.js CLI entry point
 │   ├── installer.ts        # Asset copying and manifest generation
-│   ├── transition.ts       # BMAD → Ralph transition (exports from transition/)
 │   ├── commands/           # CLI command handlers
 │   │   ├── init.ts         # bmalph init
 │   │   ├── upgrade.ts      # bmalph upgrade
@@ -152,16 +151,9 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) with SemVer 
 
 ### Version Bumping
 
-Every commit must update `package.json` version:
+Versions are managed automatically by [release-please](https://github.com/googleapis/release-please). Do **not** manually edit `package.json` version.
 
-```bash
-# Example: Adding a new feature
-# 1. Update package.json version (1.6.0 → 1.7.0)
-# 2. Stage changes
-git add .
-# 3. Commit
-git commit -m "feat(cli): add status command"
-```
+On every push to `main`, release-please analyzes commit messages and opens (or updates) a release PR with the correct version bump and changelog. Merging that PR triggers npm publish.
 
 ### Breaking Changes
 
@@ -194,8 +186,7 @@ npm run check
 2. Write tests first (TDD)
 3. Implement feature
 4. Ensure all tests pass: `npm run check`
-5. Update version in `package.json`
-6. Create PR with clear description
+5. Create PR with clear description (version bumps are automated)
 
 ## Questions?
 
