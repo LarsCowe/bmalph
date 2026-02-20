@@ -5,6 +5,8 @@ import { validateState, validateRalphLoopStatus } from "./validate.js";
 import type { RalphLoopStatus } from "./validate.js";
 import { STATE_DIR, RALPH_STATUS_FILE } from "./constants.js";
 import { atomicWriteFile } from "./file-system.js";
+import { warn } from "./logger.js";
+import { formatError } from "./errors.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -207,8 +209,8 @@ export async function readRalphStatus(projectDir: string): Promise<RalphLoopStat
   }
   try {
     return validateRalphLoopStatus(data);
-  } catch {
-    // Return defaults if validation fails (corrupted/malformed file)
+  } catch (err) {
+    warn(`Ralph status file is corrupted, using defaults: ${formatError(err)}`);
     return DEFAULT_RALPH_STATUS;
   }
 }

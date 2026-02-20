@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   readState,
   writeState,
@@ -217,6 +217,26 @@ describe("state", () => {
 
       const result = await readRalphStatus(testDir);
       expect(result).toEqual(statusData);
+    });
+
+    it("warns and returns defaults when status file is corrupted", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/status.json"), '{"loopCount": "not-a-number"}');
+
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const result = await readRalphStatus(testDir);
+
+      expect(result).toEqual({
+        loopCount: 0,
+        status: "not_started",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Ralph status file is corrupted")
+      );
+      warnSpy.mockRestore();
     });
   });
 });
