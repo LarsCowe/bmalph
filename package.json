@@ -63,7 +63,7 @@
     "inquirer": "^13.2.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^20.0.0",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
