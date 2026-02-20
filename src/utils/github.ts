@@ -100,6 +100,23 @@ function generateCompareUrl(repo: RepoInfo, bundledSha: string, latestSha: strin
   return `https://github.com/${repo.owner}/${repo.repo}/compare/${bundledSha}...${latestSha}`;
 }
 
+function compareShas(bundledSha: string, latestShortSha: string): boolean {
+  return latestShortSha.slice(0, 8) === bundledSha.slice(0, 8);
+}
+
+function buildUpstreamStatus(
+  repo: RepoInfo,
+  bundledSha: string,
+  latestShortSha: string
+): UpstreamStatus {
+  return {
+    bundledSha,
+    latestSha: latestShortSha,
+    isUpToDate: compareShas(bundledSha, latestShortSha),
+    compareUrl: generateCompareUrl(repo, bundledSha, latestShortSha),
+  };
+}
+
 /**
  * GitHub API client with instance-level caching.
  * Each instance maintains its own cache, improving testability.
@@ -282,31 +299,13 @@ export class GitHubClient {
     ]);
 
     if (bmadResult.success) {
-      // Compare normalized 8-char SHAs for exact equality
-      const latestNormalized = bmadResult.data.shortSha.slice(0, 8);
-      const bundledNormalized = bundled.bmadCommit.slice(0, 8);
-      const isUpToDate = latestNormalized === bundledNormalized;
-      bmadStatus = {
-        bundledSha: bundled.bmadCommit,
-        latestSha: bmadResult.data.shortSha,
-        isUpToDate,
-        compareUrl: generateCompareUrl(BMAD_REPO, bundled.bmadCommit, bmadResult.data.shortSha),
-      };
+      bmadStatus = buildUpstreamStatus(BMAD_REPO, bundled.bmadCommit, bmadResult.data.shortSha);
     } else {
       errors.push({ ...bmadResult.error, repo: "bmad" });
     }
 
     if (ralphResult.success) {
-      // Compare normalized 8-char SHAs for exact equality
-      const latestNormalized = ralphResult.data.shortSha.slice(0, 8);
-      const bundledNormalized = bundled.ralphCommit.slice(0, 8);
-      const isUpToDate = latestNormalized === bundledNormalized;
-      ralphStatus = {
-        bundledSha: bundled.ralphCommit,
-        latestSha: ralphResult.data.shortSha,
-        isUpToDate,
-        compareUrl: generateCompareUrl(RALPH_REPO, bundled.ralphCommit, ralphResult.data.shortSha),
-      };
+      ralphStatus = buildUpstreamStatus(RALPH_REPO, bundled.ralphCommit, ralphResult.data.shortSha);
     } else {
       errors.push({ ...ralphResult.error, repo: "ralph" });
     }
