@@ -10,7 +10,7 @@ import {
   generateManifests,
   getPackageVersion,
 } from "../src/installer.js";
-import { mkdir, rm, access, readFile, writeFile, readdir, chmod, stat } from "fs/promises";
+import { mkdir, rm, access, readFile, writeFile, readdir, stat } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 

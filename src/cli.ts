@@ -87,4 +87,4 @@ program
   .option("--json", "Output as JSON")
   .action(async (opts) => statusCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() }));
 
-program.parseAsync();
+void program.parseAsync();
