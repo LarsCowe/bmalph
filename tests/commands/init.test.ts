@@ -148,7 +148,12 @@ describe("init command", () => {
     });
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "test", description: "test", dryRun: true, projectDir: process.cwd() });
+    await initCommand({
+      name: "test",
+      description: "test",
+      dryRun: true,
+      projectDir: process.cwd(),
+    });
 
     expect(installProject).not.toHaveBeenCalled();
     expect(writeConfig).not.toHaveBeenCalled();
@@ -166,7 +171,12 @@ describe("init command", () => {
     });
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "test", description: "test", dryRun: true, projectDir: process.cwd() });
+    await initCommand({
+      name: "test",
+      description: "test",
+      dryRun: true,
+      projectDir: process.cwd(),
+    });
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("dry-run");
@@ -232,7 +242,11 @@ describe("init command", () => {
     process.exitCode = undefined;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "a".repeat(101), description: "A project", projectDir: process.cwd() });
+    await initCommand({
+      name: "a".repeat(101),
+      description: "A project",
+      projectDir: process.cwd(),
+    });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("100 characters"));
     expect(process.exitCode).toBe(1);
