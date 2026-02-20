@@ -5,7 +5,7 @@ import { join } from "path";
 import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
 import { getBundledVersions } from "../installer.js";
-import { checkUpstream, type GitHubError } from "../utils/github.js";
+import { checkUpstream, getSkipReason } from "../utils/github.js";
 import { isEnoent, withErrorHandling } from "../utils/errors.js";
 import {
   validateCircuitBreakerState,
@@ -488,15 +488,6 @@ async function checkUpstreamGitHubStatus(_projectDir: string): Promise<CheckResu
   } catch {
     return { label, passed: true, detail: "skipped: error" };
   }
-}
-
-function getSkipReason(errors: GitHubError[]): string {
-  if (errors.length === 0) return "unknown";
-  const types = new Set(errors.map((e) => e.type));
-  if (types.has("rate-limit")) return "rate limited";
-  if (types.has("network")) return "offline";
-  if (types.has("timeout")) return "timeout";
-  return "error";
 }
 
 // =============================================================================

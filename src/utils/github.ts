@@ -318,6 +318,18 @@ export class GitHubClient {
   }
 }
 
+/**
+ * Determines why upstream checks were skipped based on error types.
+ */
+export function getSkipReason(errors: GitHubError[]): string {
+  if (errors.length === 0) return "unknown";
+  const types = new Set(errors.map((e) => e.type));
+  if (types.has("rate-limit")) return "rate limited";
+  if (types.has("network")) return "offline";
+  if (types.has("timeout")) return "timeout";
+  return "error";
+}
+
 // Default client instance for backward compatibility
 const defaultClient = new GitHubClient();
 

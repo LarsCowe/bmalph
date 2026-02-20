@@ -6,6 +6,7 @@ import {
   fetchLatestCommit,
   checkUpstream,
   clearCache,
+  getSkipReason,
   GitHubClient,
   type RepoInfo,
 } from "../../src/utils/github.js";
@@ -809,5 +810,29 @@ describe("GitHubClient class", () => {
       await client.fetchLatestCommit(bmadRepo);
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+describe("getSkipReason", () => {
+  it("returns 'rate limited' for rate-limit errors", () => {
+    expect(getSkipReason([{ type: "rate-limit", message: "too many requests" }])).toBe(
+      "rate limited"
+    );
+  });
+
+  it("returns 'offline' for network errors", () => {
+    expect(getSkipReason([{ type: "network", message: "fetch failed" }])).toBe("offline");
+  });
+
+  it("returns 'timeout' for timeout errors", () => {
+    expect(getSkipReason([{ type: "timeout", message: "timed out" }])).toBe("timeout");
+  });
+
+  it("returns 'error' for other error types", () => {
+    expect(getSkipReason([{ type: "api-error", message: "500" }])).toBe("error");
+  });
+
+  it("returns 'unknown' for empty error list", () => {
+    expect(getSkipReason([])).toBe("unknown");
   });
 });
