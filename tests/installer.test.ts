@@ -458,12 +458,12 @@ describe("installer", () => {
     });
 
     it("does not warn when CSV headers differ only by trailing comma", async () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
       await copyBundledAssets(testDir);
 
-      expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining("CSV header mismatch"));
-      errorSpy.mockRestore();
+      expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining("CSV header mismatch"));
+      logSpy.mockRestore();
     });
 
     it("strips trailing commas from manifest rows", async () => {

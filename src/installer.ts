@@ -2,7 +2,7 @@ import { cp, mkdir, readFile, readdir, writeFile, rm } from "fs/promises";
 import { readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
-import { debug } from "./utils/logger.js";
+import { debug, warn } from "./utils/logger.js";
 import { formatError } from "./utils/errors.js";
 import { exists } from "./utils/file-system.js";
 import { STATE_DIR, CONFIG_FILE } from "./utils/constants.js";
@@ -253,10 +253,7 @@ export async function generateManifests(projectDir: string): Promise<void> {
 
   // Validate headers match (warn if mismatch but continue)
   if (header && bmmHeader && header !== bmmHeader) {
-    // Log to stderr so it's visible even without --verbose
-    console.error(
-      `Warning: CSV header mismatch detected. BMAD modules may have incompatible formats.`
-    );
+    warn(`CSV header mismatch detected. BMAD modules may have incompatible formats.`);
     debug(
       `CSV header mismatch details - core: "${header.slice(0, 50)}...", bmm: "${bmmHeader.slice(0, 50)}..."`
     );
