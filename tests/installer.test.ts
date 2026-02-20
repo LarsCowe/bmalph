@@ -544,7 +544,7 @@ describe("installer", () => {
       await installProject(testDir);
       const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
       const dirName = testDir.split(/[/\\]/).pop();
-      expect(config).toContain(`project_name: ${dirName}`);
+      expect(config).toContain(`project_name: "${dirName}"`);
     });
 
     it("config.yaml derives project_name from bmalph/config.json when present", async () => {
@@ -555,7 +555,18 @@ describe("installer", () => {
       );
       await copyBundledAssets(testDir);
       const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
-      expect(config).toContain("project_name: my-cool-project");
+      expect(config).toContain('project_name: "my-cool-project"');
+    });
+
+    it("config.yaml escapes special YAML characters in project_name", async () => {
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await writeFile(
+        join(testDir, "bmalph/config.json"),
+        JSON.stringify({ name: 'Lars\'s Project #1: "The Best" & More', description: "test" })
+      );
+      await copyBundledAssets(testDir);
+      const config = await readFile(join(testDir, "_bmad/config.yaml"), "utf-8");
+      expect(config).toContain('project_name: "Lars\'s Project #1: \\"The Best\\" & More"');
     });
 
     it("slash command delegates to BMAD master agent", async () => {
