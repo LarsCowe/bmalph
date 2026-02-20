@@ -16,7 +16,7 @@ interface InitOptions {
   name?: string;
   description?: string;
   dryRun?: boolean;
-  projectDir?: string;
+  projectDir: string;
 }
 
 export async function initCommand(options: InitOptions): Promise<void> {
@@ -24,7 +24,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
 }
 
 async function runInit(options: InitOptions): Promise<void> {
-  const projectDir = options.projectDir ?? process.cwd();
+  const projectDir = options.projectDir;
 
   if (await isInitialized(projectDir)) {
     console.log(chalk.yellow("bmalph is already initialized in this project."));

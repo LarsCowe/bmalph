@@ -5,7 +5,7 @@ import { withErrorHandling } from "../utils/errors.js";
 
 interface StatusOptions {
   json?: boolean;
-  projectDir?: string;
+  projectDir: string;
 }
 
 interface StatusOutput {
@@ -21,12 +21,12 @@ interface StatusOutput {
   nextAction?: string;
 }
 
-export async function statusCommand(options: StatusOptions = {}): Promise<void> {
+export async function statusCommand(options: StatusOptions): Promise<void> {
   await withErrorHandling(() => runStatus(options));
 }
 
-export async function runStatus(options: StatusOptions = {}): Promise<void> {
-  const projectDir = options.projectDir ?? process.cwd();
+export async function runStatus(options: StatusOptions): Promise<void> {
+  const projectDir = options.projectDir;
 
   // Check if project is initialized
   const config = await readConfig(projectDir);

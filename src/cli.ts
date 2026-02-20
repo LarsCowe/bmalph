@@ -31,9 +31,9 @@ program
     }
   });
 
-function resolveProjectDir(): string | undefined {
+function resolveProjectDir(): string {
   const dir = program.opts().projectDir;
-  return dir ? resolve(dir) : undefined;
+  return dir ? resolve(dir) : process.cwd();
 }
 
 program

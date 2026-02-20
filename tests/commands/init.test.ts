@@ -39,7 +39,7 @@ describe("init command", () => {
     vi.mocked(isInitialized).mockResolvedValue(true);
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({});
+    await initCommand({ projectDir: process.cwd() });
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("already initialized"));
     const { installProject } = await import("../../src/installer.js");
@@ -51,7 +51,7 @@ describe("init command", () => {
     vi.mocked(isInitialized).mockResolvedValue(true);
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({});
+    await initCommand({ projectDir: process.cwd() });
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("bmalph upgrade");
@@ -68,7 +68,7 @@ describe("init command", () => {
     vi.mocked(writeConfig).mockResolvedValue(undefined);
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "my-proj", description: "A project" });
+    await initCommand({ name: "my-proj", description: "A project", projectDir: process.cwd() });
 
     expect(installProject).toHaveBeenCalled();
     expect(writeConfig).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe("init command", () => {
     vi.mocked(writeConfig).mockResolvedValue(undefined);
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "my-proj", description: "A project" });
+    await initCommand({ name: "my-proj", description: "A project", projectDir: process.cwd() });
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("_bmad/");
@@ -118,7 +118,7 @@ describe("init command", () => {
     process.stdin.isTTY = true as unknown as true;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({});
+    await initCommand({ projectDir: process.cwd() });
 
     expect(inquirer.default.prompt).toHaveBeenCalled();
     expect(writeConfig).toHaveBeenCalledWith(
@@ -148,7 +148,7 @@ describe("init command", () => {
     });
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "test", description: "test", dryRun: true });
+    await initCommand({ name: "test", description: "test", dryRun: true, projectDir: process.cwd() });
 
     expect(installProject).not.toHaveBeenCalled();
     expect(writeConfig).not.toHaveBeenCalled();
@@ -166,7 +166,7 @@ describe("init command", () => {
     });
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "test", description: "test", dryRun: true });
+    await initCommand({ name: "test", description: "test", dryRun: true, projectDir: process.cwd() });
 
     const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(output).toContain("dry-run");
@@ -198,7 +198,7 @@ describe("init command", () => {
     process.exitCode = undefined;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "CON", description: "A project" });
+    await initCommand({ name: "CON", description: "A project", projectDir: process.cwd() });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("reserved"));
     expect(process.exitCode).toBe(1);
@@ -215,7 +215,7 @@ describe("init command", () => {
     process.exitCode = undefined;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "my/project", description: "A project" });
+    await initCommand({ name: "my/project", description: "A project", projectDir: process.cwd() });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("invalid character"));
     expect(process.exitCode).toBe(1);
@@ -232,7 +232,7 @@ describe("init command", () => {
     process.exitCode = undefined;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "a".repeat(101), description: "A project" });
+    await initCommand({ name: "a".repeat(101), description: "A project", projectDir: process.cwd() });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("100 characters"));
     expect(process.exitCode).toBe(1);
@@ -251,7 +251,7 @@ describe("init command", () => {
     process.exitCode = undefined;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({});
+    await initCommand({ projectDir: process.cwd() });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Non-interactive"));
     expect(process.exitCode).toBe(1);
@@ -274,7 +274,7 @@ describe("init command", () => {
     process.stdin.isTTY = false as unknown as true;
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "ci-project", description: "CI build" });
+    await initCommand({ name: "ci-project", description: "CI build", projectDir: process.cwd() });
 
     expect(installProject).toHaveBeenCalled();
     expect(writeConfig).toHaveBeenCalledWith(
@@ -298,7 +298,7 @@ describe("init command", () => {
     vi.mocked(inquirer.default.prompt).mockResolvedValue({ name: "", description: "A project" });
 
     const { initCommand } = await import("../../src/commands/init.js");
-    await initCommand({ name: "", description: "A project" });
+    await initCommand({ name: "", description: "A project", projectDir: process.cwd() });
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("empty"));
     expect(process.exitCode).toBe(1);

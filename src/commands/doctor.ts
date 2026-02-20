@@ -47,10 +47,10 @@ export interface CheckDefinition {
 
 interface DoctorOptions {
   json?: boolean;
-  projectDir?: string;
+  projectDir: string;
 }
 
-export async function doctorCommand(options: DoctorOptions = {}): Promise<void> {
+export async function doctorCommand(options: DoctorOptions): Promise<void> {
   await withErrorHandling(async () => {
     const { failed } = await runDoctor(options);
     if (!options.json && failed > 0) {
@@ -64,8 +64,8 @@ interface DoctorResult {
   failed: number;
 }
 
-export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResult> {
-  const projectDir = options.projectDir ?? process.cwd();
+export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
+  const projectDir = options.projectDir;
 
   // Run all checks from the registry
   const results: CheckResult[] = await Promise.all(
