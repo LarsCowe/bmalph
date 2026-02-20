@@ -51,19 +51,14 @@ describe("config", () => {
   });
 
   it("returns null and warns when config file has invalid structure", async () => {
-    await writeFile(
-      join(testDir, "bmalph/config.json"),
-      JSON.stringify({ garbage: true })
-    );
+    await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ garbage: true }));
 
     const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     const result = await readConfig(testDir);
 
     expect(result).toBeNull();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Config file is corrupted")
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Config file is corrupted"));
     warnSpy.mockRestore();
   });
 

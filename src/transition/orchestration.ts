@@ -160,7 +160,10 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
   try {
     const specsIndex = await generateSpecsIndex(specsDir);
     if (specsIndex.totalFiles > 0) {
-      await atomicWriteFile(join(projectDir, ".ralph/SPECS_INDEX.md"), formatSpecsIndexMd(specsIndex));
+      await atomicWriteFile(
+        join(projectDir, ".ralph/SPECS_INDEX.md"),
+        formatSpecsIndexMd(specsIndex)
+      );
       debug(`Generated SPECS_INDEX.md with ${specsIndex.totalFiles} files`);
     }
   } catch (err) {

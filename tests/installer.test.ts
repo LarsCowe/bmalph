@@ -406,7 +406,9 @@ describe("installer", () => {
       await copyBundledAssets(testDir);
 
       // User command should be preserved (not a bundled name)
-      await expect(access(join(testDir, ".claude/commands/my-custom-cmd.md"))).resolves.toBeUndefined();
+      await expect(
+        access(join(testDir, ".claude/commands/my-custom-cmd.md"))
+      ).resolves.toBeUndefined();
       // Fresh bundled commands should still be present
       await expect(access(join(testDir, ".claude/commands/bmalph.md"))).resolves.toBeUndefined();
     });
@@ -1157,9 +1159,7 @@ Content B.
       await expect(
         access(join(testDir, "_bmad/_config/workflow-manifest.csv"))
       ).resolves.toBeUndefined();
-      await expect(
-        access(join(testDir, "_bmad/_config/bmad-help.csv"))
-      ).resolves.toBeUndefined();
+      await expect(access(join(testDir, "_bmad/_config/bmad-help.csv"))).resolves.toBeUndefined();
     });
 
     it("gitignore is written atomically (no partial content)", async () => {
