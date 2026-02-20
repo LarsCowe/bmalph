@@ -1,6 +1,7 @@
-import { readFile, access } from "fs/promises";
+import { readFile } from "fs/promises";
 import { join } from "path";
 import { debug } from "../utils/logger.js";
+import { exists } from "../utils/file-system.js";
 
 export async function findArtifactsDir(projectDir: string): Promise<string | null> {
   const candidates = [
@@ -12,12 +13,9 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
   for (const candidate of candidates) {
     const fullPath = join(projectDir, candidate);
     debug(`Checking artifacts dir: ${fullPath}`);
-    try {
-      await access(fullPath);
+    if (await exists(fullPath)) {
       debug(`Found artifacts at: ${fullPath}`);
       return fullPath;
-    } catch {
-      continue;
     }
   }
   debug(`No artifacts found. Checked: ${candidates.join(", ")}`);

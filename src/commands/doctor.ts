@@ -1,5 +1,6 @@
 import chalk from "chalk";
-import { access, readFile, stat } from "fs/promises";
+import { readFile, stat } from "fs/promises";
+import { exists } from "../utils/file-system.js";
 import { join } from "path";
 import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
@@ -212,12 +213,10 @@ async function checkFileExists(
   label: string,
   hint?: string
 ): Promise<CheckResult> {
-  try {
-    await access(filePath);
+  if (await exists(filePath)) {
     return { label, passed: true };
-  } catch {
-    return { label, passed: false, detail: "not found", hint };
   }
+  return { label, passed: false, detail: "not found", hint };
 }
 
 async function checkFileHasContent(

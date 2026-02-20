@@ -1,7 +1,19 @@
-import { readFile, readdir, stat, writeFile, rename, unlink } from "fs/promises";
+import { access, readFile, readdir, stat, writeFile, rename, unlink } from "fs/promises";
 import { join, extname } from "path";
 import { randomUUID } from "crypto";
 import { isEnoent } from "./errors.js";
+
+/**
+ * Checks whether a file or directory exists at the given path.
+ */
+export async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Writes content to a file atomically using a temp file + rename.

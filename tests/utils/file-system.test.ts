@@ -3,6 +3,7 @@ import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
+  exists,
   getFilesRecursive,
   getMarkdownFilesWithContent,
   atomicWriteFile,
@@ -18,6 +19,22 @@ describe("file-system utilities", () => {
 
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true });
+  });
+
+  describe("exists", () => {
+    it("returns true for an existing file", async () => {
+      const filePath = join(testDir, "existing.txt");
+      await writeFile(filePath, "content");
+      expect(await exists(filePath)).toBe(true);
+    });
+
+    it("returns true for an existing directory", async () => {
+      expect(await exists(testDir)).toBe(true);
+    });
+
+    it("returns false for a non-existent path", async () => {
+      expect(await exists(join(testDir, "nonexistent"))).toBe(false);
+    });
   });
 
   describe("getFilesRecursive", () => {

@@ -1,9 +1,10 @@
-import { cp, mkdir, readFile, readdir, writeFile, access, rm } from "fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile, rm } from "fs/promises";
 import { readFileSync } from "fs";
 import { join, basename, dirname } from "path";
 import { fileURLToPath } from "url";
 import { debug } from "./utils/logger.js";
 import { formatError } from "./utils/errors.js";
+import { exists } from "./utils/file-system.js";
 import { STATE_DIR, CONFIG_FILE } from "./utils/constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -80,19 +81,13 @@ export async function copyBundledAssets(projectDir: string): Promise<UpgradeResu
   const slashCommandsDir = getSlashCommandsDir();
 
   // Validate source directories exist
-  try {
-    await access(bmadDir);
-  } catch {
+  if (!(await exists(bmadDir))) {
     throw new Error(`BMAD source directory not found at ${bmadDir}. Package may be corrupted.`);
   }
-  try {
-    await access(ralphDir);
-  } catch {
+  if (!(await exists(ralphDir))) {
     throw new Error(`Ralph source directory not found at ${ralphDir}. Package may be corrupted.`);
   }
-  try {
-    await access(slashCommandsDir);
-  } catch {
+  if (!(await exists(slashCommandsDir))) {
     throw new Error(
       `Slash commands directory not found at ${slashCommandsDir}. Package may be corrupted.`
     );
@@ -136,10 +131,7 @@ modules:
 
   // Copy .ralphrc from template (skip if user has customized it)
   const ralphrcDest = join(projectDir, ".ralph/.ralphrc");
-  try {
-    await access(ralphrcDest);
-    // File exists, preserve user's config
-  } catch {
+  if (!(await exists(ralphrcDest))) {
     await cp(join(ralphDir, "templates/ralphrc.template"), ralphrcDest);
   }
 
@@ -229,17 +221,12 @@ export async function generateManifests(projectDir: string): Promise<void> {
   const bmmHelpPath = join(projectDir, "_bmad/bmm/module-help.csv");
 
   // Validate CSV files exist before reading
-  try {
-    await access(coreHelpPath);
-  } catch {
+  if (!(await exists(coreHelpPath))) {
     throw new Error(
       `Core module-help.csv not found at ${coreHelpPath}. BMAD installation may be incomplete.`
     );
   }
-
-  try {
-    await access(bmmHelpPath);
-  } catch {
+  if (!(await exists(bmmHelpPath))) {
     throw new Error(
       `BMM module-help.csv not found at ${bmmHelpPath}. BMAD installation may be incomplete.`
     );
@@ -389,12 +376,7 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
 }
 
 export async function isInitialized(projectDir: string): Promise<boolean> {
-  try {
-    await access(join(projectDir, CONFIG_FILE));
-    return true;
-  } catch {
-    return false;
-  }
+  return exists(join(projectDir, CONFIG_FILE));
 }
 
 export async function previewInstall(projectDir: string): Promise<PreviewInstallResult> {
@@ -413,13 +395,11 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
   ];
 
   for (const dir of dirsToCreate) {
-    try {
-      await access(join(projectDir, dir));
-      // Directory exists - would be updated
+    if (await exists(join(projectDir, dir))) {
       if (dir === "_bmad/" || dir === ".claude/commands/") {
         wouldModify.push(dir);
       }
-    } catch {
+    } else {
       wouldCreate.push(dir);
     }
   }
@@ -433,21 +413,19 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
   ];
 
   for (const file of filesToCheck) {
-    try {
-      await access(join(projectDir, file.path));
+    if (await exists(join(projectDir, file.path))) {
       if (file.isTemplate) {
         wouldModify.push(file.path);
       }
-    } catch {
+    } else {
       wouldCreate.push(file.path);
     }
   }
 
   // .gitignore would be modified if it exists, created otherwise
-  try {
-    await access(join(projectDir, ".gitignore"));
+  if (await exists(join(projectDir, ".gitignore"))) {
     wouldModify.push(".gitignore");
-  } catch {
+  } else {
     wouldCreate.push(".gitignore");
   }
 
@@ -484,10 +462,9 @@ export async function previewUpgrade(projectDir: string): Promise<PreviewUpgrade
   const wouldCreate: string[] = [];
 
   for (const { path: p } of managedPaths) {
-    try {
-      await access(join(projectDir, p.replace(/\/$/, "")));
+    if (await exists(join(projectDir, p.replace(/\/$/, "")))) {
       wouldUpdate.push(p);
-    } catch {
+    } else {
       wouldCreate.push(p);
     }
   }
