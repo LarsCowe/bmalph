@@ -45,7 +45,10 @@ export async function generateSpecsChangelog(
         debug(`Could not read old spec file ${file}: ${formatError(err)}`);
         return "";
       });
-      const newContent = await readFile(join(newSourceDir, file), "utf-8");
+      const newContent = await readFile(join(newSourceDir, file), "utf-8").catch((err) => {
+        debug(`Could not read new spec file ${file}: ${formatError(err)}`);
+        return "";
+      });
       if (oldContent !== newContent) {
         changes.push({
           file,
