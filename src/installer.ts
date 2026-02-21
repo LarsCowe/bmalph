@@ -523,7 +523,7 @@ export async function previewUpgrade(projectDir: string): Promise<PreviewUpgrade
   for (const { path: p, templateName } of managedPaths) {
     const fullPath = join(projectDir, p.replace(/\/$/, ""));
     if (await exists(fullPath)) {
-      if (templateName && await isTemplateCustomized(fullPath, templateName)) {
+      if (templateName && (await isTemplateCustomized(fullPath, templateName))) {
         wouldPreserve.push(p);
       } else {
         wouldUpdate.push(p);
