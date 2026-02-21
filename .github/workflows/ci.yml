@@ -6,8 +6,33 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ci:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run fmt:check
+
+  test:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -25,26 +50,14 @@ jobs:
 
       - run: npm ci
 
-      - name: Type check
-        run: npm run type-check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run fmt:check
-
       - name: Build
         run: npm run build
 
-      - name: Unit tests
-        run: npm test
+      - name: Unit tests with coverage
+        run: npm run test:coverage
 
       - name: E2E tests
         run: npm run test:e2e
-
-      - name: Test coverage
-        run: npm run test:coverage
 
       - name: Upload coverage to Codecov
         if: matrix.node-version == 22 && matrix.os == 'ubuntu-latest'
@@ -59,11 +72,11 @@ jobs:
   ci-success:
     name: ci
     if: always()
-    needs: [ci]
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - run: |
-          if [[ "${{ needs.ci.result }}" != "success" ]]; then
-            echo "CI matrix failed"
+          if [[ "${{ needs.lint.result }}" != "success" || "${{ needs.test.result }}" != "success" ]]; then
+            echo "CI failed: lint=${{ needs.lint.result }}, test=${{ needs.test.result }}"
             exit 1
           fi
