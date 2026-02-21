@@ -95,3 +95,4 @@ Use `/bmalph-implement` to transition from BMAD planning to Ralph implementation
 - Conventional Commits with SemVer
 - Application language: English
 - Node 20+ LTS
+- Always run `npm run ci` locally before committing to catch formatting, lint, type, and test failures early
