@@ -20,6 +20,14 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Update release PR branch
+        if: steps.release.outputs.pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(echo '${{ steps.release.outputs.pr }}' | jq -r '.number')
+          gh pr update-branch "$PR_NUMBER" || true
+
   publish:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
