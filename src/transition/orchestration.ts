@@ -89,7 +89,7 @@ export async function runTransition(projectDir: string): Promise<TransitionResul
 
   // Generate new fix_plan from current stories, preserving completion status
   info(`Generating fix plan for ${stories.length} stories...`);
-  const newFixPlan = generateFixPlan(stories);
+  const newFixPlan = generateFixPlan(stories, storiesFile);
   const mergedFixPlan = mergeFixPlanProgress(newFixPlan, completedIds);
   await atomicWriteFile(fixPlanPath, mergedFixPlan);
 

@@ -1,6 +1,6 @@
 import type { Story, FixPlanItemWithTitle } from "./types.js";
 
-export function generateFixPlan(stories: Story[]): string {
+export function generateFixPlan(stories: Story[], storiesFileName?: string): string {
   const lines = ["# Ralph Fix Plan", "", "## Stories to Implement", ""];
 
   let currentEpic = "";
@@ -30,7 +30,8 @@ export function generateFixPlan(stories: Story[]): string {
 
     // Add spec-link for easy reference to full story details
     const anchor = story.id.replace(".", "-");
-    lines.push(`  > Spec: specs/planning-artifacts/stories.md#story-${anchor}`);
+    const fileName = storiesFileName ?? "stories.md";
+    lines.push(`  > Spec: specs/planning-artifacts/${fileName}#story-${anchor}`);
   }
 
   lines.push(

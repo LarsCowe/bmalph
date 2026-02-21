@@ -7,6 +7,7 @@ import {
   validateRalphApiStatus,
   validateRalphLoopStatus,
   validateProjectName,
+  normalizeRalphStatus,
 } from "../../src/utils/validate.js";
 
 describe("validateConfig", () => {
@@ -387,5 +388,96 @@ describe("validateProjectName", () => {
   it("accepts names with dots in the middle", () => {
     expect(validateProjectName("my.project")).toBe("my.project");
     expect(validateProjectName("v1.0.0")).toBe("v1.0.0");
+  });
+});
+
+describe("normalizeRalphStatus", () => {
+  it("maps bash snake_case format to camelCase RalphLoopStatus", () => {
+    const bashData = {
+      loop_count: 7,
+      calls_made_this_hour: 42,
+      max_calls_per_hour: 200,
+      last_action: "implemented auth module",
+      status: "running",
+    };
+    const result = normalizeRalphStatus(bashData);
+    expect(result).toEqual({
+      loopCount: 7,
+      status: "running",
+      tasksCompleted: 0,
+      tasksTotal: 0,
+    });
+  });
+
+  it("maps bash status 'running' to 'running'", () => {
+    const result = normalizeRalphStatus({ loop_count: 1, status: "running" });
+    expect(result.status).toBe("running");
+  });
+
+  it("maps bash status 'halted' to 'blocked'", () => {
+    const result = normalizeRalphStatus({ loop_count: 1, status: "halted" });
+    expect(result.status).toBe("blocked");
+  });
+
+  it("maps bash status 'stopped' to 'blocked'", () => {
+    const result = normalizeRalphStatus({ loop_count: 1, status: "stopped" });
+    expect(result.status).toBe("blocked");
+  });
+
+  it("maps bash status 'completed' to 'completed'", () => {
+    const result = normalizeRalphStatus({ loop_count: 1, status: "completed" });
+    expect(result.status).toBe("completed");
+  });
+
+  it("maps bash status 'success' to 'completed'", () => {
+    const result = normalizeRalphStatus({ loop_count: 1, status: "success" });
+    expect(result.status).toBe("completed");
+  });
+
+  it("maps unknown bash status to 'running'", () => {
+    const result = normalizeRalphStatus({ loop_count: 1, status: "paused" });
+    expect(result.status).toBe("running");
+  });
+
+  it("defaults loopCount to 0 when loop_count is missing", () => {
+    const result = normalizeRalphStatus({ status: "running" });
+    expect(result.loopCount).toBe(0);
+  });
+
+  it("defaults loopCount to 0 when loop_count is not a number", () => {
+    const result = normalizeRalphStatus({ loop_count: "five", status: "running" });
+    expect(result.loopCount).toBe(0);
+  });
+
+  it("defaults status to 'running' when status is missing", () => {
+    const result = normalizeRalphStatus({ loop_count: 3 });
+    expect(result.status).toBe("running");
+  });
+
+  it("always sets tasksCompleted and tasksTotal to 0", () => {
+    const result = normalizeRalphStatus({ loop_count: 5, status: "running" });
+    expect(result.tasksCompleted).toBe(0);
+    expect(result.tasksTotal).toBe(0);
+  });
+
+  it("throws when data is not an object", () => {
+    expect(() => normalizeRalphStatus(null)).toThrow();
+    expect(() => normalizeRalphStatus("string")).toThrow();
+    expect(() => normalizeRalphStatus(42)).toThrow();
+  });
+
+  it("throws when data is an array", () => {
+    expect(() => normalizeRalphStatus([])).toThrow();
+  });
+
+  it("handles bash data with exit_reason field", () => {
+    const bashData = {
+      loop_count: 12,
+      status: "completed",
+      exit_reason: "all tasks done",
+    };
+    const result = normalizeRalphStatus(bashData);
+    expect(result.loopCount).toBe(12);
+    expect(result.status).toBe("completed");
   });
 });

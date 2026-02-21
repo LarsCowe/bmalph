@@ -133,6 +133,35 @@ describe("orchestration", () => {
     });
   });
 
+  describe("fix-plan spec links use detected stories filename (Bug #2b)", () => {
+    it("uses detected stories filename in fix plan spec links", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+
+      await runTransition(testDir);
+
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(fixPlan).toContain("specs/planning-artifacts/epics-and-stories.md#story-1-1");
+      expect(fixPlan).not.toContain("planning-artifacts/stories.md#story");
+    });
+
+    it("uses stories.md in links when file is named stories.md", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core\n\n### Story 1.1: Feature\n\nDo something.\n`
+      );
+
+      await runTransition(testDir);
+
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      expect(fixPlan).toContain("specs/planning-artifacts/stories.md#story-1-1");
+    });
+  });
+
   describe("stale file cleanup", () => {
     it("removes stale files from .ralph/specs/ on re-transition", async () => {
       // First transition: copy artifact to specs

@@ -358,6 +358,105 @@ describe("installer", () => {
       expect(content).toBe("# Custom config\nMAX_CALLS_PER_HOUR=50\n");
     });
 
+    it("preserves customized PROMPT.md on upgrade", async () => {
+      // First install copies the template
+      await copyBundledAssets(testDir);
+      // Simulate transition: PROMPT.md is customized with project-specific content
+      const customized = "# Ralph Development Instructions\n\nYou are Ralph working on MyApp.\n";
+      await writeFile(join(testDir, ".ralph/PROMPT.md"), customized);
+
+      // Upgrade should preserve the customized file
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toBe(customized);
+    });
+
+    it("replaces template PROMPT.md on upgrade", async () => {
+      // First install copies the template (contains [YOUR PROJECT NAME])
+      await copyBundledAssets(testDir);
+      const templateContent = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(templateContent).toContain("[YOUR PROJECT NAME]");
+
+      // Upgrade should replace the unmodified template
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toContain("[YOUR PROJECT NAME]");
+    });
+
+    it("copies PROMPT.md when it does not exist", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      // No PROMPT.md exists yet
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+      expect(content).toContain("[YOUR PROJECT NAME]");
+    });
+
+    it("preserves customized @AGENT.md on upgrade", async () => {
+      // First install copies the template
+      await copyBundledAssets(testDir);
+      // Simulate tech-stack detection customizing @AGENT.md
+      const customized = "# Agent Build Instructions\n\nnpm run build && npm test\n";
+      await writeFile(join(testDir, ".ralph/@AGENT.md"), customized);
+
+      // Upgrade should preserve the customized file
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(content).toBe(customized);
+    });
+
+    it("replaces template @AGENT.md on upgrade", async () => {
+      // First install copies the generic template
+      await copyBundledAssets(testDir);
+      const templateContent = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      // Template contains generic setup examples for multiple languages
+      expect(templateContent).toContain("pip install -r requirements.txt");
+
+      // Upgrade should replace the unmodified template
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(content).toContain("pip install -r requirements.txt");
+    });
+
+    it("copies @AGENT.md when it does not exist", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      // No @AGENT.md exists yet
+      await copyBundledAssets(testDir);
+
+      const content = await readFile(join(testDir, ".ralph/@AGENT.md"), "utf-8");
+      expect(content.length).toBeGreaterThan(0);
+    });
+
+    it("excludes preserved PROMPT.md from updatedPaths", async () => {
+      await copyBundledAssets(testDir);
+      // Customize PROMPT.md
+      await writeFile(
+        join(testDir, ".ralph/PROMPT.md"),
+        "# Custom project instructions\n"
+      );
+
+      const result = await copyBundledAssets(testDir);
+
+      expect(result.updatedPaths).not.toContain(".ralph/PROMPT.md");
+    });
+
+    it("excludes preserved @AGENT.md from updatedPaths", async () => {
+      await copyBundledAssets(testDir);
+      // Customize @AGENT.md
+      await writeFile(
+        join(testDir, ".ralph/@AGENT.md"),
+        "# Custom build instructions\n"
+      );
+
+      const result = await copyBundledAssets(testDir);
+
+      expect(result.updatedPaths).not.toContain(".ralph/@AGENT.md");
+    });
+
     it("copies new Ralph lib files", async () => {
       await copyBundledAssets(testDir);
       await expect(access(join(testDir, ".ralph/lib/enable_core.sh"))).resolves.toBeUndefined();
@@ -939,6 +1038,60 @@ Old stale content with /tea agent reference.
       expect(result.wouldUpdate).toContain(".gitignore");
       expect(result.wouldCreate).toContain(".ralph/ralph_loop.sh");
       expect(result.wouldCreate).toContain(".claude/commands/");
+    });
+
+    it("classifies customized PROMPT.md as wouldPreserve", async () => {
+      await installProject(testDir);
+      // Customize PROMPT.md (remove the placeholder)
+      await writeFile(
+        join(testDir, ".ralph/PROMPT.md"),
+        "# Ralph Development Instructions\n\nYou are Ralph working on MyApp.\n"
+      );
+
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldPreserve).toContain(".ralph/PROMPT.md");
+      expect(result.wouldUpdate).not.toContain(".ralph/PROMPT.md");
+    });
+
+    it("classifies template PROMPT.md as wouldUpdate", async () => {
+      await installProject(testDir);
+      // PROMPT.md still has the template placeholder
+
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldUpdate).toContain(".ralph/PROMPT.md");
+      expect(result.wouldPreserve).not.toContain(".ralph/PROMPT.md");
+    });
+
+    it("classifies customized @AGENT.md as wouldPreserve", async () => {
+      await installProject(testDir);
+      // Customize @AGENT.md (remove the generic template markers)
+      await writeFile(
+        join(testDir, ".ralph/@AGENT.md"),
+        "# Agent Build Instructions\n\nnpm run build && npm test\n"
+      );
+
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldPreserve).toContain(".ralph/@AGENT.md");
+      expect(result.wouldUpdate).not.toContain(".ralph/@AGENT.md");
+    });
+
+    it("classifies template @AGENT.md as wouldUpdate", async () => {
+      await installProject(testDir);
+      // @AGENT.md still has the generic template content
+
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldUpdate).toContain(".ralph/@AGENT.md");
+      expect(result.wouldPreserve).not.toContain(".ralph/@AGENT.md");
+    });
+
+    it("returns empty wouldPreserve on empty project", async () => {
+      const result = await previewUpgrade(testDir);
+
+      expect(result.wouldPreserve).toHaveLength(0);
     });
   });
 

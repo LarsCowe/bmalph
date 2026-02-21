@@ -66,6 +66,32 @@ describe("fix-plan", () => {
       expect(plan).toContain("Spec: specs/planning-artifacts/stories.md#story-2-3");
     });
 
+    it("uses custom stories filename in spec links", () => {
+      const stories = [makeStory({ id: "2.3" })];
+      const plan = generateFixPlan(stories, "epics-and-stories.md");
+
+      expect(plan).toContain("Spec: specs/planning-artifacts/epics-and-stories.md#story-2-3");
+      expect(plan).not.toContain("planning-artifacts/stories.md#story");
+    });
+
+    it("defaults to stories.md when no filename provided", () => {
+      const stories = [makeStory({ id: "1.1" })];
+      const plan = generateFixPlan(stories);
+
+      expect(plan).toContain("Spec: specs/planning-artifacts/stories.md#story-1-1");
+    });
+
+    it("uses custom filename for all stories in plan", () => {
+      const stories = [
+        makeStory({ id: "1.1", title: "Login" }),
+        makeStory({ id: "1.2", title: "Logout" }),
+      ];
+      const plan = generateFixPlan(stories, "epics-and-stories.md");
+
+      expect(plan).toContain("specs/planning-artifacts/epics-and-stories.md#story-1-1");
+      expect(plan).toContain("specs/planning-artifacts/epics-and-stories.md#story-1-2");
+    });
+
     it("returns plan with standard sections for empty input", () => {
       const plan = generateFixPlan([]);
 

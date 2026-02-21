@@ -30,14 +30,29 @@ describe("specs-index", () => {
       expect(detectSpecFileType("epic-breakdown.md", "content")).toBe("stories");
     });
 
+    it("detects stories from singular 'story' in filename", () => {
+      expect(detectSpecFileType("story.md", "# User Story")).toBe("stories");
+      expect(detectSpecFileType("my-story.md", "content")).toBe("stories");
+      expect(detectSpecFileType("user-story-auth.md", "content")).toBe("stories");
+    });
+
     it("detects UX from 'ux' in filename", () => {
       expect(detectSpecFileType("ux-specs.md", "# UX")).toBe("ux");
       expect(detectSpecFileType("ux-design.md", "content")).toBe("ux");
     });
 
-    it("detects test-design from 'test' in filename", () => {
+    it("detects test-design from test-related filenames", () => {
       expect(detectSpecFileType("test-design.md", "# Test Strategy")).toBe("test-design");
+      expect(detectSpecFileType("test-plan.md", "content")).toBe("test-design");
+      expect(detectSpecFileType("test-strategy.md", "content")).toBe("test-design");
+      expect(detectSpecFileType("test-cases.md", "content")).toBe("test-design");
       expect(detectSpecFileType("testing-strategy.md", "content")).toBe("test-design");
+    });
+
+    it("does not misclassify non-test files containing 'test' substring", () => {
+      expect(detectSpecFileType("latest-review.md", "content")).toBe("other");
+      expect(detectSpecFileType("contest-results.md", "content")).toBe("other");
+      expect(detectSpecFileType("attestation.md", "content")).toBe("other");
     });
 
     it("detects readiness from 'readiness' in filename", () => {

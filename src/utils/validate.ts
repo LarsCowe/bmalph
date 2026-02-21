@@ -235,6 +235,29 @@ export function validateRalphLoopStatus(data: unknown): RalphLoopStatus {
   };
 }
 
+const BASH_STATUS_MAP: Record<string, RalphLoopStatus["status"]> = {
+  running: "running",
+  halted: "blocked",
+  stopped: "blocked",
+  completed: "completed",
+  success: "completed",
+};
+
+export function normalizeRalphStatus(data: unknown): RalphLoopStatus {
+  assertObject(data, "normalizeRalphStatus");
+
+  const loopCount = typeof data.loop_count === "number" ? data.loop_count : 0;
+  const rawStatus = typeof data.status === "string" ? data.status : undefined;
+  const status = (rawStatus !== undefined ? BASH_STATUS_MAP[rawStatus] : undefined) ?? "running";
+
+  return {
+    loopCount,
+    status,
+    tasksCompleted: 0,
+    tasksTotal: 0,
+  };
+}
+
 /**
  * Validates a project name for filesystem safety.
  * Checks for:

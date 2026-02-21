@@ -226,9 +226,9 @@ describe("state", () => {
       expect(result).toEqual(statusData);
     });
 
-    it("warns and returns defaults when status file is corrupted", async () => {
+    it("warns and returns defaults when status file is not a valid object", async () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true });
-      await writeFile(join(testDir, ".ralph/status.json"), '{"loopCount": "not-a-number"}');
+      await writeFile(join(testDir, ".ralph/status.json"), '"just a string"');
 
       const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -244,6 +244,83 @@ describe("state", () => {
         expect.stringContaining("Ralph status file is corrupted")
       );
       warnSpy.mockRestore();
+    });
+
+    it("normalizes object with invalid camelCase fields via bash fallback", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(join(testDir, ".ralph/status.json"), '{"loopCount": "not-a-number"}');
+
+      const result = await readRalphStatus(testDir);
+
+      // camelCase validation fails, bash normalizer treats it as an object
+      // with no recognized bash fields, so returns safe defaults
+      expect(result).toEqual({
+        loopCount: 0,
+        status: "running",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+    });
+
+    it("reads bash snake_case status format", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const bashStatus = {
+        loop_count: 7,
+        calls_made_this_hour: 42,
+        max_calls_per_hour: 200,
+        last_action: "implemented auth module",
+        status: "running",
+      };
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(bashStatus));
+
+      const result = await readRalphStatus(testDir);
+      expect(result).toEqual({
+        loopCount: 7,
+        status: "running",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+    });
+
+    it("maps bash 'halted' status to 'blocked'", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const bashStatus = {
+        loop_count: 3,
+        status: "halted",
+        exit_reason: "circuit breaker tripped",
+      };
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(bashStatus));
+
+      const result = await readRalphStatus(testDir);
+      expect(result.status).toBe("blocked");
+    });
+
+    it("maps bash 'success' status to 'completed'", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const bashStatus = {
+        loop_count: 15,
+        status: "success",
+        exit_reason: "all tasks done",
+      };
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(bashStatus));
+
+      const result = await readRalphStatus(testDir);
+      expect(result.status).toBe("completed");
+      expect(result.loopCount).toBe(15);
+    });
+
+    it("prefers camelCase format when file has valid camelCase data", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const camelStatus = {
+        loopCount: 5,
+        status: "running",
+        tasksCompleted: 3,
+        tasksTotal: 10,
+      };
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(camelStatus));
+
+      const result = await readRalphStatus(testDir);
+      expect(result).toEqual(camelStatus);
     });
   });
 });

@@ -1,7 +1,7 @@
 import { mkdir } from "fs/promises";
 import { join } from "path";
 import { readJsonFile } from "./json.js";
-import { validateState, validateRalphLoopStatus } from "./validate.js";
+import { validateState, validateRalphLoopStatus, normalizeRalphStatus } from "./validate.js";
 import type { RalphLoopStatus } from "./validate.js";
 import { STATE_DIR, RALPH_STATUS_FILE } from "./constants.js";
 import { atomicWriteFile } from "./file-system.js";
@@ -214,6 +214,11 @@ export async function readRalphStatus(projectDir: string): Promise<RalphLoopStat
   }
   try {
     return validateRalphLoopStatus(data);
+  } catch {
+    // camelCase validation failed — try bash snake_case format
+  }
+  try {
+    return normalizeRalphStatus(data);
   } catch (err) {
     warn(`Ralph status file is corrupted, using defaults: ${formatError(err)}`);
     return DEFAULT_RALPH_STATUS;

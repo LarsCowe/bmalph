@@ -67,6 +67,25 @@ export interface PreviewInstallResult {
 export interface PreviewUpgradeResult {
   wouldUpdate: string[];
   wouldCreate: string[];
+  wouldPreserve: string[];
+}
+
+const TEMPLATE_PLACEHOLDERS: Record<string, string> = {
+  "PROMPT.md": "[YOUR PROJECT NAME]",
+  "AGENT.md": "pip install -r requirements.txt",
+};
+
+async function isTemplateCustomized(filePath: string, templateName: string): Promise<boolean> {
+  const placeholder = TEMPLATE_PLACEHOLDERS[templateName];
+  if (!placeholder) return false;
+
+  try {
+    const content = await readFile(filePath, "utf-8");
+    return !content.includes(placeholder);
+  } catch (err) {
+    if (isEnoent(err)) return false;
+    throw err;
+  }
 }
 
 export async function copyBundledAssets(projectDir: string): Promise<UpgradeResult> {
@@ -131,12 +150,27 @@ modules:
 
   // Copy Ralph templates → .ralph/
   await mkdir(join(projectDir, ".ralph"), { recursive: true });
-  await cp(join(ralphDir, "templates/PROMPT.md"), join(projectDir, ".ralph/PROMPT.md"), {
-    dereference: false,
-  });
-  await cp(join(ralphDir, "templates/AGENT.md"), join(projectDir, ".ralph/@AGENT.md"), {
-    dereference: false,
-  });
+
+  // Preserve customized PROMPT.md and @AGENT.md on upgrade
+  const promptCustomized = await isTemplateCustomized(
+    join(projectDir, ".ralph/PROMPT.md"),
+    "PROMPT.md"
+  );
+  const agentCustomized = await isTemplateCustomized(
+    join(projectDir, ".ralph/@AGENT.md"),
+    "AGENT.md"
+  );
+
+  if (!promptCustomized) {
+    await cp(join(ralphDir, "templates/PROMPT.md"), join(projectDir, ".ralph/PROMPT.md"), {
+      dereference: false,
+    });
+  }
+  if (!agentCustomized) {
+    await cp(join(ralphDir, "templates/AGENT.md"), join(projectDir, ".ralph/@AGENT.md"), {
+      dereference: false,
+    });
+  }
   await cp(join(ralphDir, "RALPH-REFERENCE.md"), join(projectDir, ".ralph/RALPH-REFERENCE.md"), {
     dereference: false,
   });
@@ -196,20 +230,20 @@ modules:
   // Update .gitignore
   await updateGitignore(projectDir);
 
-  return {
-    updatedPaths: [
-      "_bmad/",
-      ".ralph/ralph_loop.sh",
-      ".ralph/ralph_import.sh",
-      ".ralph/ralph_monitor.sh",
-      ".ralph/lib/",
-      ".ralph/PROMPT.md",
-      ".ralph/@AGENT.md",
-      ".ralph/RALPH-REFERENCE.md",
-      ".claude/commands/",
-      ".gitignore",
-    ],
-  };
+  const updatedPaths = [
+    "_bmad/",
+    ".ralph/ralph_loop.sh",
+    ".ralph/ralph_import.sh",
+    ".ralph/ralph_monitor.sh",
+    ".ralph/lib/",
+    ...(!promptCustomized ? [".ralph/PROMPT.md"] : []),
+    ...(!agentCustomized ? [".ralph/@AGENT.md"] : []),
+    ".ralph/RALPH-REFERENCE.md",
+    ".claude/commands/",
+    ".gitignore",
+  ];
+
+  return { updatedPaths };
 }
 
 export async function installProject(projectDir: string): Promise<void> {
@@ -469,14 +503,14 @@ export async function previewInstall(projectDir: string): Promise<PreviewInstall
 }
 
 export async function previewUpgrade(projectDir: string): Promise<PreviewUpgradeResult> {
-  const managedPaths = [
+  const managedPaths: Array<{ path: string; isDir: boolean; templateName?: string }> = [
     { path: "_bmad/", isDir: true },
     { path: ".ralph/ralph_loop.sh", isDir: false },
     { path: ".ralph/ralph_import.sh", isDir: false },
     { path: ".ralph/ralph_monitor.sh", isDir: false },
     { path: ".ralph/lib/", isDir: true },
-    { path: ".ralph/PROMPT.md", isDir: false },
-    { path: ".ralph/@AGENT.md", isDir: false },
+    { path: ".ralph/PROMPT.md", isDir: false, templateName: "PROMPT.md" },
+    { path: ".ralph/@AGENT.md", isDir: false, templateName: "AGENT.md" },
     { path: ".ralph/RALPH-REFERENCE.md", isDir: false },
     { path: ".claude/commands/", isDir: true },
     { path: ".gitignore", isDir: false },
@@ -484,14 +518,20 @@ export async function previewUpgrade(projectDir: string): Promise<PreviewUpgrade
 
   const wouldUpdate: string[] = [];
   const wouldCreate: string[] = [];
+  const wouldPreserve: string[] = [];
 
-  for (const { path: p } of managedPaths) {
-    if (await exists(join(projectDir, p.replace(/\/$/, "")))) {
-      wouldUpdate.push(p);
+  for (const { path: p, templateName } of managedPaths) {
+    const fullPath = join(projectDir, p.replace(/\/$/, ""));
+    if (await exists(fullPath)) {
+      if (templateName && await isTemplateCustomized(fullPath, templateName)) {
+        wouldPreserve.push(p);
+      } else {
+        wouldUpdate.push(p);
+      }
     } else {
       wouldCreate.push(p);
     }
   }
 
-  return { wouldUpdate, wouldCreate };
+  return { wouldUpdate, wouldCreate, wouldPreserve };
 }
