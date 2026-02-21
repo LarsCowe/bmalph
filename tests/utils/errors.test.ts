@@ -37,6 +37,24 @@ describe("errors", () => {
       const error = new TypeError("Type mismatch");
       expect(formatError(error)).toBe("Type mismatch");
     });
+
+    it("includes cause chain in formatted message", () => {
+      const cause = new Error("disk full");
+      const error = new Error("Failed to write config", { cause });
+      expect(formatError(error)).toBe("Failed to write config: disk full");
+    });
+
+    it("includes nested cause chain in formatted message", () => {
+      const root = new Error("EACCES");
+      const mid = new Error("write failed", { cause: root });
+      const outer = new Error("Config save failed", { cause: mid });
+      expect(formatError(outer)).toBe("Config save failed: write failed: EACCES");
+    });
+
+    it("includes non-Error cause in formatted message", () => {
+      const error = new Error("Operation failed", { cause: "timeout" });
+      expect(formatError(error)).toBe("Operation failed: timeout");
+    });
   });
 
   describe("isEnoent", () => {

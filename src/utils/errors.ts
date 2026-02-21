@@ -32,6 +32,9 @@ export function isEnoent(err: unknown): boolean {
 
 export function formatError(error: unknown): string {
   if (error instanceof Error) {
+    if (error.cause) {
+      return `${error.message}: ${formatError(error.cause)}`;
+    }
     return error.message;
   }
   return String(error);

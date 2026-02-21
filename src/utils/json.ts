@@ -1,5 +1,5 @@
 import { readFile } from "fs/promises";
-import { isEnoent, formatError } from "./errors.js";
+import { isEnoent } from "./errors.js";
 
 /**
  * Reads and parses a JSON file with proper error discrimination:
@@ -21,6 +21,6 @@ export async function readJsonFile<T>(path: string): Promise<T | null> {
   try {
     return JSON.parse(content) as T;
   } catch (err: unknown) {
-    throw new Error(`Invalid JSON in ${path}: ${formatError(err)}`);
+    throw new Error(`Invalid JSON in ${path}`, { cause: err });
   }
 }

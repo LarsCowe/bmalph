@@ -106,8 +106,8 @@ async function runInit(options: InitOptions): Promise<void> {
   } catch (err) {
     throw new Error(
       `Partial installation: files were copied but configuration failed. ` +
-        `Run 'bmalph init' again to retry. ` +
-        `Cause: ${err instanceof Error ? err.message : String(err)}`
+        `Run 'bmalph init' again to retry.`,
+      { cause: err }
     );
   }
 

@@ -44,7 +44,7 @@ export function getBundledVersions(): BundledVersions {
     if (err instanceof Error && err.message.includes("Invalid bundled-versions.json")) {
       throw err;
     }
-    throw new Error(`Failed to read bundled-versions.json at ${versionsPath}: ${formatError(err)}`);
+    throw new Error(`Failed to read bundled-versions.json at ${versionsPath}`, { cause: err });
   }
 }
 
