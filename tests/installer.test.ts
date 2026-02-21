@@ -434,10 +434,7 @@ describe("installer", () => {
     it("excludes preserved PROMPT.md from updatedPaths", async () => {
       await copyBundledAssets(testDir);
       // Customize PROMPT.md
-      await writeFile(
-        join(testDir, ".ralph/PROMPT.md"),
-        "# Custom project instructions\n"
-      );
+      await writeFile(join(testDir, ".ralph/PROMPT.md"), "# Custom project instructions\n");
 
       const result = await copyBundledAssets(testDir);
 
@@ -447,10 +444,7 @@ describe("installer", () => {
     it("excludes preserved @AGENT.md from updatedPaths", async () => {
       await copyBundledAssets(testDir);
       // Customize @AGENT.md
-      await writeFile(
-        join(testDir, ".ralph/@AGENT.md"),
-        "# Custom build instructions\n"
-      );
+      await writeFile(join(testDir, ".ralph/@AGENT.md"), "# Custom build instructions\n");
 
       const result = await copyBundledAssets(testDir);
 
