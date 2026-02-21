@@ -11,10 +11,9 @@ vi.mock("fs/promises", async () => {
 });
 
 vi.mock("../../src/utils/file-system.js", async () => {
-  const actual =
-    await vi.importActual<typeof import("../../src/utils/file-system.js")>(
-      "../../src/utils/file-system.js"
-    );
+  const actual = await vi.importActual<typeof import("../../src/utils/file-system.js")>(
+    "../../src/utils/file-system.js"
+  );
   return {
     ...actual,
     getFilesRecursive: vi.fn(async () => ["shared.md"]),
@@ -44,8 +43,6 @@ describe("specs-changelog error handling", () => {
 
     // Should not crash — treat unreadable new file as empty, producing a "modified" entry
     expect(changes).toBeDefined();
-    expect(changes).toEqual([
-      expect.objectContaining({ file: "shared.md", status: "modified" }),
-    ]);
+    expect(changes).toEqual([expect.objectContaining({ file: "shared.md", status: "modified" })]);
   });
 });

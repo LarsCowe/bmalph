@@ -176,9 +176,7 @@ describe("artifacts", () => {
       ];
       const warnings = await validateArtifacts(files, artifactsDir);
 
-      expect(warnings).toContain(
-        "Could not read readiness report — NO-GO status unverified"
-      );
+      expect(warnings).toContain("Could not read readiness report — NO-GO status unverified");
     });
 
     it("detects PRD from various filename patterns", async () => {
