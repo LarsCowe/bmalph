@@ -10,6 +10,7 @@ vi.mock("inquirer", () => ({
 
 vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
+  hasExistingBmadDir: vi.fn().mockResolvedValue(false),
   installProject: vi.fn(),
   mergeClaudeMd: vi.fn(),
   previewInstall: vi.fn(),
@@ -345,6 +346,43 @@ describe("init command", () => {
 
     errorSpy.mockRestore();
     process.exitCode = undefined;
+  });
+
+  it("shows migration message when existing _bmad dir detected", async () => {
+    const { isInitialized, hasExistingBmadDir, installProject, mergeClaudeMd } =
+      await import("../../src/installer.js");
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(hasExistingBmadDir).mockResolvedValue(true);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my-proj", description: "Migrating", projectDir: process.cwd() });
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).toContain("Existing BMAD installation detected");
+    expect(output).toContain("_bmad-output/");
+  });
+
+  it("does not show migration message for fresh install", async () => {
+    const { isInitialized, hasExistingBmadDir, installProject, mergeClaudeMd } =
+      await import("../../src/installer.js");
+    const { writeConfig } = await import("../../src/utils/config.js");
+
+    vi.mocked(isInitialized).mockResolvedValue(false);
+    vi.mocked(hasExistingBmadDir).mockResolvedValue(false);
+    vi.mocked(installProject).mockResolvedValue(undefined);
+    vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+    vi.mocked(writeConfig).mockResolvedValue(undefined);
+
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand({ name: "my-proj", description: "Fresh", projectDir: process.cwd() });
+
+    const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+    expect(output).not.toContain("Existing BMAD installation detected");
   });
 
   it("rejects empty project names", async () => {

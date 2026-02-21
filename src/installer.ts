@@ -454,6 +454,10 @@ export async function isInitialized(projectDir: string): Promise<boolean> {
   return exists(join(projectDir, CONFIG_FILE));
 }
 
+export async function hasExistingBmadDir(projectDir: string): Promise<boolean> {
+  return exists(join(projectDir, "_bmad"));
+}
+
 export async function previewInstall(projectDir: string): Promise<PreviewInstallResult> {
   const wouldCreate: string[] = [];
   const wouldModify: string[] = [];

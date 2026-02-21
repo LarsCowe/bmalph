@@ -5,6 +5,7 @@ import {
   installProject,
   mergeClaudeMd,
   isInitialized,
+  hasExistingBmadDir,
   previewInstall,
   getBundledVersions,
 } from "../installer.js";
@@ -30,6 +31,12 @@ async function runInit(options: InitOptions): Promise<void> {
     console.log(chalk.yellow("bmalph is already initialized in this project."));
     console.log("Use 'bmalph upgrade' to update bundled assets to the latest version.");
     return;
+  }
+
+  if (await hasExistingBmadDir(projectDir)) {
+    console.log(chalk.cyan("Existing BMAD installation detected."));
+    console.log("Framework files in _bmad/ will be replaced with the managed version.");
+    console.log("Planning artifacts in _bmad-output/ will not be modified.\n");
   }
 
   // Handle dry-run mode

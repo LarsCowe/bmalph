@@ -66,6 +66,14 @@ This installs:
 - Updates `CLAUDE.md` with BMAD workflow instructions
 - Installs slash commands in `.claude/commands/`
 
+### Migrating from standalone BMAD
+
+If you already have BMAD installed (a `_bmad/` directory), `bmalph init` works as a migration path:
+
+- `_bmad/` (framework files) will be replaced with the bmalph-managed version
+- `_bmad-output/` (your planning artifacts: PRDs, architecture, stories) is not touched
+- If you've customized framework files inside `_bmad/`, commit first so you can review changes with `git diff`
+
 ### Step 2: Plan with BMAD (Phases 1-3)
 
 Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash command to see your current phase, available commands, and advance phases.
