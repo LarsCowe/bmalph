@@ -106,23 +106,44 @@ export async function copyBundledAssets(projectDir: string): Promise<UpgradeResu
     );
   }
 
-  // Atomic copy: write to temp dir, then swap with old
+  // Atomic copy: rename-aside pattern to prevent data loss
   const bmadDest = join(projectDir, "_bmad");
-  const bmadTemp = join(projectDir, "_bmad.new");
-  await rm(bmadTemp, { recursive: true, force: true });
-  await cp(bmadDir, bmadTemp, { recursive: true, dereference: false });
+  const bmadOld = join(projectDir, "_bmad.old");
+  const bmadNew = join(projectDir, "_bmad.new");
+
+  // Clean leftover from previous failed attempt
+  await rm(bmadOld, { recursive: true, force: true });
+
+  // Move original aside (tolerate ENOENT on first install)
   try {
-    await rm(bmadDest, { recursive: true, force: true });
-    await rename(bmadTemp, bmadDest);
+    await rename(bmadDest, bmadOld);
   } catch (err) {
-    // If rename fails, attempt to restore from temp
+    if (!isEnoent(err)) throw err;
+    debug("No existing _bmad to preserve (first install)");
+  }
+
+  // Stage new content
+  await rm(bmadNew, { recursive: true, force: true });
+  await cp(bmadDir, bmadNew, { recursive: true, dereference: false });
+
+  // Swap in
+  try {
+    await rename(bmadNew, bmadDest);
+  } catch (err) {
+    // Restore original on failure
+    debug(`Rename failed, restoring original: ${formatError(err)}`);
     try {
-      await rename(bmadTemp, bmadDest);
-    } catch {
-      // Best effort restore failed
+      await rename(bmadOld, bmadDest);
+    } catch (restoreErr) {
+      if (!isEnoent(restoreErr)) {
+        debug(`Could not restore _bmad.old: ${formatError(restoreErr)}`);
+      }
     }
     throw err;
   }
+
+  // Clean up backup
+  await rm(bmadOld, { recursive: true, force: true });
 
   // Generate combined manifest from module-help.csv files
   await generateManifests(projectDir);
