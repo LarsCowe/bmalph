@@ -502,6 +502,9 @@ export async function mergeInstructionsFile(
   const snippet = p.generateInstructionsSnippet();
   const marker = p.instructionsSectionMarker;
 
+  // Ensure parent directory exists for nested paths (e.g. .cursor/rules/)
+  await mkdir(dirname(instructionsPath), { recursive: true });
+
   let existing = "";
   try {
     existing = await readFile(instructionsPath, "utf-8");

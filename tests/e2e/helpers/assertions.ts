@@ -103,6 +103,51 @@ export function expectDoctorSummary(
   }
 }
 
+/**
+ * Platform-specific config for assertions
+ */
+export interface PlatformAssertionConfig {
+  id: string;
+  instructionsFile: string;
+  commandDelivery: "directory" | "inline" | "none";
+}
+
+/**
+ * Composite check: assert that bmalph is properly initialized for a specific platform
+ */
+export async function expectBmalphInitializedForPlatform(
+  projectPath: string,
+  platform: PlatformAssertionConfig
+): Promise<void> {
+  // Core directories (all platforms)
+  await expectDirectoryExists(join(projectPath, "_bmad"));
+  await expectDirectoryExists(join(projectPath, ".ralph"));
+  await expectDirectoryExists(join(projectPath, "bmalph"));
+
+  // Key files (all platforms)
+  await expectFileExists(join(projectPath, "bmalph/config.json"));
+  await expectFileExists(join(projectPath, ".ralph/ralph_loop.sh"));
+
+  // Config has correct platform
+  const config = (await expectValidJson(join(projectPath, "bmalph/config.json"))) as Record<
+    string,
+    unknown
+  >;
+  expect(config.platform).toBe(platform.id);
+
+  // Instructions file exists and contains BMAD snippet
+  await expectFileExists(join(projectPath, platform.instructionsFile));
+  await expectFileContains(join(projectPath, platform.instructionsFile), "BMAD-METHOD");
+
+  // Command delivery structure
+  if (platform.commandDelivery === "directory") {
+    await expectDirectoryExists(join(projectPath, ".claude/commands"));
+    await expectFileExists(join(projectPath, ".claude/commands/bmalph.md"));
+  } else {
+    await expectFileNotExists(join(projectPath, ".claude/commands"));
+  }
+}
+
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

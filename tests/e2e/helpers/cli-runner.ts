@@ -64,9 +64,14 @@ export async function runCli(args: string[], options: CliOptions = {}): Promise<
 export async function runInit(
   cwd: string,
   name = "test-project",
-  description = "E2E test project"
+  description = "E2E test project",
+  platform?: string
 ): Promise<CliResult> {
-  return runCli(["init", "-n", name, "-d", description], { cwd });
+  const args = ["init", "-n", name, "-d", description];
+  if (platform) {
+    args.push("--platform", platform);
+  }
+  return runCli(args, { cwd });
 }
 
 /**

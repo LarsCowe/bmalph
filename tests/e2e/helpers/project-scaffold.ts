@@ -1,5 +1,5 @@
 import { mkdir, rm, writeFile, readFile } from "fs/promises";
-import { join } from "path";
+import { dirname, join } from "path";
 import { tmpdir } from "os";
 
 export interface TestProject {
@@ -92,5 +92,38 @@ export async function createProjectWithRalphUserFiles(
   for (const [relativePath, content] of Object.entries(userFiles)) {
     await createFile(project.path, relativePath, content);
   }
+  return project;
+}
+
+/**
+ * Detection markers per platform (matching src/platform/detect.ts)
+ */
+const PLATFORM_MARKERS: Record<string, { type: "dir" | "file"; path: string }> = {
+  "claude-code": { type: "dir", path: ".claude" },
+  codex: { type: "file", path: "AGENTS.md" },
+  cursor: { type: "dir", path: ".cursor" },
+  windsurf: { type: "dir", path: ".windsurf" },
+  copilot: { type: "file", path: ".github/copilot-instructions.md" },
+  aider: { type: "file", path: ".aider.conf.yml" },
+};
+
+/**
+ * Create a test project with a platform detection marker
+ */
+export async function createProjectWithPlatformMarker(platformId: string): Promise<TestProject> {
+  const project = await createTestProject();
+  const marker = PLATFORM_MARKERS[platformId];
+  if (!marker) {
+    throw new Error(`Unknown platform: ${platformId}`);
+  }
+
+  const fullPath = join(project.path, marker.path);
+  if (marker.type === "dir") {
+    await mkdir(fullPath, { recursive: true });
+  } else {
+    await mkdir(dirname(fullPath), { recursive: true });
+    await writeFile(fullPath, "", "utf-8");
+  }
+
   return project;
 }
