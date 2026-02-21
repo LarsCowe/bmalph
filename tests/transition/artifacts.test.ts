@@ -162,7 +162,7 @@ describe("artifacts", () => {
       expect(warnings).toHaveLength(0);
     });
 
-    it("handles unreadable readiness file gracefully", async () => {
+    it("warns when readiness file is unreadable", async () => {
       const artifactsDir = join(testDir, "artifacts");
       await mkdir(artifactsDir, { recursive: true });
       await writeFile(join(artifactsDir, "prd.md"), "# PRD");
@@ -176,8 +176,9 @@ describe("artifacts", () => {
       ];
       const warnings = await validateArtifacts(files, artifactsDir);
 
-      // Should not crash, just no NO-GO warning
-      expect(warnings).toHaveLength(0);
+      expect(warnings).toContain(
+        "Could not read readiness report — NO-GO status unverified"
+      );
     });
 
     it("detects PRD from various filename patterns", async () => {

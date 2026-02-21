@@ -44,7 +44,7 @@ export async function validateArtifacts(files: string[], artifactsDir: string): 
         warnings.push("Readiness report indicates NO-GO status");
       }
     } catch {
-      // Cannot read readiness file, skip
+      warnings.push("Could not read readiness report — NO-GO status unverified");
     }
   }
 
