@@ -108,7 +108,7 @@ npm run test:all
 
 ## Updating Bundled Assets
 
-bmalph bundles BMAD-METHOD and Ralph from upstream repositories.
+bmalph bundles BMAD-METHOD from its upstream repository. Ralph is fully owned by bmalph and maintained in-tree.
 
 ### Check for Updates
 
@@ -124,8 +124,8 @@ bmalph check-updates
 npm run update-bundled
 
 # This script:
-# 1. Fetches latest from BMAD-METHOD and Ralph repos
-# 2. Copies relevant files to bmad/ and ralph/
+# 1. Fetches latest from BMAD-METHOD repo
+# 2. Copies relevant files to bmad/
 # 3. Updates version markers
 
 # After updating:
@@ -138,7 +138,6 @@ npm test
 | Source                  | Destination | Contents                            |
 | ----------------------- | ----------- | ----------------------------------- |
 | BMAD-METHOD/bmad-agent/ | bmad/       | Agents, workflows, personas, config |
-| Ralph/                  | ralph/      | Loop script, libs, templates        |
 
 ## Commit Guidelines
 
