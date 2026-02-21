@@ -6,6 +6,7 @@ import { CONFIG_FILE } from "./constants.js";
 import { atomicWriteFile } from "./file-system.js";
 import { warn } from "./logger.js";
 import { formatError } from "./errors.js";
+import type { PlatformId } from "../platform/types.js";
 
 export interface UpstreamVersions {
   bmadCommit: string;
@@ -15,6 +16,7 @@ export interface BmalphConfig {
   name: string;
   description: string;
   createdAt: string;
+  platform?: PlatformId;
   upstreamVersions?: UpstreamVersions;
 }
 

@@ -7,6 +7,17 @@ set -e
 # Configuration
 CLAUDE_CODE_CMD="claude"
 
+# Platform driver support
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+PLATFORM_DRIVER="${PLATFORM_DRIVER:-claude-code}"
+
+# Source platform driver if available
+if [[ -f "$SCRIPT_DIR/drivers/${PLATFORM_DRIVER}.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/drivers/${PLATFORM_DRIVER}.sh"
+    CLAUDE_CODE_CMD="$(driver_cli_binary)"
+fi
+
 # Modern CLI Configuration (Phase 1.1)
 # These flags enable structured JSON output and controlled file operations
 CLAUDE_OUTPUT_FORMAT="json"

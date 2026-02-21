@@ -3,13 +3,14 @@ import inquirer from "inquirer";
 import {
   isInitialized,
   copyBundledAssets,
-  mergeClaudeMd,
+  mergeInstructionsFile,
   previewUpgrade,
   getBundledVersions,
 } from "../installer.js";
 import { readConfig, writeConfig } from "../utils/config.js";
 import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 import { withErrorHandling } from "../utils/errors.js";
+import { resolveProjectPlatform } from "../platform/resolve.js";
 
 interface UpgradeOptions {
   dryRun?: boolean;
@@ -29,9 +30,12 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
     return;
   }
 
+  // Read platform from existing config
+  const platform = await resolveProjectPlatform(projectDir);
+
   // Handle dry-run mode
   if (options.dryRun) {
-    const preview = await previewUpgrade(projectDir);
+    const preview = await previewUpgrade(projectDir, platform);
     const actions: DryRunAction[] = [
       ...preview.wouldUpdate.map((p) => ({ type: "modify" as const, path: p })),
       ...preview.wouldCreate.map((p) => ({ type: "create" as const, path: p })),
@@ -59,10 +63,10 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
     }
   }
 
-  console.log(chalk.blue("Upgrading bundled assets..."));
+  console.log(chalk.blue(`Upgrading bundled assets for ${platform.displayName}...`));
 
-  const result = await copyBundledAssets(projectDir);
-  await mergeClaudeMd(projectDir);
+  const result = await copyBundledAssets(projectDir, platform);
+  await mergeInstructionsFile(projectDir, platform);
 
   // Update upstreamVersions in config to match bundled versions
   const config = await readConfig(projectDir);

@@ -59,6 +59,10 @@ program
   .description("Initialize bmalph in the current project")
   .option("-n, --name <name>", "Project name")
   .option("-d, --description <desc>", "Project description")
+  .option(
+    "--platform <id>",
+    "Target platform (claude-code, codex, cursor, windsurf, copilot, aider)"
+  )
   .option("--dry-run", "Preview changes without writing files")
   .action(async (opts) =>
     initCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })

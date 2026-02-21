@@ -18,6 +18,8 @@ import {
   CONFIG_FILE,
   RALPH_STATUS_FILE,
 } from "../utils/constants.js";
+import { resolveProjectPlatform } from "../platform/resolve.js";
+import type { Platform } from "../platform/types.js";
 
 /**
  * Result of a single doctor check.
@@ -67,10 +69,14 @@ interface DoctorResult {
 export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
   const projectDir = options.projectDir;
 
-  // Run all checks from the registry
-  const results: CheckResult[] = await Promise.all(
-    CHECK_REGISTRY.map((check) => check.run(projectDir))
-  );
+  // Resolve platform for this project
+  const platform = await resolveProjectPlatform(projectDir);
+
+  // Build the check list: core checks + platform-specific checks
+  const checks = buildCheckRegistry(platform);
+
+  // Run all checks
+  const results: CheckResult[] = await Promise.all(checks.map((check) => check.run(projectDir)));
 
   // Output
   const passed = results.filter((r) => r.passed).length;
@@ -128,7 +134,7 @@ async function checkBashAvailable(): Promise<boolean> {
 }
 
 // =============================================================================
-// Check functions - each conforms to CheckFunction signature
+// Core check functions - platform-independent
 // =============================================================================
 
 async function checkNodeVersion(_projectDir: string): Promise<CheckResult> {
@@ -175,14 +181,6 @@ async function checkRalphLib(projectDir: string): Promise<CheckResult> {
   );
 }
 
-async function checkSlashCommand(projectDir: string): Promise<CheckResult> {
-  return checkFileExists(
-    join(projectDir, ".claude/commands/bmalph.md"),
-    ".claude/commands/bmalph.md present",
-    "Run: bmalph init"
-  );
-}
-
 async function checkConfig(projectDir: string): Promise<CheckResult> {
   const label = "bmalph/config.json exists and valid";
   const hint = "Run: bmalph init";
@@ -211,17 +209,6 @@ async function checkDir(dirPath: string, label: string, hint?: string): Promise<
   }
 }
 
-async function checkFileExists(
-  filePath: string,
-  label: string,
-  hint?: string
-): Promise<CheckResult> {
-  if (await exists(filePath)) {
-    return { label, passed: true };
-  }
-  return { label, passed: false, detail: "not found", hint };
-}
-
 async function checkFileHasContent(
   filePath: string,
   label: string,
@@ -233,23 +220,6 @@ async function checkFileHasContent(
   } catch (err) {
     if (isEnoent(err)) {
       return { label, passed: false, detail: "not found", hint };
-    }
-    return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
-  }
-}
-
-async function checkClaudeMd(projectDir: string): Promise<CheckResult> {
-  const label = "CLAUDE.md contains BMAD snippet";
-  const hint = "Run: bmalph init";
-  try {
-    const content = await readFile(join(projectDir, "CLAUDE.md"), "utf-8");
-    if (content.includes("BMAD-METHOD Integration")) {
-      return { label, passed: true };
-    }
-    return { label, passed: false, detail: "missing BMAD-METHOD Integration section", hint };
-  } catch (err) {
-    if (isEnoent(err)) {
-      return { label, passed: false, detail: "CLAUDE.md not found", hint };
     }
     return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
@@ -505,22 +475,25 @@ async function checkUpstreamGitHubStatus(_projectDir: string): Promise<CheckResu
 }
 
 // =============================================================================
-// Check Registry - defines all checks in execution order
+// Check Registry - core checks + platform-specific checks
 // =============================================================================
 
 /**
- * Registry of all doctor checks in execution order.
- * Each check has a unique ID and a run function that takes a project directory.
+ * Core checks that apply to every platform.
  */
-export const CHECK_REGISTRY: CheckDefinition[] = [
+const CORE_CHECKS: CheckDefinition[] = [
   { id: "node-version", run: checkNodeVersion },
   { id: "bash-available", run: checkBash },
   { id: "config-valid", run: checkConfig },
   { id: "bmad-dir", run: checkBmadDir },
   { id: "ralph-loop", run: checkRalphLoop },
   { id: "ralph-lib", run: checkRalphLib },
-  { id: "slash-command", run: checkSlashCommand },
-  { id: "claude-md", run: checkClaudeMd },
+];
+
+/**
+ * Checks that run after platform-specific checks.
+ */
+const TRAILING_CHECKS: CheckDefinition[] = [
   { id: "gitignore", run: checkGitignore },
   { id: "version-marker", run: checkVersionMarker },
   { id: "upstream-versions", run: checkUpstreamVersions },
@@ -529,3 +502,74 @@ export const CHECK_REGISTRY: CheckDefinition[] = [
   { id: "api-calls", run: checkApiCalls },
   { id: "upstream-github", run: checkUpstreamGitHubStatus },
 ];
+
+/**
+ * Build the full check registry for a given platform.
+ * Core checks + platform doctor checks + trailing checks.
+ */
+export function buildCheckRegistry(platform: Platform): CheckDefinition[] {
+  const platformChecks: CheckDefinition[] = platform.getDoctorChecks().map((pc) => ({
+    id: pc.id,
+    run: async (projectDir: string) => {
+      const result = await pc.check(projectDir);
+      return {
+        label: pc.label,
+        passed: result.passed,
+        detail: result.detail,
+        hint: result.hint,
+      };
+    },
+  }));
+
+  return [...CORE_CHECKS, ...platformChecks, ...TRAILING_CHECKS];
+}
+
+/**
+ * Static registry for backward compatibility with existing tests.
+ * Uses claude-code platform checks (slash-command + claude-md).
+ *
+ * Note: The check ids here ("slash-command", "claude-md") intentionally differ
+ * from the live buildCheckRegistry path which uses platform-provided ids
+ * ("instructions-file"). This is for test backward compatibility only.
+ *
+ * @deprecated Use `buildCheckRegistry(platform)` for platform-aware checks.
+ */
+export const CHECK_REGISTRY: CheckDefinition[] = (() => {
+  // Inline claude-code platform checks to avoid async import at module level
+  const slashCommandCheck: CheckDefinition = {
+    id: "slash-command",
+    run: async (projectDir: string) => {
+      if (await exists(join(projectDir, ".claude/commands/bmalph.md"))) {
+        return { label: ".claude/commands/bmalph.md present", passed: true };
+      }
+      return {
+        label: ".claude/commands/bmalph.md present",
+        passed: false,
+        detail: "not found",
+        hint: "Run: bmalph init",
+      };
+    },
+  };
+
+  const claudeMdCheck: CheckDefinition = {
+    id: "claude-md",
+    run: async (projectDir: string) => {
+      const label = "CLAUDE.md contains BMAD snippet";
+      const hint = "Run: bmalph init";
+      try {
+        const content = await readFile(join(projectDir, "CLAUDE.md"), "utf-8");
+        if (content.includes("BMAD-METHOD Integration")) {
+          return { label, passed: true };
+        }
+        return { label, passed: false, detail: "missing BMAD-METHOD Integration section", hint };
+      } catch (err) {
+        if (isEnoent(err)) {
+          return { label, passed: false, detail: "CLAUDE.md not found", hint };
+        }
+        return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
+      }
+    },
+  };
+
+  return [...CORE_CHECKS, slashCommandCheck, claudeMdCheck, ...TRAILING_CHECKS];
+})();

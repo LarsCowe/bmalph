@@ -66,7 +66,8 @@ RALPH_SESSION_HISTORY_FILE="$RALPH_DIR/.ralph_session_history"  # Session transi
 CLAUDE_SESSION_EXPIRY_HOURS=${CLAUDE_SESSION_EXPIRY_HOURS:-24}
 
 # Valid tool patterns for --allowed-tools validation
-# Tools can be exact matches or pattern matches with wildcards in parentheses
+# Default: Claude Code tools. Platform driver overwrites via driver_valid_tools() in main().
+# Validation runs in main() after load_platform_driver so the correct patterns are in effect.
 VALID_TOOL_PATTERNS=(
     "Write"
     "Read"
@@ -97,6 +98,9 @@ TEST_PERCENTAGE_THRESHOLD=30  # If more than 30% of recent loops are test-only, 
 # .ralphrc configuration file
 RALPHRC_FILE=".ralphrc"
 RALPHRC_LOADED=false
+
+# Platform driver (set from .ralphrc or environment)
+PLATFORM_DRIVER="${PLATFORM_DRIVER:-claude-code}"
 
 # load_ralphrc - Load project-specific configuration from .ralphrc
 #
@@ -153,6 +157,26 @@ load_ralphrc() {
 
     RALPHRC_LOADED=true
     return 0
+}
+
+# Source platform driver
+load_platform_driver() {
+    local driver_file="$SCRIPT_DIR/drivers/${PLATFORM_DRIVER}.sh"
+    if [[ ! -f "$driver_file" ]]; then
+        log_status "ERROR" "Platform driver not found: $driver_file"
+        log_status "ERROR" "Available drivers: $(ls "$SCRIPT_DIR/drivers/"*.sh 2>/dev/null | xargs -n1 basename | sed 's/.sh$//' | tr '\n' ' ')"
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$driver_file"
+
+    # Initialize driver-specific tool patterns
+    driver_valid_tools
+
+    # Set CLI binary from driver
+    CLAUDE_CODE_CMD="$(driver_cli_binary)"
+
+    log_status "INFO" "Platform driver: $(driver_display_name) ($(driver_cli_binary))"
 }
 
 # Colors for terminal output
@@ -949,68 +973,11 @@ update_session_last_used() {
 # Global array for Claude command arguments (avoids shell injection)
 declare -a CLAUDE_CMD_ARGS=()
 
-# Build Claude CLI command with modern flags using array (shell-injection safe)
+# Build CLI command with platform driver (shell-injection safe)
+# Delegates to the active platform driver's driver_build_command()
 # Populates global CLAUDE_CMD_ARGS array for direct execution
-# Uses -p flag with prompt content (Claude CLI does not have --prompt-file)
 build_claude_command() {
-    local prompt_file=$1
-    local loop_context=$2
-    local session_id=$3
-
-    # Reset global array
-    # Note: We do NOT use --dangerously-skip-permissions here. Tool permissions
-    # are controlled via --allowedTools from CLAUDE_ALLOWED_TOOLS in .ralphrc.
-    # This preserves the permission denial circuit breaker (Issue #101).
-    CLAUDE_CMD_ARGS=("$CLAUDE_CODE_CMD")
-
-    # Check if prompt file exists
-    if [[ ! -f "$prompt_file" ]]; then
-        log_status "ERROR" "Prompt file not found: $prompt_file"
-        return 1
-    fi
-
-    # Add output format flag
-    if [[ "$CLAUDE_OUTPUT_FORMAT" == "json" ]]; then
-        CLAUDE_CMD_ARGS+=("--output-format" "json")
-    fi
-
-    # Add allowed tools (each tool as separate array element)
-    if [[ -n "$CLAUDE_ALLOWED_TOOLS" ]]; then
-        CLAUDE_CMD_ARGS+=("--allowedTools")
-        # Split by comma and add each tool
-        local IFS=','
-        read -ra tools_array <<< "$CLAUDE_ALLOWED_TOOLS"
-        for tool in "${tools_array[@]}"; do
-            # Trim whitespace
-            tool=$(echo "$tool" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            if [[ -n "$tool" ]]; then
-                CLAUDE_CMD_ARGS+=("$tool")
-            fi
-        done
-    fi
-
-    # Add session continuity flag
-    # IMPORTANT: Use --resume with explicit session ID instead of --continue
-    # --continue resumes the "most recent session in current directory" which
-    # can hijack active Claude Code sessions. --resume with a specific session ID
-    # ensures we only resume Ralph's own sessions. (Issue #151)
-    if [[ "$CLAUDE_USE_CONTINUE" == "true" && -n "$session_id" ]]; then
-        CLAUDE_CMD_ARGS+=("--resume" "$session_id")
-    fi
-    # If no session_id, start fresh - Claude will generate a new session ID
-    # which we'll capture via save_claude_session() for future loops
-
-    # Add loop context as system prompt (no escaping needed - array handles it)
-    if [[ -n "$loop_context" ]]; then
-        CLAUDE_CMD_ARGS+=("--append-system-prompt" "$loop_context")
-    fi
-
-    # Read prompt file content and use -p flag
-    # Note: Claude CLI uses -p for prompts, not --prompt-file (which doesn't exist)
-    # Array-based approach maintains shell injection safety
-    local prompt_content
-    prompt_content=$(cat "$prompt_file")
-    CLAUDE_CMD_ARGS+=("-p" "$prompt_content")
+    driver_build_command "$@"
 }
 
 # Main execution function
@@ -1418,6 +1385,14 @@ main() {
         fi
     fi
 
+    # Load platform driver (after .ralphrc so PLATFORM_DRIVER can be overridden)
+    load_platform_driver
+
+    # Validate --allowed-tools now that platform-specific VALID_TOOL_PATTERNS are loaded
+    if [[ "${_CLI_ALLOWED_TOOLS:-}" == "true" ]] && ! validate_allowed_tools "$CLAUDE_ALLOWED_TOOLS"; then
+        exit 1
+    fi
+
     log_status "SUCCESS" "🚀 Ralph loop starting with Claude Code"
     log_status "INFO" "Max calls per hour: $MAX_CALLS_PER_HOUR"
     log_status "INFO" "Logs: $LOG_DIR/ | Docs: $DOCS_DIR/ | Status: $STATUS_FILE"
@@ -1750,10 +1725,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --allowed-tools)
-            if ! validate_allowed_tools "$2"; then
-                exit 1
-            fi
             CLAUDE_ALLOWED_TOOLS="$2"
+            _CLI_ALLOWED_TOOLS=true
             shift 2
             ;;
         --no-continue)

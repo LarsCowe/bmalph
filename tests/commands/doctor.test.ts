@@ -972,6 +972,41 @@ describe("doctor command", () => {
       expect(result).toHaveProperty("detail");
       expect(result).toHaveProperty("hint");
     });
+
+    it("buildCheckRegistry includes platform-specific checks for codex", async () => {
+      const { buildCheckRegistry } = await import("../../src/commands/doctor.js");
+      const { codexPlatform } = await import("../../src/platform/codex.js");
+
+      const checks = buildCheckRegistry(codexPlatform);
+      const ids = checks.map((c) => c.id);
+
+      // Core checks present
+      expect(ids).toContain("node-version");
+      expect(ids).toContain("config-valid");
+
+      // Codex platform check present
+      expect(ids).toContain("instructions-file");
+
+      // Claude Code-specific checks should NOT be present
+      expect(ids).not.toContain("slash-command");
+      expect(ids).not.toContain("claude-md");
+
+      // Trailing checks still present
+      expect(ids).toContain("gitignore");
+      expect(ids).toContain("circuit-breaker");
+    });
+
+    it("buildCheckRegistry includes platform-specific checks for cursor", async () => {
+      const { buildCheckRegistry } = await import("../../src/commands/doctor.js");
+      const { cursorPlatform } = await import("../../src/platform/cursor.js");
+
+      const checks = buildCheckRegistry(cursorPlatform);
+      const ids = checks.map((c) => c.id);
+
+      expect(ids).toContain("instructions-file");
+      expect(ids).not.toContain("slash-command");
+      expect(ids).not.toContain("claude-md");
+    });
   });
 
   describe("upstream GitHub status check", () => {

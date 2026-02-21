@@ -7,6 +7,13 @@
 # Environment variables override values in this file.
 
 # =============================================================================
+# PLATFORM DRIVER
+# =============================================================================
+
+# Platform driver for Ralph loop (claude-code or codex)
+PLATFORM_DRIVER="${PLATFORM_DRIVER:-claude-code}"
+
+# =============================================================================
 # PROJECT IDENTIFICATION
 # =============================================================================
 

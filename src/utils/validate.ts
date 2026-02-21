@@ -1,6 +1,16 @@
 import type { BmalphConfig, UpstreamVersions } from "./config.js";
 import type { BmalphState } from "./state.js";
+import type { PlatformId } from "../platform/types.js";
 import { MAX_PROJECT_NAME_LENGTH } from "./constants.js";
+
+const VALID_PLATFORM_IDS: readonly string[] = [
+  "claude-code",
+  "codex",
+  "cursor",
+  "windsurf",
+  "copilot",
+  "aider",
+];
 
 const VALID_STATUSES = ["planning", "implementing", "completed"] as const;
 
@@ -64,6 +74,14 @@ export function validateConfig(data: unknown): BmalphConfig {
 
   const description = typeof data.description === "string" ? data.description : "";
 
+  let platform: PlatformId | undefined;
+  if (data.platform !== undefined) {
+    if (typeof data.platform !== "string" || !VALID_PLATFORM_IDS.includes(data.platform)) {
+      throw new Error(`config.platform must be one of: ${VALID_PLATFORM_IDS.join(", ")}`);
+    }
+    platform = data.platform as PlatformId;
+  }
+
   const upstreamVersions =
     data.upstreamVersions !== undefined
       ? validateUpstreamVersions(data.upstreamVersions)
@@ -73,6 +91,7 @@ export function validateConfig(data: unknown): BmalphConfig {
     name: data.name,
     description,
     createdAt: data.createdAt,
+    ...(platform !== undefined && { platform }),
     upstreamVersions,
   };
 }
