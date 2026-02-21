@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/LarsCowe/bmalph/compare/v2.2.1...v2.3.0) (2026-02-21)
+
+
+### Features
+
+* add multi-platform support for six AI coding assistants ([#54](https://github.com/LarsCowe/bmalph/issues/54)) ([864316e](https://github.com/LarsCowe/bmalph/commit/864316ed91aa329110bc0859e886b1cbd25f99e1))
+* **init:** detect existing BMAD installation during init ([42d0047](https://github.com/LarsCowe/bmalph/commit/42d0047573f69484c84eff09fd0098a53332cec6)), closes [#52](https://github.com/LarsCowe/bmalph/issues/52)
+
+
+### Bug Fixes
+
+* prevent data loss in atomic _bmad copy with rename-aside pattern ([b728a58](https://github.com/LarsCowe/bmalph/commit/b728a58c96bd9707a04a7d4009fffe0da2b41bf4))
+* **transition:** handle unreadable new spec file in changelog generation ([2d3cb9e](https://github.com/LarsCowe/bmalph/commit/2d3cb9e36d3bb04848078c416a0852582789319e))
+* **transition:** warn when readiness report is unreadable during NO-GO check ([69fba65](https://github.com/LarsCowe/bmalph/commit/69fba65b53ba80dce3046fc2690fab17343f9fb1))
+
 ## [2.2.1](https://github.com/LarsCowe/bmalph/compare/v2.2.0...v2.2.1) (2026-02-21)
 
 
