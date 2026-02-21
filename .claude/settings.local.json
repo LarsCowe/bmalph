@@ -75,7 +75,10 @@
       "WebFetch(domain:typescript-eslint.io)",
       "Bash(cd:*)",
       "Bash(git:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:aider.chat)",
+      "WebFetch(domain:developers.openai.com)",
+      "Bash(chmod +x:*)"
     ]
   }
 }

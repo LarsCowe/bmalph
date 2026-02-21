@@ -27,11 +27,30 @@ bmalph provides:
 - `bmalph doctor` — Check installation health
 - `/bmalph-implement` — Transition from BMAD to Ralph
 
+## Supported Platforms
+
+bmalph works with multiple AI coding assistants. Each platform gets BMAD planning (Phases 1-3). The Ralph autonomous loop (Phase 4) requires a CLI-based platform.
+
+| Platform       | ID            | Tier              | Instructions File                 | Commands                      |
+| -------------- | ------------- | ----------------- | --------------------------------- | ----------------------------- |
+| Claude Code    | `claude-code` | full              | `CLAUDE.md`                       | `.claude/commands/` directory |
+| OpenAI Codex   | `codex`       | full              | `AGENTS.md`                       | Inline in instructions file   |
+| Cursor         | `cursor`      | instructions-only | `.cursor/rules/bmad.mdc`          | None                          |
+| Windsurf       | `windsurf`    | instructions-only | `.windsurf/rules/bmad.md`         | None                          |
+| GitHub Copilot | `copilot`     | instructions-only | `.github/copilot-instructions.md` | None                          |
+| Aider          | `aider`       | instructions-only | `CONVENTIONS.md`                  | None                          |
+
+**Tiers:**
+
+- **full** — Phases 1-4. BMAD planning + Ralph autonomous implementation loop.
+- **instructions-only** — Phases 1-3. BMAD planning only. Ralph is not available.
+
 ## Prerequisites
 
 - Node.js 20+
 - Bash (WSL or Git Bash on Windows)
-- Claude Code (`claude` in PATH) — needed for Ralph loop
+- A supported AI coding platform (see table above)
+- For Ralph loop (Phase 4): Claude Code (`claude`) or Codex CLI (`codex`) in PATH
 
 ## Installation
 
@@ -44,9 +63,9 @@ npm install -g bmalph
 ```bash
 cd my-project
 bmalph init --name my-project
-# Use /bmalph slash command in Claude Code to navigate phases
-# ... work through BMAD phases 1-3 ...
-# Use /bmalph-implement to transition and start Ralph
+
+# To target a specific platform, add --platform (e.g. codex, cursor, windsurf)
+# Without --platform, bmalph auto-detects or prompts interactively
 ```
 
 ## Workflow
@@ -58,13 +77,15 @@ cd my-project
 bmalph init
 ```
 
+**Platform resolution:** `--platform` flag > auto-detect from project markers > interactive prompt > default `claude-code`
+
 This installs:
 
 - `_bmad/` — BMAD agents and workflows
-- `.ralph/` — Ralph loop, libs, templates
-- `bmalph/` — State management (config.json)
-- Updates `CLAUDE.md` with BMAD workflow instructions
-- Installs slash commands in `.claude/commands/`
+- `.ralph/` — Ralph loop, libs, templates (drivers for claude-code and codex only)
+- `bmalph/` — State management (config.json, stores selected platform)
+- Updates the platform's instructions file with BMAD workflow instructions (e.g. `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/bmad.mdc`)
+- Installs slash commands for supported platforms (Claude Code: `.claude/commands/` directory; Codex: inline in `AGENTS.md`; other platforms: commands not installed)
 
 ### Migrating from standalone BMAD
 
@@ -76,7 +97,7 @@ If you already have BMAD installed (a `_bmad/` directory), `bmalph init` works a
 
 ### Step 2: Plan with BMAD (Phases 1-3)
 
-Work interactively in Claude Code with BMAD agents. Use the `/bmalph` slash command to see your current phase, available commands, and advance phases.
+Work interactively with BMAD agents in your AI coding assistant. On Claude Code, use the `/bmalph` slash command to see your current phase and available commands. On other platforms, ask the agent about BMAD phases or run `bmalph status` in terminal.
 
 | Phase         | Agent            | Commands           |
 | ------------- | ---------------- | ------------------ |
@@ -132,7 +153,9 @@ Available in any phase for supporting tasks:
 
 ### Step 3: Implement with Ralph (Phase 4)
 
-Use the `/bmalph-implement` slash command in Claude Code.
+> **Note:** Ralph is only available on **full** tier platforms (Claude Code, OpenAI Codex). Instructions-only platforms (Cursor, Windsurf, Copilot, Aider) support Phases 1-3 only.
+
+Use the `/bmalph-implement` slash command in Claude Code, or run the transition from the BMAD agents in Codex.
 
 This transitions your BMAD artifacts into Ralph's format:
 
@@ -189,10 +212,11 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ### init options
 
-| Flag                       | Description         | Default        |
-| -------------------------- | ------------------- | -------------- |
-| `-n, --name <name>`        | Project name        | directory name |
-| `-d, --description <desc>` | Project description | (prompted)     |
+| Flag                       | Description                                                                        | Default        |
+| -------------------------- | ---------------------------------------------------------------------------------- | -------------- |
+| `-n, --name <name>`        | Project name                                                                       | directory name |
+| `-d, --description <desc>` | Project description                                                                | (prompted)     |
+| `--platform <id>`          | Target platform (`claude-code`, `codex`, `cursor`, `windsurf`, `copilot`, `aider`) | auto-detect    |
 
 ### upgrade options
 
@@ -203,7 +227,13 @@ BMAD (add Epic 2) → /bmalph-implement → Ralph sees changes + picks up Epic 2
 
 ## Slash Commands
 
-bmalph installs 47 BMAD slash commands. Key commands:
+bmalph installs 47 BMAD slash commands. Command delivery varies by platform:
+
+- **Claude Code** — installed as files in `.claude/commands/` (invoke with `/command-name`)
+- **OpenAI Codex** — inlined in `AGENTS.md` (reference agents by name)
+- **Cursor, Windsurf, Copilot, Aider** — not delivered as slash commands; use agents by name in chat
+
+Key commands (Claude Code syntax):
 
 | Command                 | Description                         |
 | ----------------------- | ----------------------------------- |
@@ -247,12 +277,15 @@ project/
 │   ├── planning-artifacts/    # PRD, architecture, stories
 │   ├── implementation-artifacts/ # Sprint plans (optional)
 │   └── brainstorming/         # Brainstorm sessions (optional)
-├── .ralph/                    # Ralph autonomous loop
+├── .ralph/                    # Ralph autonomous loop (drivers for claude-code and codex only)
 │   ├── ralph_loop.sh          # Main loop script
 │   ├── ralph_import.sh        # Import requirements into Ralph
 │   ├── ralph_monitor.sh       # Monitor loop progress
 │   ├── .ralphrc               # Ralph configuration
 │   ├── RALPH-REFERENCE.md     # Ralph usage reference
+│   ├── drivers/               # Platform driver scripts
+│   │   ├── claude-code.sh     # Claude Code driver (uses `claude`)
+│   │   └── codex.sh           # OpenAI Codex driver (uses `codex exec`)
 │   ├── lib/                   # Circuit breaker, response analyzer
 │   ├── specs/                 # Copied from _bmad-output during transition
 │   ├── logs/                  # Loop execution logs
@@ -262,16 +295,23 @@ project/
 │   ├── @AGENT.md              # Agent build instructions
 │   └── @fix_plan.md           # Generated task list (after /bmalph-implement)
 ├── bmalph/                    # State management
-│   ├── config.json            # Project config (name, description)
+│   ├── config.json            # Project config (name, description, platform)
 │   └── state/                 # Phase tracking data
-├── .claude/
-│   └── commands/              # Slash commands for Claude Code
-└── CLAUDE.md                  # Updated with BMAD instructions
+├── .claude/                   # Claude Code specific
+│   └── commands/              # Slash commands (claude-code only)
+└── <instructions file>        # Varies by platform (see Supported Platforms)
 ```
+
+The instructions file and command directory depend on the configured platform. See the [Supported Platforms](#supported-platforms) table for details.
 
 ## How Ralph Works
 
-Ralph is a bash loop that spawns fresh Claude Code instances:
+Ralph is a bash loop that spawns fresh AI coding sessions using a **platform driver** matching the configured platform:
+
+- **Claude Code driver** — invokes `claude` with `--allowedTools` and session resume
+- **Codex driver** — invokes `codex exec` with `--sandbox workspace-write`
+
+Each iteration:
 
 1. Pick the next unchecked story from `@fix_plan.md`
 2. Implement with TDD (tests first, then code)
@@ -321,12 +361,14 @@ ls -la .ralph/
 
 ### Common Issues
 
-| Scenario                     | Solution                                                  |
-| ---------------------------- | --------------------------------------------------------- |
-| Commands fail before init    | Run `bmalph init` first                                   |
-| Transition finds no stories  | Create stories in Phase 3 with `/create-epics-stories`    |
-| Ralph stops mid-loop         | Circuit breaker detected stagnation. Check `.ralph/logs/` |
-| Doctor reports version drift | Run `bmalph upgrade` to update bundled assets             |
+| Scenario                      | Solution                                                       |
+| ----------------------------- | -------------------------------------------------------------- |
+| Commands fail before init     | Run `bmalph init` first                                        |
+| Transition finds no stories   | Create stories in Phase 3 with `/create-epics-stories`         |
+| Ralph stops mid-loop          | Circuit breaker detected stagnation. Check `.ralph/logs/`      |
+| Doctor reports version drift  | Run `bmalph upgrade` to update bundled assets                  |
+| Wrong platform detected       | Re-run `bmalph init --platform <id>` with the correct platform |
+| Ralph unavailable on platform | Ralph requires a full tier platform (claude-code or codex)     |
 
 ### Reset Installation
 
@@ -334,8 +376,16 @@ If something goes wrong, you can manually reset:
 
 ```bash
 # Remove bmalph directories (preserves your project code)
-rm -rf _bmad .ralph bmalph .claude/commands/
-# Note: manually remove the bmalph section from CLAUDE.md and .gitignore entries
+rm -rf _bmad .ralph bmalph
+
+# Also remove platform-specific files:
+# Claude Code:  rm -rf .claude/commands/  and remove bmalph section from CLAUDE.md
+# Codex:        remove bmalph sections from AGENTS.md
+# Cursor:       rm .cursor/rules/bmad.mdc
+# Windsurf:     rm .windsurf/rules/bmad.md
+# Copilot:      remove bmalph sections from .github/copilot-instructions.md
+# Aider:        remove bmalph sections from CONVENTIONS.md
+# See the Supported Platforms table for your platform's files.
 
 # Reinitialize
 bmalph init
@@ -346,11 +396,16 @@ bmalph init
 ### Initialize a new project
 
 ```bash
-# Interactive mode (prompts for name/description)
+# Interactive mode (prompts for name/description, auto-detects platform)
 bmalph init
 
 # Non-interactive mode
 bmalph init --name my-app --description "My awesome app"
+
+# Specify platform explicitly
+bmalph init --name my-app --platform codex
+bmalph init --name my-app --platform cursor
+bmalph init --name my-app --platform windsurf
 
 # Preview what would be created
 bmalph init --dry-run
@@ -378,6 +433,8 @@ bmalph upgrade --dry-run
 
 ### After init: Next steps
 
+**Claude Code:**
+
 ```bash
 # 1. Open Claude Code in your project
 claude
@@ -394,6 +451,22 @@ claude
 #    Use /bmalph-implement to generate @fix_plan.md
 
 # 5. Start autonomous implementation
+bash .ralph/ralph_loop.sh
+```
+
+**Other platforms:**
+
+```bash
+# 1. Open your project in your AI coding assistant
+
+# 2. Ask the agent about BMAD phases to start planning
+#    Or check status from terminal: bmalph status
+
+# 3. Reference BMAD agents by name (analyst, pm, architect)
+#    Follow phases: Analysis → Planning → Solutioning
+
+# 4. For full tier platforms (Codex), transition via BMAD agents
+#    then start Ralph:
 bash .ralph/ralph_loop.sh
 ```
 

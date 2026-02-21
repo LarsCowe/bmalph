@@ -35,6 +35,18 @@ bmalph/
 │   │   ├── doctor.ts       # bmalph doctor
 │   │   ├── check-updates.ts # bmalph check-updates
 │   │   └── status.ts       # bmalph status
+│   ├── platform/           # Platform abstraction layer
+│   │   ├── types.ts        # PlatformId, PlatformTier, CommandDelivery types
+│   │   ├── registry.ts     # Platform registry (get, list, validate)
+│   │   ├── detect.ts       # Auto-detect platform from project markers
+│   │   ├── resolve.ts      # Resolve platform from config with fallback
+│   │   ├── claude-code.ts  # Claude Code platform definition
+│   │   ├── codex.ts        # OpenAI Codex platform definition
+│   │   ├── cursor.ts       # Cursor platform definition
+│   │   ├── windsurf.ts     # Windsurf platform definition
+│   │   ├── copilot.ts      # GitHub Copilot platform definition
+│   │   ├── aider.ts        # Aider platform definition
+│   │   └── index.ts        # Module barrel export
 │   ├── transition/         # Transition logic modules
 │   │   ├── orchestration.ts # Main transition orchestrator
 │   │   ├── story-parsing.ts # Parse BMAD stories
@@ -58,12 +70,14 @@ bmalph/
 │       └── file-system.ts  # Atomic file writes, exists helper
 ├── tests/                  # Test files (mirrors src/ structure)
 │   ├── commands/           # Command unit tests
+│   ├── platform/           # Platform unit tests
 │   ├── utils/              # Utility unit tests
 │   ├── transition/         # Transition unit tests
 │   ├── integration/        # Integration tests
 │   └── e2e/                # End-to-end tests
 ├── bmad/                   # Bundled BMAD-METHOD assets
 ├── ralph/                  # Bundled Ralph assets
+│   └── drivers/            # Platform driver scripts (claude-code.sh, codex.sh)
 ├── slash-commands/         # bmalph slash commands
 ├── bin/                    # CLI entry point
 └── dist/                   # Compiled JavaScript (generated)

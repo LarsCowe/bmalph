@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" font-family="'Segoe UI', 'Helvetica Neue', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" font-family="'Segoe UI', 'Helvetica Neue', sans-serif">
   <defs>
     <linearGradient id="phase1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#6366f1" />
@@ -26,17 +26,17 @@
   </defs>
 
   <!-- Background -->
-  <rect width="960" height="580" fill="#f8fafc" rx="12"/>
+  <rect width="960" height="660" fill="#f8fafc" rx="12"/>
 
   <!-- Dot grid -->
   <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
     <circle cx="12" cy="12" r="0.6" fill="#cbd5e1" opacity="0.5"/>
   </pattern>
-  <rect width="960" height="580" fill="url(#dots)" rx="12"/>
+  <rect width="960" height="660" fill="url(#dots)" rx="12"/>
 
   <!-- Title -->
   <text x="480" y="48" text-anchor="middle" fill="#1e293b" font-size="26" font-weight="700" letter-spacing="0.3">Bmalph</text>
-  <text x="480" y="72" text-anchor="middle" fill="#64748b" font-size="13" letter-spacing="0.3">BMAD Planning + Ralph Implementation for Claude Code</text>
+  <text x="480" y="72" text-anchor="middle" fill="#64748b" font-size="13" letter-spacing="0.3">BMAD Planning + Ralph Implementation · Multi-Platform</text>
 
   <!-- ==================== BMAD BRACKET ==================== -->
   <text x="275" y="108" text-anchor="middle" fill="#64748b" font-size="10" font-weight="600" letter-spacing="1.5">BMAD-METHOD</text>
@@ -156,7 +156,7 @@
 
   <rect x="752" y="178" width="152" height="24" rx="5" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="0.5"/>
   <circle cx="766" cy="190" r="4" fill="#10b981" opacity="0.6"/>
-  <text x="776" y="194" fill="#047857" font-size="10" font-weight="600">Ralph Loop (bash)</text>
+  <text x="776" y="194" fill="#047857" font-size="10" font-weight="600">Ralph Loop (claude / codex)</text>
 
   <!-- Ralph cycle -->
   <text x="752" y="222" fill="#64748b" font-size="9">1. Pick next story</text>
@@ -218,9 +218,31 @@
     <rect x="120" y="480" width="720" height="56" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
   </g>
   <text x="140" y="504" fill="#6366f1" font-size="11" font-weight="600" font-family="'Fira Code', 'SF Mono', monospace">$</text>
-  <text x="158" y="504" fill="#1e293b" font-size="11" font-family="'Fira Code', 'SF Mono', monospace">npm install -g bmalph &amp;&amp; bmalph init &amp;&amp; claude</text>
-  <text x="140" y="524" fill="#94a3b8" font-size="9">Use /bmalph in Claude Code to navigate phases, /bmalph-implement to start Ralph</text>
+  <text x="158" y="504" fill="#1e293b" font-size="11" font-family="'Fira Code', 'SF Mono', monospace">npm install -g bmalph &amp;&amp; bmalph init --platform &lt;id&gt;</text>
+  <text x="140" y="524" fill="#94a3b8" font-size="9">Platforms: claude-code · codex · cursor · windsurf · copilot · aider  —  omit flag for auto-detect</text>
+
+  <!-- ==================== PLATFORM TIERS ==================== -->
+  <g filter="url(#softShadow)">
+    <rect x="120" y="550" width="720" height="62" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  </g>
+  <text x="140" y="572" fill="#475569" font-size="10" font-weight="600">Supported platforms:</text>
+
+  <!-- Full tier badge -->
+  <rect x="270" y="560" width="12" height="12" rx="2" fill="#10b981"/>
+  <text x="288" y="570" fill="#1e293b" font-size="9" font-weight="600">Full  (Phases 1-4)</text>
+  <text x="288" y="582" fill="#64748b" font-size="8">claude-code · codex</text>
+
+  <!-- Divider -->
+  <line x1="430" y1="558" x2="430" y2="604" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Instructions-only badge -->
+  <rect x="445" y="560" width="12" height="12" rx="2" fill="#94a3b8"/>
+  <text x="463" y="570" fill="#1e293b" font-size="9" font-weight="600">Instructions-only  (Phases 1-3)</text>
+  <text x="463" y="582" fill="#64748b" font-size="8">cursor · windsurf · copilot · aider</text>
+
+  <!-- Note -->
+  <text x="480" y="600" text-anchor="middle" fill="#94a3b8" font-size="8">Ralph autonomous loop (Phase 4) requires a CLI-based full-tier platform</text>
 
   <!-- Footer -->
-  <text x="480" y="566" text-anchor="middle" fill="#94a3b8" font-size="10">github.com/LarsCowe/bmalph</text>
+  <text x="480" y="648" text-anchor="middle" fill="#94a3b8" font-size="10">github.com/LarsCowe/bmalph</text>
 </svg>

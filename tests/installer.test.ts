@@ -3,6 +3,7 @@ import {
   installProject,
   copyBundledAssets,
   mergeClaudeMd,
+  mergeInstructionsFile,
   isInitialized,
   previewInstall,
   previewUpgrade,
@@ -906,6 +907,54 @@ Old stale content with /tea agent reference.
       // Should have exactly one integration section
       const matches = content.match(/## BMAD-METHOD Integration/g);
       expect(matches).toHaveLength(1);
+    });
+  });
+
+  describe("mergeInstructionsFile with non-claude-code platforms", () => {
+    it("creates AGENTS.md for codex platform", async () => {
+      const { codexPlatform } = await import("../src/platform/codex.js");
+      await mergeInstructionsFile(testDir, codexPlatform);
+      const content = await readFile(join(testDir, "AGENTS.md"), "utf-8");
+      expect(content).toContain("## BMAD-METHOD Integration");
+    });
+
+    it("codex snippet does not contain slash command syntax", async () => {
+      const { codexPlatform } = await import("../src/platform/codex.js");
+      await mergeInstructionsFile(testDir, codexPlatform);
+      const content = await readFile(join(testDir, "AGENTS.md"), "utf-8");
+      expect(content).not.toMatch(/\/bmalph\b/);
+      expect(content).not.toMatch(/\/analyst\b/);
+    });
+
+    it("creates CONVENTIONS.md for aider platform", async () => {
+      const { aiderPlatform } = await import("../src/platform/aider.js");
+      await mergeInstructionsFile(testDir, aiderPlatform);
+      const content = await readFile(join(testDir, "CONVENTIONS.md"), "utf-8");
+      expect(content).toContain("## BMAD-METHOD Integration");
+    });
+
+    it("does not create CLAUDE.md for codex platform", async () => {
+      const { codexPlatform } = await import("../src/platform/codex.js");
+      await mergeInstructionsFile(testDir, codexPlatform);
+      await expect(readFile(join(testDir, "CLAUDE.md"), "utf-8")).rejects.toThrow();
+    });
+
+    it("does not duplicate on second run for codex", async () => {
+      const { codexPlatform } = await import("../src/platform/codex.js");
+      await mergeInstructionsFile(testDir, codexPlatform);
+      await mergeInstructionsFile(testDir, codexPlatform);
+      const content = await readFile(join(testDir, "AGENTS.md"), "utf-8");
+      const matches = content.match(/## BMAD-METHOD Integration/g);
+      expect(matches).toHaveLength(1);
+    });
+
+    it("appends to existing AGENTS.md for codex", async () => {
+      await writeFile(join(testDir, "AGENTS.md"), "# My Agents\n\nExisting content.\n");
+      const { codexPlatform } = await import("../src/platform/codex.js");
+      await mergeInstructionsFile(testDir, codexPlatform);
+      const content = await readFile(join(testDir, "AGENTS.md"), "utf-8");
+      expect(content).toContain("# My Agents");
+      expect(content).toContain("## BMAD-METHOD Integration");
     });
   });
 

@@ -11,6 +11,7 @@ vi.mock("inquirer", () => ({
 vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
   copyBundledAssets: vi.fn(),
+  mergeInstructionsFile: vi.fn(),
   mergeClaudeMd: vi.fn(),
   previewUpgrade: vi.fn(),
   getBundledVersions: vi.fn(),
@@ -19,6 +20,24 @@ vi.mock("../../src/installer.js", () => ({
 vi.mock("../../src/utils/config.js", () => ({
   readConfig: vi.fn(),
   writeConfig: vi.fn(),
+}));
+
+vi.mock("../../src/platform/registry.js", () => ({
+  getPlatform: vi.fn((id: string) => ({
+    id,
+    displayName: id === "claude-code" ? "Claude Code" : id === "codex" ? "OpenAI Codex" : id,
+    tier: id === "claude-code" || id === "codex" ? "full" : "instructions-only",
+    instructionsFile: id === "claude-code" ? "CLAUDE.md" : "AGENTS.md",
+    commandDelivery:
+      id === "claude-code"
+        ? { kind: "directory", dir: ".claude/commands" }
+        : id === "codex"
+          ? { kind: "inline" }
+          : { kind: "none" },
+    instructionsSectionMarker: "## BMAD-METHOD Integration",
+    generateInstructionsSnippet: () => "## BMAD-METHOD Integration\n\nSnippet content",
+    getDoctorChecks: () => [],
+  })),
 }));
 
 describe("upgrade command", () => {
@@ -73,44 +92,44 @@ describe("upgrade command", () => {
   });
 
   describe("when initialized", () => {
-    it("calls copyBundledAssets", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+    it("calls copyBundledAssets with platform", async () => {
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/", ".ralph/ralph_loop.sh"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
 
-      expect(copyBundledAssets).toHaveBeenCalled();
+      expect(copyBundledAssets).toHaveBeenCalledWith(expect.any(String), expect.any(Object));
     });
 
-    it("calls mergeClaudeMd", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+    it("calls mergeInstructionsFile", async () => {
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
 
-      expect(mergeClaudeMd).toHaveBeenCalled();
+      expect(mergeInstructionsFile).toHaveBeenCalled();
     });
 
     it("displays upgrading message", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
@@ -119,13 +138,13 @@ describe("upgrade command", () => {
     });
 
     it("displays updated paths", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/", ".ralph/ralph_loop.sh", ".claude/commands/"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
@@ -137,13 +156,13 @@ describe("upgrade command", () => {
     });
 
     it("displays preserved paths", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
@@ -159,13 +178,13 @@ describe("upgrade command", () => {
     });
 
     it("displays completion message", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
@@ -174,13 +193,13 @@ describe("upgrade command", () => {
     });
 
     it("updates upstreamVersions in config after upgrade", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd, getBundledVersions } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile, getBundledVersions } =
         await import("../../src/installer.js");
       const { readConfig, writeConfig } = await import("../../src/utils/config.js");
 
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
       vi.mocked(getBundledVersions).mockReturnValue({
         bmadCommit: "abc12345",
       });
@@ -204,13 +223,13 @@ describe("upgrade command", () => {
     });
 
     it("preserves existing config fields when updating upstreamVersions", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd, getBundledVersions } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile, getBundledVersions } =
         await import("../../src/installer.js");
       const { readConfig, writeConfig } = await import("../../src/utils/config.js");
 
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
       vi.mocked(getBundledVersions).mockReturnValue({
         bmadCommit: "abc12345",
       });
@@ -236,13 +255,13 @@ describe("upgrade command", () => {
     });
 
     it("skips config update when config cannot be read", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       const { readConfig, writeConfig } = await import("../../src/utils/config.js");
 
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
       vi.mocked(readConfig).mockResolvedValue(null);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
@@ -252,22 +271,67 @@ describe("upgrade command", () => {
     });
   });
 
+  describe("platform resolution from config", () => {
+    it("uses platform from config when available", async () => {
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
+        await import("../../src/installer.js");
+      const { readConfig } = await import("../../src/utils/config.js");
+      const { getPlatform } = await import("../../src/platform/registry.js");
+
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "codex-project",
+        description: "A codex project",
+        createdAt: "2025-06-15T10:30:00.000Z",
+        platform: "codex",
+      });
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true, projectDir: process.cwd() });
+
+      expect(getPlatform).toHaveBeenCalledWith("codex");
+    });
+
+    it("defaults to claude-code when config has no platform", async () => {
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
+        await import("../../src/installer.js");
+      const { readConfig } = await import("../../src/utils/config.js");
+      const { getPlatform } = await import("../../src/platform/registry.js");
+
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "legacy-project",
+        description: "A legacy project",
+        createdAt: "2025-01-01T00:00:00.000Z",
+      });
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true, projectDir: process.cwd() });
+
+      expect(getPlatform).toHaveBeenCalledWith("claude-code");
+    });
+  });
+
   describe("projectDir option", () => {
     it("uses projectDir instead of process.cwd() when provided", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({
         updatedPaths: ["_bmad/"],
       });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ projectDir: "/custom/path", force: true });
 
       expect(isInitialized).toHaveBeenCalledWith("/custom/path");
-      expect(copyBundledAssets).toHaveBeenCalledWith("/custom/path");
-      expect(mergeClaudeMd).toHaveBeenCalledWith("/custom/path");
+      expect(copyBundledAssets).toHaveBeenCalledWith("/custom/path", expect.any(Object));
+      expect(mergeInstructionsFile).toHaveBeenCalledWith("/custom/path", expect.any(Object));
     });
   });
 
@@ -310,12 +374,12 @@ describe("upgrade command", () => {
     });
 
     it("shows confirmation prompt without --force", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       const inquirer = await import("inquirer");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
       vi.mocked(inquirer.default.prompt).mockResolvedValue({ confirm: true });
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
@@ -325,12 +389,12 @@ describe("upgrade command", () => {
     });
 
     it("skips prompt with --force", async () => {
-      const { isInitialized, copyBundledAssets, mergeClaudeMd } =
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
       const inquirer = await import("inquirer");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
-      vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
@@ -360,6 +424,7 @@ describe("upgrade command", () => {
       vi.mocked(previewUpgrade).mockResolvedValue({
         wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],
         wouldCreate: [],
+        wouldPreserve: [],
       });
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
@@ -374,6 +439,7 @@ describe("upgrade command", () => {
       vi.mocked(previewUpgrade).mockResolvedValue({
         wouldUpdate: ["_bmad/", ".ralph/ralph_loop.sh"],
         wouldCreate: [],
+        wouldPreserve: [],
       });
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
