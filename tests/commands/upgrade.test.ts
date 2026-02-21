@@ -183,13 +183,12 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
       vi.mocked(getBundledVersions).mockReturnValue({
         bmadCommit: "abc12345",
-        ralphCommit: "def67890",
       });
       vi.mocked(readConfig).mockResolvedValue({
         name: "test-project",
         description: "A test project",
         createdAt: "2024-01-01T00:00:00.000Z",
-        upstreamVersions: { bmadCommit: "old11111", ralphCommit: "old22222" },
+        upstreamVersions: { bmadCommit: "old11111" },
       });
       vi.mocked(writeConfig).mockResolvedValue(undefined);
 
@@ -199,7 +198,7 @@ describe("upgrade command", () => {
       expect(writeConfig).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          upstreamVersions: { bmadCommit: "abc12345", ralphCommit: "def67890" },
+          upstreamVersions: { bmadCommit: "abc12345" },
         })
       );
     });
@@ -214,13 +213,12 @@ describe("upgrade command", () => {
       vi.mocked(mergeClaudeMd).mockResolvedValue(undefined);
       vi.mocked(getBundledVersions).mockReturnValue({
         bmadCommit: "abc12345",
-        ralphCommit: "def67890",
       });
       vi.mocked(readConfig).mockResolvedValue({
         name: "my-app",
         description: "My application",
         createdAt: "2025-06-15T10:30:00.000Z",
-        upstreamVersions: { bmadCommit: "old11111", ralphCommit: "old22222" },
+        upstreamVersions: { bmadCommit: "old11111" },
       });
       vi.mocked(writeConfig).mockResolvedValue(undefined);
 

@@ -161,7 +161,6 @@ describe("github utilities", () => {
   describe("checkUpstream", () => {
     const bundled: BundledVersions = {
       bmadCommit: "48881f86",
-      ralphCommit: "019b8c73",
     };
 
     describe("SHA comparison accuracy", () => {
@@ -170,145 +169,88 @@ describe("github utilities", () => {
         // bundled="abc1" is a prefix of latest="abc12345", but they're different commits!
         const shortBundled: BundledVersions = {
           bmadCommit: "abc1",
-          ralphCommit: "def1",
         };
 
-        global.fetch = vi
-          .fn()
-          .mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                sha: "abc12345abcdef12", // shortSha = "abc12345"
-                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
-              }),
-          })
-          .mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                sha: "def12345abcdef12", // shortSha = "def12345"
-                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
-              }),
-          });
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: "abc12345abcdef12", // shortSha = "abc12345"
+              commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
+            }),
+        });
 
         const result = await checkUpstream(shortBundled);
 
-        // These should be OUTDATED, not up-to-date
+        // Should be OUTDATED, not up-to-date
         expect(result.bmad?.isUpToDate).toBe(false);
-        expect(result.ralph?.isUpToDate).toBe(false);
       });
 
       it("reports outdated when latest is prefix of bundled", async () => {
-        // Another edge case: what if somehow bundled is longer?
         const longBundled: BundledVersions = {
           bmadCommit: "abc12345",
-          ralphCommit: "def12345",
         };
 
-        global.fetch = vi
-          .fn()
-          .mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                sha: "abc1xxxxabcdef12", // shortSha = "abc1xxxx" - different!
-                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
-              }),
-          })
-          .mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                sha: "def1xxxxabcdef12", // shortSha = "def1xxxx" - different!
-                commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
-              }),
-          });
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: "abc1xxxxabcdef12", // shortSha = "abc1xxxx" - different!
+              commit: { message: "new commit", author: { date: "2024-01-15T10:30:00Z" } },
+            }),
+        });
 
         const result = await checkUpstream(longBundled);
 
         expect(result.bmad?.isUpToDate).toBe(false);
-        expect(result.ralph?.isUpToDate).toBe(false);
       });
 
       it("reports up-to-date only when SHAs match exactly", async () => {
         const exactBundled: BundledVersions = {
           bmadCommit: "abc12345",
-          ralphCommit: "def12345",
         };
 
-        global.fetch = vi
-          .fn()
-          .mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                sha: "abc12345abcdef12", // shortSha = "abc12345" - exact match!
-                commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
-              }),
-          })
-          .mockResolvedValueOnce({
-            ok: true,
-            status: 200,
-            json: () =>
-              Promise.resolve({
-                sha: "def12345abcdef12", // shortSha = "def12345" - exact match!
-                commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
-              }),
-          });
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              sha: "abc12345abcdef12", // shortSha = "abc12345" - exact match!
+              commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
+            }),
+        });
 
         const result = await checkUpstream(exactBundled);
 
         expect(result.bmad?.isUpToDate).toBe(true);
-        expect(result.ralph?.isUpToDate).toBe(true);
       });
     });
 
-    it("checks both repos and returns combined result", async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              sha: "48881f86abcdef12",
-              commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              sha: "abc12345newcommit",
-              commit: { message: "new ralph", author: { date: "2024-01-16T10:30:00Z" } },
-            }),
-        });
+    it("checks BMAD repo and returns result", async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            sha: "48881f86abcdef12",
+            commit: { message: "same commit", author: { date: "2024-01-15T10:30:00Z" } },
+          }),
+      });
 
       const result = await checkUpstream(bundled);
 
       expect(result.bmad).not.toBeNull();
-      expect(result.ralph).not.toBeNull();
       expect(result.errors).toHaveLength(0);
 
       if (result.bmad) {
         expect(result.bmad.isUpToDate).toBe(true);
         expect(result.bmad.bundledSha).toBe("48881f86");
       }
-      if (result.ralph) {
-        expect(result.ralph.isUpToDate).toBe(false);
-        expect(result.ralph.bundledSha).toBe("019b8c73");
-        expect(result.ralph.latestSha).toBe("abc12345");
-      }
     });
 
-    it("generates correct compare URLs", async () => {
+    it("generates correct compare URL", async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
@@ -326,44 +268,17 @@ describe("github utilities", () => {
           "https://github.com/bmad-code-org/BMAD-METHOD/compare/48881f86...newcommi"
         );
       }
-      if (result.ralph) {
-        expect(result.ralph.compareUrl).toBe(
-          "https://github.com/snarktank/ralph/compare/019b8c73...newcommi"
-        );
-      }
     });
 
-    it("handles partial failures gracefully", async () => {
-      global.fetch = vi
-        .fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              sha: "48881f86abcdef12",
-              commit: { message: "bmad ok", author: { date: "2024-01-15T10:30:00Z" } },
-            }),
-        })
-        .mockRejectedValueOnce(new Error("Network error for Ralph"));
-
-      const result = await checkUpstream(bundled);
-
-      expect(result.bmad).not.toBeNull();
-      expect(result.ralph).toBeNull();
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].repo).toBe("ralph");
-      expect(result.errors[0].type).toBe("network");
-    });
-
-    it("handles all failures gracefully", async () => {
+    it("handles failure gracefully", async () => {
       global.fetch = vi.fn().mockRejectedValue(new Error("Offline"));
 
       const result = await checkUpstream(bundled);
 
       expect(result.bmad).toBeNull();
-      expect(result.ralph).toBeNull();
-      expect(result.errors).toHaveLength(2);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].repo).toBe("bmad");
+      expect(result.errors[0].type).toBe("network");
     });
   });
 
@@ -574,18 +489,17 @@ describe("GitHubClient class", () => {
 
       const bundled: BundledVersions = {
         bmadCommit: "abc123de",
-        ralphCommit: "abc123de",
       };
 
       const client = new GitHubClient();
 
       // First call
       await client.checkUpstream(bundled);
-      expect(global.fetch).toHaveBeenCalledTimes(2); // BMAD + Ralph
+      expect(global.fetch).toHaveBeenCalledTimes(1); // BMAD only
 
       // Second call should use cache
       await client.checkUpstream(bundled);
-      expect(global.fetch).toHaveBeenCalledTimes(2); // No additional calls
+      expect(global.fetch).toHaveBeenCalledTimes(1); // No additional calls
     });
   });
 

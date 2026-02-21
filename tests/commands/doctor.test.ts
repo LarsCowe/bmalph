@@ -16,9 +16,8 @@ vi.mock("fs/promises", async (importOriginal) => {
   };
 });
 
-// Test versions for upstream version tracking
+// Test version for upstream version tracking
 const TEST_BMAD_COMMIT = "test1234";
-const TEST_RALPH_COMMIT = "test5678";
 
 vi.mock("../../src/installer.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/installer.js")>();
@@ -26,7 +25,6 @@ vi.mock("../../src/installer.js", async (importOriginal) => {
     ...actual,
     getBundledVersions: vi.fn(() => ({
       bmadCommit: TEST_BMAD_COMMIT,
-      ralphCommit: TEST_RALPH_COMMIT,
     })),
   };
 });
@@ -75,7 +73,6 @@ describe("doctor command", () => {
         createdAt: "2025-01-01T00:00:00.000Z",
         upstreamVersions: {
           bmadCommit: TEST_BMAD_COMMIT,
-          ralphCommit: TEST_RALPH_COMMIT,
         },
       })
     );
@@ -514,7 +511,6 @@ describe("doctor command", () => {
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
         bmad: null,
-        ralph: null,
         errors: [{ type: "network", message: "offline", repo: "bmad" }],
       });
 
@@ -542,12 +538,6 @@ describe("doctor command", () => {
           isUpToDate: true,
           compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
         },
-        ralph: {
-          bundledSha: TEST_RALPH_COMMIT,
-          latestSha: TEST_RALPH_COMMIT,
-          isUpToDate: true,
-          compareUrl: "https://github.com/snarktank/ralph/compare/...",
-        },
         errors: [],
       });
 
@@ -563,7 +553,6 @@ describe("doctor command", () => {
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
         bmad: null,
-        ralph: null,
         errors: [{ type: "network", message: "offline", repo: "bmad" }],
       });
 
@@ -986,7 +975,7 @@ describe("doctor command", () => {
   });
 
   describe("upstream GitHub status check", () => {
-    it("shows status when both repos are up to date", async () => {
+    it("shows status when BMAD is up to date", async () => {
       await setupFullProject();
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
@@ -995,12 +984,6 @@ describe("doctor command", () => {
           latestSha: TEST_BMAD_COMMIT,
           isUpToDate: true,
           compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
-        },
-        ralph: {
-          bundledSha: TEST_RALPH_COMMIT,
-          latestSha: TEST_RALPH_COMMIT,
-          isUpToDate: true,
-          compareUrl: "https://github.com/snarktank/ralph/compare/...",
         },
         errors: [],
       });
@@ -1013,21 +996,15 @@ describe("doctor command", () => {
       expect(output).toContain("up to date");
     });
 
-    it("shows warning when repos have updates", async () => {
+    it("shows warning when BMAD has updates", async () => {
       await setupFullProject();
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
         bmad: {
           bundledSha: TEST_BMAD_COMMIT,
-          latestSha: TEST_BMAD_COMMIT,
-          isUpToDate: true,
-          compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
-        },
-        ralph: {
-          bundledSha: TEST_RALPH_COMMIT,
-          latestSha: "newralph",
+          latestSha: "newbmad1",
           isUpToDate: false,
-          compareUrl: "https://github.com/snarktank/ralph/compare/...",
+          compareUrl: "https://github.com/bmad-code-org/BMAD-METHOD/compare/...",
         },
         errors: [],
       });
@@ -1045,11 +1022,7 @@ describe("doctor command", () => {
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
         bmad: null,
-        ralph: null,
-        errors: [
-          { type: "network", message: "Network error", repo: "bmad" },
-          { type: "network", message: "Network error", repo: "ralph" },
-        ],
+        errors: [{ type: "network", message: "Network error", repo: "bmad" }],
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -1066,11 +1039,7 @@ describe("doctor command", () => {
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
         bmad: null,
-        ralph: null,
-        errors: [
-          { type: "rate-limit", message: "Rate limited", repo: "bmad" },
-          { type: "rate-limit", message: "Rate limited", repo: "ralph" },
-        ],
+        errors: [{ type: "rate-limit", message: "Rate limited", repo: "bmad" }],
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");
@@ -1087,11 +1056,7 @@ describe("doctor command", () => {
       const { checkUpstream } = await import("../../src/utils/github.js");
       vi.mocked(checkUpstream).mockResolvedValue({
         bmad: null,
-        ralph: null,
-        errors: [
-          { type: "network", message: "Network error", repo: "bmad" },
-          { type: "network", message: "Network error", repo: "ralph" },
-        ],
+        errors: [{ type: "network", message: "Network error", repo: "bmad" }],
       });
 
       const { doctorCommand } = await import("../../src/commands/doctor.js");

@@ -9,7 +9,6 @@ import { formatError } from "./errors.js";
 
 export interface UpstreamVersions {
   bmadCommit: string;
-  ralphCommit: string;
 }
 
 export interface BmalphConfig {

@@ -83,7 +83,7 @@ program
 
 program
   .command("check-updates")
-  .description("Check if bundled BMAD/Ralph versions are up to date with upstream")
+  .description("Check if bundled BMAD version is up to date with upstream")
   .option("--json", "Output as JSON")
   .action(checkUpdatesCommand);
 

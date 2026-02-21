@@ -46,13 +46,8 @@ function validateUpstreamVersions(data: unknown): UpstreamVersions {
     throw new Error("upstreamVersions.bmadCommit must be a string");
   }
 
-  if (typeof data.ralphCommit !== "string") {
-    throw new Error("upstreamVersions.ralphCommit must be a string");
-  }
-
   return {
     bmadCommit: data.bmadCommit,
-    ralphCommit: data.ralphCommit,
   };
 }
 

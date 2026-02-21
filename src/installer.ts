@@ -22,23 +22,17 @@ export function getPackageVersion(): string {
 
 export interface BundledVersions {
   bmadCommit: string;
-  ralphCommit: string;
 }
 
 export function getBundledVersions(): BundledVersions {
   const versionsPath = join(__dirname, "..", "bundled-versions.json");
   try {
     const versions = JSON.parse(readFileSync(versionsPath, "utf-8"));
-    if (
-      !versions ||
-      typeof versions.bmadCommit !== "string" ||
-      typeof versions.ralphCommit !== "string"
-    ) {
-      throw new Error("Invalid bundled-versions.json structure: missing bmadCommit or ralphCommit");
+    if (!versions || typeof versions.bmadCommit !== "string") {
+      throw new Error("Invalid bundled-versions.json structure: missing bmadCommit");
     }
     return {
       bmadCommit: versions.bmadCommit,
-      ralphCommit: versions.ralphCommit,
     };
   } catch (err) {
     if (err instanceof Error && err.message.includes("Invalid bundled-versions.json")) {

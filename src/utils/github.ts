@@ -34,7 +34,6 @@ export interface UpstreamStatus {
 
 export interface CheckUpstreamResult {
   bmad: UpstreamStatus | null;
-  ralph: UpstreamStatus | null;
   errors: GitHubError[];
 }
 
@@ -60,12 +59,6 @@ interface CacheStats {
 const BMAD_REPO: RepoInfo = {
   owner: "bmad-code-org",
   repo: "BMAD-METHOD",
-  branch: "main",
-};
-
-const RALPH_REPO: RepoInfo = {
-  owner: "snarktank",
-  repo: "ralph",
   branch: "main",
 };
 
@@ -290,13 +283,8 @@ export class GitHubClient {
   async checkUpstream(bundled: BundledVersions): Promise<CheckUpstreamResult> {
     const errors: GitHubError[] = [];
     let bmadStatus: UpstreamStatus | null = null;
-    let ralphStatus: UpstreamStatus | null = null;
 
-    // Fetch both in parallel
-    const [bmadResult, ralphResult] = await Promise.all([
-      this.fetchLatestCommit(BMAD_REPO),
-      this.fetchLatestCommit(RALPH_REPO),
-    ]);
+    const bmadResult = await this.fetchLatestCommit(BMAD_REPO);
 
     if (bmadResult.success) {
       bmadStatus = buildUpstreamStatus(BMAD_REPO, bundled.bmadCommit, bmadResult.data.shortSha);
@@ -304,15 +292,8 @@ export class GitHubClient {
       errors.push({ ...bmadResult.error, repo: "bmad" });
     }
 
-    if (ralphResult.success) {
-      ralphStatus = buildUpstreamStatus(RALPH_REPO, bundled.ralphCommit, ralphResult.data.shortSha);
-    } else {
-      errors.push({ ...ralphResult.error, repo: "ralph" });
-    }
-
     return {
       bmad: bmadStatus,
-      ralph: ralphStatus,
       errors,
     };
   }

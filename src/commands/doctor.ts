@@ -335,22 +335,21 @@ async function checkUpstreamVersions(projectDir: string): Promise<CheckResult> {
       return { label, passed: true, detail: "not tracked (pre-1.2.0 install)" };
     }
     const bundled = getBundledVersions();
-    const { bmadCommit, ralphCommit } = config.upstreamVersions;
+    const { bmadCommit } = config.upstreamVersions;
     const bmadMatch = bmadCommit === bundled.bmadCommit;
-    const ralphMatch = ralphCommit === bundled.ralphCommit;
-    if (bmadMatch && ralphMatch) {
+    if (bmadMatch) {
       return {
         label,
         passed: true,
-        detail: `BMAD:${bmadCommit.slice(0, 8)}, Ralph:${ralphCommit.slice(0, 8)}`,
+        detail: `BMAD:${bmadCommit.slice(0, 8)}`,
       };
     }
-    const mismatches: string[] = [];
-    if (!bmadMatch)
-      mismatches.push(`BMAD:${bmadCommit.slice(0, 8)}→${bundled.bmadCommit.slice(0, 8)}`);
-    if (!ralphMatch)
-      mismatches.push(`Ralph:${ralphCommit.slice(0, 8)}→${bundled.ralphCommit.slice(0, 8)}`);
-    return { label, passed: false, detail: `outdated: ${mismatches.join(", ")}`, hint };
+    return {
+      label,
+      passed: false,
+      detail: `outdated: BMAD:${bmadCommit.slice(0, 8)}→${bundled.bmadCommit.slice(0, 8)}`,
+      hint,
+    };
   } catch (err) {
     return { label, passed: false, detail: `error: ${formatError(err)}`, hint };
   }
@@ -489,22 +488,17 @@ async function checkUpstreamGitHubStatus(_projectDir: string): Promise<CheckResu
     const bundled = getBundledVersions();
     const result = await checkUpstream(bundled);
 
-    // Check if all requests failed
-    if (result.bmad === null && result.ralph === null) {
+    // Check if request failed
+    if (result.bmad === null) {
       const reason = getSkipReason(result.errors);
       return { label, passed: true, detail: `skipped: ${reason}` };
     }
 
-    // Build status string
-    const statuses: string[] = [];
-    if (result.bmad) {
-      statuses.push(`BMAD: ${result.bmad.isUpToDate ? "up to date" : "behind"}`);
-    }
-    if (result.ralph) {
-      statuses.push(`Ralph: ${result.ralph.isUpToDate ? "up to date" : "behind"}`);
-    }
-
-    return { label, passed: true, detail: statuses.join(", ") };
+    return {
+      label,
+      passed: true,
+      detail: `BMAD: ${result.bmad.isUpToDate ? "up to date" : "behind"}`,
+    };
   } catch (err) {
     return { label, passed: true, detail: `skipped: ${formatError(err)}` };
   }

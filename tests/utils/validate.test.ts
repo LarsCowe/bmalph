@@ -61,13 +61,11 @@ describe("validateConfig", () => {
       createdAt: "2025-01-01T00:00:00.000Z",
       upstreamVersions: {
         bmadCommit: "48881f86",
-        ralphCommit: "019b8c73",
       },
     };
     const result = validateConfig(data);
     expect(result.upstreamVersions).toEqual({
       bmadCommit: "48881f86",
-      ralphCommit: "019b8c73",
     });
   });
 
@@ -95,13 +93,14 @@ describe("validateConfig", () => {
     expect(() => validateConfig(data)).toThrow(/bmadCommit/i);
   });
 
-  it("throws when upstreamVersions has invalid ralphCommit type", () => {
+  it("ignores extra fields in upstreamVersions", () => {
     const data = {
       name: "proj",
       createdAt: "2025-01-01T00:00:00.000Z",
-      upstreamVersions: { bmadCommit: "abc", ralphCommit: 456 },
+      upstreamVersions: { bmadCommit: "abc", extraField: "ignored" },
     };
-    expect(() => validateConfig(data)).toThrow(/ralphCommit/i);
+    const result = validateConfig(data);
+    expect(result.upstreamVersions).toEqual({ bmadCommit: "abc" });
   });
 });
 

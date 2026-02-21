@@ -9,7 +9,6 @@ interface CheckUpdatesOptions {
 
 interface JsonOutput {
   bmad: UpstreamStatus | null;
-  ralph: UpstreamStatus | null;
   errors: GitHubError[];
   hasUpdates: boolean;
 }
@@ -28,13 +27,10 @@ async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
   const result = await checkUpstream(bundled);
 
   if (options.json) {
-    const hasUpdates =
-      (result.bmad !== null && !result.bmad.isUpToDate) ||
-      (result.ralph !== null && !result.ralph.isUpToDate);
+    const hasUpdates = result.bmad !== null && !result.bmad.isUpToDate;
 
     const output: JsonOutput = {
       bmad: result.bmad,
-      ralph: result.ralph,
       errors: result.errors,
       hasUpdates,
     };
@@ -43,14 +39,10 @@ async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
   }
 
   // Human-readable output
-  let updatesCount = 0;
-
-  // BMAD status
   if (result.bmad) {
     if (result.bmad.isUpToDate) {
       console.log(chalk.green(`  ✓ BMAD-METHOD: up to date (${result.bmad.bundledSha})`));
     } else {
-      updatesCount++;
       console.log(
         chalk.yellow(
           `  ! BMAD-METHOD: updates available (${result.bmad.bundledSha} → ${result.bmad.latestSha})`
@@ -64,32 +56,12 @@ async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
     console.log(chalk.yellow(`  ? BMAD-METHOD: Could not check (${reason})`));
   }
 
-  // Ralph status
-  if (result.ralph) {
-    if (result.ralph.isUpToDate) {
-      console.log(chalk.green(`  ✓ Ralph: up to date (${result.ralph.bundledSha})`));
-    } else {
-      updatesCount++;
-      console.log(
-        chalk.yellow(
-          `  ! Ralph: updates available (${result.ralph.bundledSha} → ${result.ralph.latestSha})`
-        )
-      );
-      console.log(chalk.dim(`    → ${result.ralph.compareUrl}`));
-    }
-  } else {
-    const ralphError = result.errors.find((e) => e.repo === "ralph");
-    const reason = ralphError ? getErrorReason(ralphError) : "unknown error";
-    console.log(chalk.yellow(`  ? Ralph: Could not check (${reason})`));
-  }
-
   // Summary
   console.log();
-  if (updatesCount === 0 && result.errors.length === 0) {
-    console.log(chalk.green("All repositories are up to date."));
-  } else if (updatesCount > 0) {
-    const plural = updatesCount === 1 ? "repository has" : "repositories have";
-    console.log(chalk.yellow(`${updatesCount} ${plural} updates available.`));
+  if (result.bmad !== null && result.bmad.isUpToDate && result.errors.length === 0) {
+    console.log(chalk.green("Up to date."));
+  } else if (result.bmad !== null && !result.bmad.isUpToDate) {
+    console.log(chalk.yellow("Updates available."));
   }
 }
 
