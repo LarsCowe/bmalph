@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1](https://github.com/LarsCowe/bmalph/compare/v2.2.0...v2.2.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* correct 4 Ralph integration bugs ([1fc394a](https://github.com/LarsCowe/bmalph/commit/1fc394ac2d7c5d3bcbdc38abc57fcee69354085b))
+
+
+### Code Quality
+
+* remove Ralph upstream tracking ([a00a80b](https://github.com/LarsCowe/bmalph/commit/a00a80b7f9db5667ba1914a2a3d40daab72de481))
+
 ## [2.2.0](https://github.com/LarsCowe/bmalph/compare/v2.1.0...v2.2.0) (2026-02-20)
 
 
