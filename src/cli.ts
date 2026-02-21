@@ -47,7 +47,7 @@ async function resolveAndValidateProjectDir(): Promise<string> {
     }
   } catch (err) {
     if (isEnoent(err)) {
-      throw new Error(`Project directory not found: ${dir}`);
+      throw new Error(`Project directory not found: ${dir}`, { cause: err });
     }
     throw err;
   }
