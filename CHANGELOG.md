@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0](https://github.com/LarsCowe/bmalph/compare/v2.3.0...v2.4.0) (2026-02-23)
+
+
+### Features
+
+* add bmalph implement CLI command with pre-flight validation ([9932717](https://github.com/LarsCowe/bmalph/commit/99327171e53afd2d0394611835e1d9c19ee1dfb6))
+* add slash commands and remove /bmalph-reset reference ([a30d484](https://github.com/LarsCowe/bmalph/commit/a30d484a26f8c29335ac6af97d7a01dc71fe8d4c))
+* **doctor:** add jq availability check ([19824dc](https://github.com/LarsCowe/bmalph/commit/19824dc8d80577bc315b75982ee6943b23e8aa39))
+* **implement:** add re-run protection and file generation summary ([e53d0d4](https://github.com/LarsCowe/bmalph/commit/e53d0d4597b910014da5631a81f106f2c557f66a))
+* **reset:** add bmalph reset command ([3231b6a](https://github.com/LarsCowe/bmalph/commit/3231b6add12135ebde5226cd172c19e2020e85a7))
+* **status:** detect phase from BMAD artifacts during phases 1-3 ([67593c4](https://github.com/LarsCowe/bmalph/commit/67593c4dadfcece0b8606fce89c6f5e011e52971))
+* **transition:** improve artifact detection and progress preservation ([02709cc](https://github.com/LarsCowe/bmalph/commit/02709ccf37c502fd1af5bf431a2582e563a24696))
+* **validate:** read task counts from Ralph status data ([329e8b5](https://github.com/LarsCowe/bmalph/commit/329e8b5f0e86c5b1d404b909cc9c899ac9e32c7a))
+
 ## [2.3.0](https://github.com/LarsCowe/bmalph/compare/v2.2.1...v2.3.0) (2026-02-21)
 
 
