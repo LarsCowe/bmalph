@@ -38,7 +38,6 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
 | \`/bmalph-implement\` | Transition planning artifacts → prepare Ralph loop |
 | \`/bmalph-upgrade\` | Update bundled assets to match current bmalph version |
 | \`/bmalph-doctor\` | Check project health and report issues |
-| \`/bmalph-reset\` | Reset state (soft or hard reset with confirmation) |
 
 ### Available Agents
 

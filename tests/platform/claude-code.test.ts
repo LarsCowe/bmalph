@@ -35,6 +35,11 @@ describe("claudeCodePlatform", () => {
     expect(snippet).toContain("/pm");
   });
 
+  it("generateInstructionsSnippet does not contain phantom /bmalph-reset", () => {
+    const snippet = claudeCodePlatform.generateInstructionsSnippet();
+    expect(snippet).not.toContain("/bmalph-reset");
+  });
+
   it("getDoctorChecks returns 2 checks", () => {
     const checks = claudeCodePlatform.getDoctorChecks();
     expect(checks).toHaveLength(2);
