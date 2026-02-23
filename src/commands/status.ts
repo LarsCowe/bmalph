@@ -3,7 +3,9 @@ import { readConfig } from "../utils/config.js";
 import { readState, readRalphStatus, getPhaseLabel, getPhaseInfo } from "../utils/state.js";
 import { withErrorHandling } from "../utils/errors.js";
 import { resolveProjectPlatform } from "../platform/resolve.js";
+import { scanProjectArtifacts } from "../transition/artifact-scan.js";
 import type { Platform } from "../platform/types.js";
+import type { ProjectArtifactScan, ScannedArtifact } from "../transition/artifact-scan.js";
 
 interface StatusOptions {
   json?: boolean;
@@ -19,6 +21,12 @@ interface StatusOutput {
     status: string;
     tasksCompleted: number;
     tasksTotal: number;
+  };
+  artifacts?: {
+    directory: string;
+    found: string[];
+    detectedPhase: number;
+    missing: string[];
   };
   nextAction?: string;
 }
@@ -39,22 +47,39 @@ export async function runStatus(options: StatusOptions): Promise<void> {
 
   // Read current state
   const state = await readState(projectDir);
-  const phase = state?.currentPhase ?? 1;
+  const storedPhase = state?.currentPhase ?? 1;
   const status = state?.status ?? "planning";
-  const phaseName = getPhaseLabel(phase);
-  const phaseInfo = getPhaseInfo(phase);
 
   // Read Ralph status if in implementation phase
   let ralphStatus = null;
-  if (phase === 4) {
+  if (storedPhase === 4) {
     ralphStatus = await readRalphStatus(projectDir);
   }
+
+  // Scan artifacts for phases 1-3 to detect actual progress
+  let artifactScan: ProjectArtifactScan | null = null;
+  let phase = storedPhase;
+  let phaseDetected = false;
+
+  if (phase < 4) {
+    artifactScan = await scanProjectArtifacts(projectDir);
+    if (artifactScan && artifactScan.detectedPhase > phase) {
+      phase = artifactScan.detectedPhase;
+      phaseDetected = true;
+    }
+  }
+
+  const phaseName = getPhaseLabel(phase);
+  const phaseInfo = getPhaseInfo(phase);
 
   // Resolve platform for next action hints
   const platform = await resolveProjectPlatform(projectDir);
 
-  // Determine next action
-  const nextAction = getNextAction(phase, status, ralphStatus, platform);
+  // Determine next action — use artifact-based suggestion when available
+  const nextAction =
+    artifactScan && phaseDetected
+      ? artifactScan.nextAction
+      : getNextAction(phase, status, ralphStatus, platform);
 
   if (options.json) {
     const output: StatusOutput = {
@@ -72,6 +97,15 @@ export async function runStatus(options: StatusOptions): Promise<void> {
       };
     }
 
+    if (artifactScan) {
+      output.artifacts = {
+        directory: artifactScan.directory,
+        found: artifactScan.found,
+        detectedPhase: artifactScan.detectedPhase,
+        missing: artifactScan.missing,
+      };
+    }
+
     if (nextAction) {
       output.nextAction = nextAction;
     }
@@ -83,9 +117,19 @@ export async function runStatus(options: StatusOptions): Promise<void> {
   // Human-readable output
   console.log(chalk.bold("bmalph status\n"));
 
-  console.log(`  ${chalk.cyan("Phase:")} ${phase} - ${phaseName}`);
+  const phaseLabel = phaseDetected
+    ? `${phase} - ${phaseName} (detected from artifacts)`
+    : `${phase} - ${phaseName}`;
+  console.log(`  ${chalk.cyan("Phase:")} ${phaseLabel}`);
   console.log(`  ${chalk.cyan("Agent:")} ${phaseInfo.agent}`);
   console.log(`  ${chalk.cyan("Status:")} ${formatStatus(status)}`);
+
+  // Show artifact checklist for phases 1-3
+  if (artifactScan) {
+    console.log("");
+    console.log(chalk.bold(`  Artifacts (${artifactScan.directory})`));
+    printArtifactChecklist(artifactScan);
+  }
 
   if (phase === 4 && ralphStatus) {
     console.log("");
@@ -104,6 +148,49 @@ export async function runStatus(options: StatusOptions): Promise<void> {
   if (nextAction) {
     console.log("");
     console.log(`  ${chalk.cyan("Next:")} ${nextAction}`);
+  }
+}
+
+const ARTIFACT_DEFINITIONS: { phase: number; name: string; required: boolean }[] = [
+  { phase: 1, name: "Product Brief", required: false },
+  { phase: 1, name: "Market Research", required: false },
+  { phase: 1, name: "Domain Research", required: false },
+  { phase: 1, name: "Technical Research", required: false },
+  { phase: 2, name: "PRD", required: true },
+  { phase: 2, name: "UX Design", required: false },
+  { phase: 3, name: "Architecture", required: true },
+  { phase: 3, name: "Epics & Stories", required: true },
+  { phase: 3, name: "Readiness Report", required: true },
+];
+
+const PHASE_LABELS: Record<number, string> = {
+  1: "Phase 1 - Analysis",
+  2: "Phase 2 - Planning",
+  3: "Phase 3 - Solutioning",
+};
+
+function printArtifactChecklist(scan: ProjectArtifactScan): void {
+  const foundByName = new Map<string, ScannedArtifact>();
+  for (const artifacts of [scan.phases[1], scan.phases[2], scan.phases[3]]) {
+    for (const artifact of artifacts) {
+      foundByName.set(artifact.name, artifact);
+    }
+  }
+
+  let currentPhase = 0;
+  for (const def of ARTIFACT_DEFINITIONS) {
+    if (def.phase !== currentPhase) {
+      currentPhase = def.phase;
+      console.log(`    ${PHASE_LABELS[currentPhase]}`);
+    }
+
+    const found = foundByName.get(def.name);
+    if (found) {
+      console.log(`      ${chalk.green("*")} ${def.name} (${found.filename})`);
+    } else {
+      const suffix = def.required ? " (required)" : "";
+      console.log(`      ${chalk.dim("-")} ${def.name}${suffix}`);
+    }
   }
 }
 

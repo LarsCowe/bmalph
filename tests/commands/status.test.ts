@@ -224,5 +224,123 @@ describe("status command", () => {
       expect(parsed.ralph.tasksCompleted).toBe(2);
       expect(parsed.ralph.tasksTotal).toBe(5);
     });
+
+    it("includes artifacts in JSON output for phases 1-3", async () => {
+      await setupProject();
+      const artifactsDir = join(testDir, "_bmad-output/planning-artifacts");
+      await mkdir(artifactsDir, { recursive: true });
+      await writeFile(join(artifactsDir, "product-brief.md"), "# Brief");
+      await writeFile(join(artifactsDir, "prd.md"), "# PRD");
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ json: true, projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const parsed = JSON.parse(output);
+      expect(parsed).toHaveProperty("artifacts");
+      expect(parsed.artifacts.detectedPhase).toBe(2);
+      expect(parsed.artifacts.found).toContain("prd.md");
+      expect(parsed.artifacts.found).toContain("product-brief.md");
+      expect(parsed.artifacts.missing).toContain("Architecture");
+      expect(parsed.artifacts.directory).toBe("_bmad-output/planning-artifacts");
+    });
+
+    it("does not include artifacts in JSON output for phase 4", async () => {
+      await setupProject();
+      await setupState({ currentPhase: 4, status: "implementing" });
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ json: true, projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const parsed = JSON.parse(output);
+      expect(parsed).not.toHaveProperty("artifacts");
+    });
+  });
+
+  describe("artifact detection", () => {
+    async function setupArtifacts(files: string[]) {
+      const artifactsDir = join(testDir, "_bmad-output/planning-artifacts");
+      await mkdir(artifactsDir, { recursive: true });
+      for (const file of files) {
+        await writeFile(join(artifactsDir, file), `# ${file}`);
+      }
+    }
+
+    it("detects phase from artifacts when no state file exists", async () => {
+      await setupProject();
+      await setupArtifacts(["product-brief.md", "prd.md"]);
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("2 - Planning");
+      expect(output).toContain("detected from artifacts");
+    });
+
+    it("detects phase from artifacts when state has phase 1", async () => {
+      await setupProject();
+      await setupState({ currentPhase: 1, status: "planning" });
+      await setupArtifacts(["product-brief.md", "prd.md", "architecture.md"]);
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("3 - Solutioning");
+      expect(output).toContain("detected from artifacts");
+    });
+
+    it("shows artifact checklist in human output", async () => {
+      await setupProject();
+      await setupArtifacts(["product-brief.md", "prd.md"]);
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("Artifacts");
+      expect(output).toContain("Product Brief");
+      expect(output).toContain("PRD");
+      expect(output).toContain("Architecture");
+      expect(output).toContain("required");
+    });
+
+    it("does not scan artifacts when state has phase 4", async () => {
+      await setupProject();
+      await setupState({ currentPhase: 4, status: "implementing" });
+      await setupArtifacts(["prd.md", "architecture.md"]);
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("4 - Implementation");
+      expect(output).not.toContain("Artifacts");
+      expect(output).not.toContain("detected from artifacts");
+    });
+
+    it("falls back to phase 1 when no artifacts directory exists", async () => {
+      await setupProject();
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("1 - Analysis");
+      expect(output).not.toContain("detected from artifacts");
+    });
+
+    it("uses artifact-based next action suggestion for detected phase", async () => {
+      await setupProject();
+      await setupArtifacts(["prd.md"]);
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("/architect");
+    });
   });
 });
