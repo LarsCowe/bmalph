@@ -124,3 +124,52 @@ export async function runReset(cwd: string): Promise<CliResult> {
 export async function runResetDryRun(cwd: string): Promise<CliResult> {
   return runCli(["reset", "--dry-run"], { cwd });
 }
+
+/**
+ * Run watch command for a fixed duration then kill the process.
+ * Since watch is interactive (no TTY in subprocess → can't send "q"),
+ * we kill after durationMs and resolve with captured output.
+ */
+export async function runWatch(
+  cwd: string,
+  intervalMs = 500,
+  durationMs = 2000
+): Promise<CliResult> {
+  return new Promise((resolve) => {
+    const child = spawn("node", [CLI_PATH, "watch", "--interval", String(intervalMs)], {
+      cwd,
+      env: { ...process.env },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+    let exited = false;
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    const timer = setTimeout(() => {
+      if (!exited) {
+        child.kill();
+      }
+    }, durationMs);
+
+    child.on("close", (exitCode) => {
+      exited = true;
+      clearTimeout(timer);
+      resolve({ stdout, stderr, exitCode });
+    });
+
+    child.on("error", () => {
+      exited = true;
+      clearTimeout(timer);
+      resolve({ stdout, stderr, exitCode: 1 });
+    });
+  });
+}
