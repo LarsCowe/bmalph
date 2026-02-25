@@ -1,0 +1,537 @@
+import { describe, it, expect, afterEach } from "vitest";
+import { mkdir, rm, writeFile } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
+import {
+  readDashboardState,
+  readLoopInfo,
+  readCircuitBreakerInfo,
+  readStoryProgress,
+  readAnalysisInfo,
+  readExecutionProgress,
+  readSessionInfo,
+  readRecentLogs,
+} from "../../src/watch/state-reader.js";
+
+function makeTmpDir(): string {
+  return join(tmpdir(), `bmalph-watch-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+}
+
+async function writeJson(path: string, data: unknown): Promise<void> {
+  await writeFile(path, JSON.stringify(data));
+}
+
+describe("state-reader", () => {
+  let testDir: string;
+
+  afterEach(async () => {
+    try {
+      await rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Windows file locking
+    }
+  });
+
+  describe("readDashboardState", () => {
+    it("returns empty state when no .ralph directory exists", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const state = await readDashboardState(testDir);
+
+      expect(state.loop).toBeNull();
+      expect(state.circuitBreaker).toBeNull();
+      expect(state.stories).toBeNull();
+      expect(state.analysis).toBeNull();
+      expect(state.execution).toBeNull();
+      expect(state.session).toBeNull();
+      expect(state.recentLogs).toEqual([]);
+      expect(state.lastUpdated).toBeInstanceOf(Date);
+    });
+  });
+
+  describe("readLoopInfo", () => {
+    it("reads status.json correctly", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: 12,
+        status: "running",
+        calls_made_this_hour: 23,
+        max_calls_per_hour: 100,
+        last_action: "executing",
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.loopCount).toBe(12);
+      expect(info!.status).toBe("running");
+      expect(info!.lastAction).toBe("executing");
+      expect(info!.callsMadeThisHour).toBe(23);
+      expect(info!.maxCallsPerHour).toBe(100);
+    });
+
+    it("returns null when status.json is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("handles corrupt JSON gracefully", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeFile(join(ralphDir, "status.json"), "{ not valid json !!!");
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("defaults missing fields when only loop_count is present", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: 5,
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.loopCount).toBe(5);
+      expect(info!.status).toBe("running");
+      expect(info!.lastAction).toBe("");
+      expect(info!.callsMadeThisHour).toBe(0);
+      expect(info!.maxCallsPerHour).toBe(0);
+    });
+  });
+
+  describe("readCircuitBreakerInfo", () => {
+    it("reads circuit breaker with CLOSED state", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".circuit_breaker_state"), {
+        state: "CLOSED",
+        consecutive_no_progress: 0,
+        total_opens: 1,
+      });
+
+      const info = await readCircuitBreakerInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.state).toBe("CLOSED");
+      expect(info!.consecutiveNoProgress).toBe(0);
+      expect(info!.totalOpens).toBe(1);
+      expect(info!.reason).toBeUndefined();
+    });
+
+    it("reads circuit breaker with OPEN state and reason", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".circuit_breaker_state"), {
+        state: "OPEN",
+        consecutive_no_progress: 5,
+        total_opens: 2,
+        reason: "No progress detected",
+      });
+
+      const info = await readCircuitBreakerInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.state).toBe("OPEN");
+      expect(info!.consecutiveNoProgress).toBe(5);
+      expect(info!.totalOpens).toBe(2);
+      expect(info!.reason).toBe("No progress detected");
+    });
+
+    it("returns null when circuit breaker file is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const info = await readCircuitBreakerInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when state value is invalid", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".circuit_breaker_state"), {
+        state: "INVALID",
+        consecutive_no_progress: 3,
+        total_opens: 1,
+      });
+
+      const info = await readCircuitBreakerInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+  });
+
+  describe("readStoryProgress", () => {
+    const fixPlanContent = `# Ralph Fix Plan
+
+## Stories to Implement
+
+### Epic 1
+- [x] Story 1.1: Setup database schema
+- [x] Story 1.2: Create migration scripts
+- [ ] Story 2.1: Implement user service
+- [ ] Story 2.2: Add authentication
+`;
+
+    it("reads fix plan progress", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeFile(join(ralphDir, "@fix_plan.md"), fixPlanContent);
+
+      const progress = await readStoryProgress(testDir);
+
+      expect(progress).not.toBeNull();
+      expect(progress!.completed).toBe(2);
+      expect(progress!.total).toBe(4);
+      expect(progress!.nextStory).toBe("Story 2.1: Implement user service");
+    });
+
+    it("reads fix plan with all stories completed", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeFile(
+        join(ralphDir, "@fix_plan.md"),
+        `# Ralph Fix Plan
+
+## Stories to Implement
+
+- [x] Story 1.1: Setup database schema
+- [x] Story 1.2: Create migration scripts
+`
+      );
+
+      const progress = await readStoryProgress(testDir);
+
+      expect(progress).not.toBeNull();
+      expect(progress!.completed).toBe(2);
+      expect(progress!.total).toBe(2);
+      expect(progress!.nextStory).toBeNull();
+    });
+
+    it("reads fix plan with no stories", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeFile(join(ralphDir, "@fix_plan.md"), "");
+
+      const progress = await readStoryProgress(testDir);
+
+      expect(progress).not.toBeNull();
+      expect(progress!.completed).toBe(0);
+      expect(progress!.total).toBe(0);
+      expect(progress!.nextStory).toBeNull();
+    });
+
+    it("returns null when fix plan is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const progress = await readStoryProgress(testDir);
+
+      expect(progress).toBeNull();
+    });
+  });
+
+  describe("readAnalysisInfo", () => {
+    it("reads response analysis", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".response_analysis"), {
+        analysis: {
+          files_modified: 3,
+          confidence_score: 72,
+          is_test_only: false,
+          is_stuck: false,
+          exit_signal: false,
+          has_permission_denials: false,
+          permission_denial_count: 0,
+        },
+      });
+
+      const info = await readAnalysisInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.filesModified).toBe(3);
+      expect(info!.confidenceScore).toBe(72);
+      expect(info!.isTestOnly).toBe(false);
+      expect(info!.isStuck).toBe(false);
+      expect(info!.exitSignal).toBe(false);
+      expect(info!.hasPermissionDenials).toBe(false);
+      expect(info!.permissionDenialCount).toBe(0);
+    });
+
+    it("returns null when response analysis is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const info = await readAnalysisInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when analysis field is not an object", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".response_analysis"), {
+        analysis: "not-an-object",
+      });
+
+      const info = await readAnalysisInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+  });
+
+  describe("readExecutionProgress", () => {
+    it("reads execution progress", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "progress.json"), {
+        status: "executing",
+        elapsed_seconds: 45,
+      });
+
+      const progress = await readExecutionProgress(testDir);
+
+      expect(progress).not.toBeNull();
+      expect(progress!.status).toBe("executing");
+      expect(progress!.elapsedSeconds).toBe(45);
+    });
+
+    it("returns null when status is idle", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "progress.json"), {
+        status: "idle",
+        elapsed_seconds: 0,
+      });
+
+      const progress = await readExecutionProgress(testDir);
+
+      expect(progress).toBeNull();
+    });
+
+    it("returns null when progress.json is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const progress = await readExecutionProgress(testDir);
+
+      expect(progress).toBeNull();
+    });
+  });
+
+  describe("readSessionInfo", () => {
+    it("reads session info", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".ralph_session"), {
+        session_id: "abc-123",
+        created_at: "2026-02-25T10:00:00Z",
+        last_used: "2026-02-25T12:15:00Z",
+      });
+
+      const info = await readSessionInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.createdAt).toBe("2026-02-25T10:00:00Z");
+      expect(info!.lastUsed).toBe("2026-02-25T12:15:00Z");
+    });
+
+    it("returns null when session file is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const info = await readSessionInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when created_at is missing", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".ralph_session"), {
+        session_id: "abc-123",
+        last_used: "2026-02-25T12:15:00Z",
+      });
+
+      const info = await readSessionInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+  });
+
+  describe("readRecentLogs", () => {
+    it("reads and parses recent log lines", async () => {
+      testDir = makeTmpDir();
+      const logsDir = join(testDir, ".ralph", "logs");
+      await mkdir(logsDir, { recursive: true });
+
+      const logLines = [
+        "[2026-02-25 14:20:00] [INFO] Loop #10 started",
+        "[2026-02-25 14:20:15] [DEBUG] Reading fix plan",
+        "[2026-02-25 14:20:30] [INFO] Executing story 2.1",
+        "[2026-02-25 14:21:00] [WARN] Slow response detected",
+        "[2026-02-25 14:21:30] [INFO] Loop #11 started",
+        "[2026-02-25 14:22:00] [INFO] Executing story 2.2",
+        "[2026-02-25 14:22:30] [ERROR] Test failure in auth module",
+        "[2026-02-25 14:23:00] [INFO] Loop #12 started",
+        "[2026-02-25 14:23:01] [INFO] Retrying story 2.2",
+        "[2026-02-25 14:23:30] [INFO] Tests passing",
+      ];
+      await writeFile(join(logsDir, "ralph.log"), logLines.join("\n"));
+
+      const entries = await readRecentLogs(testDir);
+
+      expect(entries).toHaveLength(8);
+      expect(entries[0]!.timestamp).toBe("2026-02-25 14:20:30");
+      expect(entries[0]!.level).toBe("INFO");
+      expect(entries[0]!.message).toBe("Executing story 2.1");
+      expect(entries[7]!.timestamp).toBe("2026-02-25 14:23:30");
+      expect(entries[7]!.level).toBe("INFO");
+      expect(entries[7]!.message).toBe("Tests passing");
+    });
+
+    it("returns empty array when log file is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const entries = await readRecentLogs(testDir);
+
+      expect(entries).toEqual([]);
+    });
+
+    it("skips unparseable lines", async () => {
+      testDir = makeTmpDir();
+      const logsDir = join(testDir, ".ralph", "logs");
+      await mkdir(logsDir, { recursive: true });
+
+      const logLines = [
+        "[2026-02-25 14:20:00] [INFO] Valid line",
+        "this is not a valid log line",
+        "[2026-02-25 14:20:30] [INFO] Another valid line",
+      ];
+      await writeFile(join(logsDir, "ralph.log"), logLines.join("\n"));
+
+      const entries = await readRecentLogs(testDir);
+
+      expect(entries).toHaveLength(2);
+      expect(entries[0]!.message).toBe("Valid line");
+      expect(entries[1]!.message).toBe("Another valid line");
+    });
+
+    it("respects custom maxLines parameter", async () => {
+      testDir = makeTmpDir();
+      const logsDir = join(testDir, ".ralph", "logs");
+      await mkdir(logsDir, { recursive: true });
+
+      const logLines = [
+        "[2026-02-25 14:20:00] [INFO] Line one",
+        "[2026-02-25 14:20:01] [INFO] Line two",
+        "[2026-02-25 14:20:02] [INFO] Line three",
+        "[2026-02-25 14:20:03] [INFO] Line four",
+        "[2026-02-25 14:20:04] [INFO] Line five",
+      ];
+      await writeFile(join(logsDir, "ralph.log"), logLines.join("\n"));
+
+      const entries = await readRecentLogs(testDir, 3);
+
+      expect(entries).toHaveLength(3);
+      expect(entries[0]!.message).toBe("Line three");
+      expect(entries[2]!.message).toBe("Line five");
+    });
+
+    it("returns empty array when log file is empty", async () => {
+      testDir = makeTmpDir();
+      const logsDir = join(testDir, ".ralph", "logs");
+      await mkdir(logsDir, { recursive: true });
+      await writeFile(join(logsDir, "ralph.log"), "");
+
+      const entries = await readRecentLogs(testDir);
+
+      expect(entries).toEqual([]);
+    });
+
+    it("handles CRLF line endings", async () => {
+      testDir = makeTmpDir();
+      const logsDir = join(testDir, ".ralph", "logs");
+      await mkdir(logsDir, { recursive: true });
+
+      const logLines = [
+        "[2026-02-25 14:20:00] [INFO] First line",
+        "[2026-02-25 14:20:01] [INFO] Second line",
+      ];
+      await writeFile(join(logsDir, "ralph.log"), logLines.join("\r\n"));
+
+      const entries = await readRecentLogs(testDir);
+
+      expect(entries).toHaveLength(2);
+      expect(entries[0]!.message).toBe("First line");
+      expect(entries[1]!.message).toBe("Second line");
+    });
+  });
+
+  describe("readDashboardState (integration)", () => {
+    it("handles partial state with only some files present", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: 5,
+        status: "running",
+        calls_made_this_hour: 10,
+        max_calls_per_hour: 100,
+        last_action: "analyzing",
+      });
+
+      await writeFile(
+        join(ralphDir, "@fix_plan.md"),
+        `- [x] Story 1.1: Setup database schema
+- [ ] Story 1.2: Create migration scripts
+`
+      );
+
+      const state = await readDashboardState(testDir);
+
+      expect(state.loop).not.toBeNull();
+      expect(state.loop!.loopCount).toBe(5);
+      expect(state.loop!.status).toBe("running");
+
+      expect(state.stories).not.toBeNull();
+      expect(state.stories!.completed).toBe(1);
+      expect(state.stories!.total).toBe(2);
+      expect(state.stories!.nextStory).toBe("Story 1.2: Create migration scripts");
+
+      expect(state.circuitBreaker).toBeNull();
+      expect(state.analysis).toBeNull();
+      expect(state.execution).toBeNull();
+      expect(state.session).toBeNull();
+      expect(state.recentLogs).toEqual([]);
+    });
+  });
+});

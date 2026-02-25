@@ -8,6 +8,7 @@ import { checkUpdatesCommand } from "./commands/check-updates.js";
 import { statusCommand } from "./commands/status.js";
 import { implementCommand } from "./commands/implement.js";
 import { resetCommand } from "./commands/reset.js";
+import { watchCommand } from "./commands/watch.js";
 import { setVerbose, setQuiet } from "./utils/logger.js";
 import { getPackageVersion } from "./installer.js";
 import { isEnoent } from "./utils/errors.js";
@@ -116,6 +117,14 @@ program
   .option("--force", "Skip confirmation prompt")
   .action(async (opts) =>
     resetCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  );
+
+program
+  .command("watch")
+  .description("Live dashboard showing Ralph loop status, circuit breaker, and activity")
+  .option("--interval <ms>", "Refresh interval in milliseconds (default: 2000)")
+  .action(async (opts) =>
+    watchCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
   );
 
 void program.parseAsync();
