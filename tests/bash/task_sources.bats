@@ -303,6 +303,59 @@ EOF
     assert_output --partial "- [ ] Add monitoring alerts"
 }
 
+@test "extract_prd_tasks deduplicates numbered items under task headings" {
+    cat > "$_WORK_DIR/dedup_prd.md" << 'EOF'
+# Product Requirements
+
+## Tasks
+1. Configure CI pipeline
+2. Write integration tests
+3. Deploy staging environment
+EOF
+
+    run extract_prd_tasks "$_WORK_DIR/dedup_prd.md"
+    assert_success
+    # Each item should appear exactly once despite matching both numbered and heading extractors
+    local count
+    count=$(echo "$output" | grep -c 'Configure CI pipeline')
+    [[ "$count" -eq 1 ]]
+    count=$(echo "$output" | grep -c 'Write integration tests')
+    [[ "$count" -eq 1 ]]
+    count=$(echo "$output" | grep -c 'Deploy staging environment')
+    [[ "$count" -eq 1 ]]
+}
+
+@test "extract_prd_tasks extracts from duplicate heading names without duplicates" {
+    cat > "$_WORK_DIR/dup_headings.md" << 'EOF'
+# Sprint Plan
+
+## Tasks
+- Build user registration
+- Set up email verification
+
+## Design Notes
+Some design context here.
+
+## Tasks
+- Implement password reset
+- Add two-factor authentication
+EOF
+
+    run extract_prd_tasks "$_WORK_DIR/dup_headings.md"
+    assert_success
+    # All items from both sections present
+    assert_output --partial "- [ ] Build user registration"
+    assert_output --partial "- [ ] Set up email verification"
+    assert_output --partial "- [ ] Implement password reset"
+    assert_output --partial "- [ ] Add two-factor authentication"
+    # Each item appears exactly once
+    local count
+    count=$(echo "$output" | grep -c 'Build user registration')
+    [[ "$count" -eq 1 ]]
+    count=$(echo "$output" | grep -c 'Implement password reset')
+    [[ "$count" -eq 1 ]]
+}
+
 @test "extract_prd_tasks does not include section headings as tasks" {
     cat > "$_WORK_DIR/headings.md" << 'EOF'
 # Project Plan
