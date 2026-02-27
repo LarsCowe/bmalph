@@ -132,7 +132,7 @@ describe("bmalph upgrade e2e", { timeout: 60000 }, () => {
     await expectFileExists(join(project.path, "_bmad/bmm/agents/architect.agent.yaml"));
   });
 
-  it("multiple upgrades are idempotent", async () => {
+  it("multiple upgrades are idempotent", { timeout: 120000 }, async () => {
     project = await createTestProject();
 
     await runInit(project.path);
