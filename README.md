@@ -26,6 +26,10 @@ bmalph provides:
 - `bmalph upgrade` — Update to latest versions
 - `bmalph doctor` — Check installation health
 - `bmalph implement` — Transition from BMAD to Ralph
+- `bmalph check-updates` — Check for upstream updates
+- `bmalph status` — Show project status and phase
+- `bmalph reset` — Remove all bmalph files
+- `bmalph watch` — Live Ralph loop dashboard
 
 ## Supported Platforms
 
@@ -203,6 +207,8 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `bmalph check-updates` | Check if bundled BMAD/Ralph versions are up to date |
 | `bmalph status`        | Show current project status and phase               |
 | `bmalph implement`     | Transition BMAD planning artifacts to Ralph format  |
+| `bmalph reset`         | Remove all bmalph files from the project            |
+| `bmalph watch`         | Live dashboard showing Ralph loop status            |
 
 ### Global options
 
@@ -222,6 +228,7 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `-n, --name <name>`        | Project name                                                                       | directory name |
 | `-d, --description <desc>` | Project description                                                                | (prompted)     |
 | `--platform <id>`          | Target platform (`claude-code`, `codex`, `cursor`, `windsurf`, `copilot`, `aider`) | auto-detect    |
+| `--dry-run`                | Preview changes without writing files                                              |                |
 
 ### implement options
 
@@ -230,6 +237,12 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `--force` | Override pre-flight validation errors |
 
 ### check-updates options
+
+| Flag     | Description    |
+| -------- | -------------- |
+| `--json` | Output as JSON |
+
+### doctor options
 
 | Flag     | Description    |
 | -------- | -------------- |
@@ -248,9 +261,22 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `--force`   | Skip confirmation prompts |
 | `--dry-run` | Preview changes           |
 
+### reset options
+
+| Flag        | Description              |
+| ----------- | ------------------------ |
+| `--dry-run` | Preview changes          |
+| `--force`   | Skip confirmation prompt |
+
+### watch options
+
+| Flag              | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `--interval <ms>` | Refresh interval in milliseconds (default: 2000) |
+
 ## Slash Commands
 
-bmalph installs 50 slash commands (45 BMAD + 5 bmalph). Command delivery varies by platform:
+bmalph installs 51 slash commands (45 BMAD + 6 bmalph). Command delivery varies by platform:
 
 - **Claude Code** — installed as files in `.claude/commands/` (invoke with `/command-name`)
 - **OpenAI Codex** — inlined in `AGENTS.md` (reference agents by name)
@@ -405,24 +431,32 @@ ls -la .ralph/
 
 ### Reset Installation
 
-If something goes wrong, you can manually reset:
+The simplest way to remove all bmalph files:
 
 ```bash
-# Remove bmalph directories (preserves your project code)
-rm -rf _bmad .ralph bmalph
-
-# Also remove platform-specific files:
-# Claude Code:  rm -rf .claude/commands/  and remove bmalph section from CLAUDE.md
-# Codex:        remove bmalph sections from AGENTS.md
-# Cursor:       rm .cursor/rules/bmad.mdc
-# Windsurf:     rm .windsurf/rules/bmad.md
-# Copilot:      remove bmalph sections from .github/copilot-instructions.md
-# Aider:        remove bmalph sections from CONVENTIONS.md
-# See the Supported Platforms table for your platform's files.
-
-# Reinitialize
-bmalph init
+bmalph reset
 ```
+
+Use `--dry-run` to preview what will be removed, or `--force` to skip confirmation.
+
+#### Manual removal
+
+If the CLI is unavailable, remove these directories and files manually:
+
+```bash
+rm -rf _bmad/ .ralph/ bmalph/
+```
+
+Then remove the bmalph-managed sections from your instructions file. The file depends on your platform:
+
+- **Claude Code** — remove `.claude/commands/` and bmalph section from `CLAUDE.md`
+- **Codex** — remove bmalph sections from `AGENTS.md`
+- **Cursor** — remove `.cursor/rules/bmad.mdc`
+- **Windsurf** — remove `.windsurf/rules/bmad.md`
+- **Copilot** — remove bmalph sections from `.github/copilot-instructions.md`
+- **Aider** — remove bmalph sections from `CONVENTIONS.md`
+
+See the [Supported Platforms](#supported-platforms) table for details. After manual removal, run `bmalph init` to reinitialize.
 
 ## Quick Examples
 

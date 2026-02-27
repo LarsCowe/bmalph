@@ -15,6 +15,10 @@ bmalph provides:
 - `bmalph upgrade` — Update to latest versions
 - `bmalph doctor` — Check installation health
 - `bmalph implement` / `/bmalph-implement` — Transition from BMAD to Ralph
+- `bmalph check-updates` — Check for upstream updates
+- `bmalph status` — Show project installation status
+- `bmalph reset` — Remove all bmalph files from the project
+- `bmalph watch` — Live dashboard for Ralph loop status
 
 ## Architecture
 
@@ -48,6 +52,7 @@ The instructions file depends on the configured platform — see `src/platform/`
 | `bmalph status`        | Show project installation status          |
 | `bmalph implement`     | Transition BMAD artifacts to Ralph format |
 | `bmalph reset`         | Remove all bmalph files from the project  |
+| `bmalph watch`         | Live dashboard for Ralph loop status      |
 
 ## Slash Commands
 
@@ -79,6 +84,7 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 - `src/transition/story-parsing.ts` — Parse BMAD stories
 - `src/transition/fix-plan.ts` — Generate @fix_plan.md
 - `src/transition/artifacts.ts` — Locate BMAD artifacts
+- `src/transition/artifact-scan.ts` — Artifact scanning
 - `src/transition/context.ts` — Generate PROJECT_CONTEXT.md
 - `src/transition/preflight.ts` — Pre-flight validation checks
 - `src/transition/specs-changelog.ts` — Track spec changes
@@ -88,12 +94,26 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 - `src/commands/init.ts` — CLI init handler
 - `src/commands/upgrade.ts` — CLI upgrade handler
 - `src/commands/doctor.ts` — CLI doctor handler
+- `src/commands/check-updates.ts` — Check for upstream updates
+- `src/commands/status.ts` — Show project installation status
 - `src/commands/implement.ts` — CLI implement handler
 - `src/commands/reset.ts` — CLI reset handler
+- `src/commands/watch.ts` — Launch live dashboard
 - `src/reset.ts` — Reset plan-build + execute logic
+- `src/watch/dashboard.ts` — Live dashboard orchestrator
+- `src/watch/renderer.ts` — Terminal UI rendering
+- `src/watch/file-watcher.ts` — File system polling
+- `src/watch/state-reader.ts` — Ralph state parsing
+- `src/watch/types.ts` — Watch types
 - `src/utils/state.ts` — Phase tracking + Ralph status reading
 - `src/utils/json.ts` — Safe JSON file reading with error discrimination
 - `src/utils/validate.ts` — Runtime config/state validation
+- `src/utils/config.ts` — Config file operations
+- `src/utils/constants.ts` — Path constants
+- `src/utils/dryrun.ts` — Dry-run utilities
+- `src/utils/errors.ts` — Error formatting
+- `src/utils/file-system.ts` — Atomic file writes, exists helper
+- `src/utils/github.ts` — GitHub API client
 - `src/utils/logger.ts` — Debug logging (--verbose)
 - `src/platform/types.ts` — Platform type definitions (PlatformId, PlatformTier, CommandDelivery)
 - `src/platform/registry.ts` — Platform registry (getPlatform, getAllPlatforms)
@@ -109,7 +129,7 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 - `ralph/` — Bundled Ralph loop and libraries
 - `ralph/drivers/claude-code.sh` — Ralph driver for Claude Code (`claude` CLI)
 - `ralph/drivers/codex.sh` — Ralph driver for OpenAI Codex (`codex exec`)
-- `slash-commands/` — bmalph and bmalph-implement slash commands
+- `slash-commands/` — Slash commands (6 bmalph + 45 BMAD)
 
 ## Dev Workflow
 
