@@ -51,7 +51,7 @@ The instructions file depends on the configured platform — see `src/platform/`
 
 ## Slash Commands
 
-bmalph installs 50 slash commands (45 BMAD + 5 bmalph). Key commands:
+bmalph installs 51 slash commands (45 BMAD + 6 bmalph). Key commands:
 
 | Command                 | Description                         |
 | ----------------------- | ----------------------------------- |
@@ -62,6 +62,7 @@ bmalph installs 50 slash commands (45 BMAD + 5 bmalph). Key commands:
 | `/create-prd`           | Create PRD workflow                 |
 | `/create-architecture`  | Create architecture workflow        |
 | `/create-epics-stories` | Create epics and stories            |
+| `/bmalph-watch`         | Launch Ralph live dashboard         |
 | `/bmad-help`            | List all BMAD commands              |
 
 For full list, run `/bmad-help` in Claude Code.
