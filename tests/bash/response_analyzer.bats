@@ -569,7 +569,6 @@ EOF
 # ===========================================================================
 
 @test "log_analysis_summary outputs key fields from analysis file" {
-    _skip_if_xargs_broken
     cat > "$RALPH_DIR/.response_analysis" << 'JSON'
 {
     "loop_number": 5,
