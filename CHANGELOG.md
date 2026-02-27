@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0](https://github.com/LarsCowe/bmalph/compare/v2.4.0...v2.5.0) (2026-02-27)
+
+
+### Features
+
+* **ralph:** add /bmalph-watch slash command ([902376f](https://github.com/LarsCowe/bmalph/commit/902376ff692b54caa2846984499507fb82a7f022))
+* **watch:** add live dashboard for Ralph loop monitoring ([be9ec34](https://github.com/LarsCowe/bmalph/commit/be9ec344a11a34ed8112b64909f6e42ffd410a1d))
+
+
+### Bug Fixes
+
+* **ralph:** deduplicate PRD task extraction in task_sources ([add09fc](https://github.com/LarsCowe/bmalph/commit/add09fcfcbc7fe3e94ad48e4c244329a7f715c23))
+* **ralph:** detect completion mismatch and deprecate legacy scripts ([1711aab](https://github.com/LarsCowe/bmalph/commit/1711aabd2daab4616dfcc28b9694435b49fb2b6b))
+* **ralph:** prevent set -e leak and CWD pollution in ralph_loop tests ([2d0b98d](https://github.com/LarsCowe/bmalph/commit/2d0b98d166fc6684f8f02a2dfd4d3504a41434cb))
+* **ralph:** resolve 3 known bugs in wizard_utils, enable_core, task_sources ([a311aaa](https://github.com/LarsCowe/bmalph/commit/a311aaa461f9dc365bec10d4e6e9a0ce355dc739))
+* **ralph:** use jq for JSON generation to prevent injection from special characters ([1270f14](https://github.com/LarsCowe/bmalph/commit/1270f1415fe4079ff297a66d07c3d1f3fd3aa63b))
+* **tests:** increase previewUpgrade timeout for Windows CI ([cdcd647](https://github.com/LarsCowe/bmalph/commit/cdcd6471a2512e0b5fb72fe1e4998a0604b5642b))
+* **watch:** rename completionMismatch to ralphCompleted, fix status tests ([e679c9f](https://github.com/LarsCowe/bmalph/commit/e679c9f3b7d2d7c9223c6c4593f01fef851ae040))
+
+
+### Code Quality
+
+* remove deprecated exports and update docs ([ee817d4](https://github.com/LarsCowe/bmalph/commit/ee817d4c71bfc50ec7f2190e39423c6153581c8e))
+
 ## [2.4.0](https://github.com/LarsCowe/bmalph/compare/v2.3.0...v2.4.0) (2026-02-23)
 
 
