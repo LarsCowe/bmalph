@@ -1,8 +1,5 @@
 import type { Platform } from "./types.js";
-import { readFile } from "fs/promises";
-import { join } from "path";
-import { exists } from "../utils/file-system.js";
-import { isEnoent, formatError } from "../utils/errors.js";
+import { buildPlatformDoctorChecks } from "./doctor-checks.js";
 
 export const claudeCodePlatform: Platform = {
   id: "claude-code",
@@ -51,38 +48,7 @@ Use \`/bmalph\` to navigate phases. Use \`/bmad-help\` to discover all commands.
 | \`/ux-designer\` | UX Designer | User experience, wireframes |
 | \`/qa\` | QA Engineer | Test automation, quality assurance |
 `,
-  getDoctorChecks: () => [
-    {
-      id: "slash-command",
-      label: ".claude/commands/bmalph.md present",
-      check: async (projectDir: string) => {
-        if (await exists(join(projectDir, ".claude/commands/bmalph.md"))) {
-          return { passed: true };
-        }
-        return { passed: false, detail: "not found", hint: "Run: bmalph init" };
-      },
-    },
-    {
-      id: "instructions-file",
-      label: "CLAUDE.md contains BMAD snippet",
-      check: async (projectDir: string) => {
-        try {
-          const content = await readFile(join(projectDir, "CLAUDE.md"), "utf-8");
-          if (content.includes("BMAD-METHOD Integration")) {
-            return { passed: true };
-          }
-          return {
-            passed: false,
-            detail: "missing BMAD-METHOD Integration section",
-            hint: "Run: bmalph init",
-          };
-        } catch (err) {
-          if (isEnoent(err)) {
-            return { passed: false, detail: "CLAUDE.md not found", hint: "Run: bmalph init" };
-          }
-          return { passed: false, detail: formatError(err), hint: "Check file permissions" };
-        }
-      },
-    },
-  ],
+  getDoctorChecks() {
+    return buildPlatformDoctorChecks(this);
+  },
 };

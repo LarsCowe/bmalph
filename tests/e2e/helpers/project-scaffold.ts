@@ -1,6 +1,6 @@
-import { mkdir, rm, writeFile, readFile } from "fs/promises";
-import { dirname, join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 
 export interface TestProject {
   path: string;

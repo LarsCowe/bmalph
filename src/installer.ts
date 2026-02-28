@@ -1,10 +1,15 @@
-import { cp, mkdir, readFile, readdir, rm, chmod, rename } from "fs/promises";
-import { readFileSync } from "fs";
-import { join, basename, dirname } from "path";
-import { fileURLToPath } from "url";
+import { cp, mkdir, readFile, readdir, rm, chmod, rename } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { join, basename, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { debug, warn } from "./utils/logger.js";
 import { formatError, isEnoent } from "./utils/errors.js";
-import { exists, atomicWriteFile } from "./utils/file-system.js";
+import {
+  exists,
+  atomicWriteFile,
+  parseGitignoreLines,
+  replaceSection,
+} from "./utils/file-system.js";
 import { STATE_DIR, CONFIG_FILE } from "./utils/constants.js";
 import type { Platform } from "./platform/types.js";
 
@@ -163,13 +168,10 @@ async function deliverCommands(
     const commandsBlock = `\n${inlineMarker}\n\n${commandSections.join("\n\n---\n\n")}\n`;
 
     if (existing.includes(inlineMarker)) {
-      // Replace existing commands section
-      const sectionStart = existing.indexOf(inlineMarker);
-      const before = existing.slice(0, sectionStart);
-      const afterSection = existing.slice(sectionStart);
-      const nextHeadingMatch = afterSection.match(/\n## (?!BMAD Commands)/);
-      const after = nextHeadingMatch ? afterSection.slice(nextHeadingMatch.index!) : "";
-      await atomicWriteFile(instructionsPath, before.trimEnd() + commandsBlock + after);
+      await atomicWriteFile(
+        instructionsPath,
+        replaceSection(existing, inlineMarker, commandsBlock)
+      );
     } else {
       await atomicWriteFile(instructionsPath, existing + commandsBlock);
     }
@@ -345,8 +347,8 @@ modules:
           await chmod(join(destDriversDir, file), 0o755);
         }
       }
-    } catch {
-      // Non-fatal if chmod fails
+    } catch (err) {
+      debug(`chmod on driver scripts failed (non-fatal): ${formatError(err)}`);
     }
   }
 
@@ -468,13 +470,7 @@ async function updateGitignore(projectDir: string): Promise<void> {
     if (!isEnoent(err)) throw err;
   }
 
-  // Split into lines for exact comparison (avoid substring matching issues)
-  const existingLines = new Set(
-    existing
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-  );
+  const existingLines = parseGitignoreLines(existing);
 
   const entries = [".ralph/logs/", "_bmad-output/"];
   const newEntries = entries.filter((e) => !existingLines.has(e));
@@ -513,15 +509,7 @@ export async function mergeInstructionsFile(
   }
 
   if (existing.includes(marker)) {
-    // Replace stale section with current content, preserving content after it
-    const sectionStart = existing.indexOf(marker);
-    const before = existing.slice(0, sectionStart);
-    const afterSection = existing.slice(sectionStart);
-    // Find the next level-2 heading after the section start
-    const markerEscaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const nextHeadingMatch = afterSection.match(new RegExp(`\\n## (?!${markerEscaped.slice(3)})`));
-    const after = nextHeadingMatch ? afterSection.slice(nextHeadingMatch.index!) : "";
-    await atomicWriteFile(instructionsPath, before.trimEnd() + "\n" + snippet + after);
+    await atomicWriteFile(instructionsPath, replaceSection(existing, marker, "\n" + snippet));
     return;
   }
 

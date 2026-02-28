@@ -1,5 +1,5 @@
-import { resolve } from "path";
-import { stat } from "fs/promises";
+import { resolve } from "node:path";
+import { stat } from "node:fs/promises";
 import { Command } from "commander";
 import { initCommand } from "./commands/init.js";
 import { upgradeCommand } from "./commands/upgrade.js";

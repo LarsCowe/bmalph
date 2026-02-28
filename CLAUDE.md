@@ -134,6 +134,7 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 ## Dev Workflow
 
 - TDD: write tests first, then implement
+- Tests live in `tests/<module>/` (mirrors `src/` structure), not colocated
 - Conventional Commits with SemVer
 - Application language: English
 - Node 20+ LTS

@@ -1,5 +1,5 @@
-import { mkdir } from "fs/promises";
-import { join } from "path";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import { readJsonFile } from "./json.js";
 import { validateConfig } from "./validate.js";
 import { CONFIG_FILE } from "./constants.js";

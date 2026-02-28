@@ -6,31 +6,6 @@ export interface DryRunAction {
   reason?: string;
 }
 
-export function logDryRunAction(action: DryRunAction): void {
-  const prefix = chalk.dim("[dry-run]");
-  switch (action.type) {
-    case "create":
-      console.log(`${prefix} Would create: ${chalk.green(action.path)}`);
-      break;
-    case "modify":
-      console.log(`${prefix} Would modify: ${chalk.yellow(action.path)}`);
-      break;
-    case "skip":
-      console.log(
-        `${prefix} Would skip: ${chalk.dim(action.path)}${action.reason ? ` (${action.reason})` : ""}`
-      );
-      break;
-    case "delete":
-      console.log(`${prefix} Would delete: ${chalk.red(action.path)}`);
-      break;
-    case "warn":
-      console.log(
-        `${prefix} Warning: ${chalk.yellow(action.path)}${action.reason ? ` (${action.reason})` : ""}`
-      );
-      break;
-  }
-}
-
 export function formatDryRunSummary(actions: DryRunAction[]): string {
   if (actions.length === 0) {
     return chalk.dim("No changes would be made.");

@@ -10,9 +10,9 @@ import {
   generateManifests,
   getPackageVersion,
 } from "../src/installer.js";
-import { mkdir, rm, access, readFile, writeFile, readdir, stat } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, access, readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 describe("installer", () => {
   let testDir: string;

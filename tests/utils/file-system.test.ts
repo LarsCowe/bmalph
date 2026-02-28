@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdir, writeFile, readFile, readdir, rm, symlink } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, writeFile, readFile, readdir, rm, symlink } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
   exists,
   getFilesRecursive,
   getMarkdownFilesWithContent,
   atomicWriteFile,
+  parseGitignoreLines,
+  replaceSection,
 } from "../../src/utils/file-system.js";
 
 describe("file-system utilities", () => {
@@ -228,15 +230,94 @@ describe("exists() with mocked fs", () => {
     vi.resetModules();
     const eaccesError = Object.assign(new Error("permission denied"), { code: "EACCES" });
 
-    vi.doMock("fs/promises", async (importOriginal) => {
-      const actual = await importOriginal<typeof import("fs/promises")>();
+    vi.doMock("node:fs/promises", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:fs/promises")>();
       return { ...actual, access: vi.fn().mockRejectedValue(eaccesError) };
     });
 
     const { exists: mockedExists } = await import("../../src/utils/file-system.js");
     await expect(mockedExists("/some/path")).rejects.toThrow("permission denied");
 
-    vi.doUnmock("fs/promises");
+    vi.doUnmock("node:fs/promises");
     vi.resetModules();
+  });
+
+  describe("parseGitignoreLines", () => {
+    it("parses lines into a set of trimmed non-empty strings", () => {
+      const result = parseGitignoreLines(".ralph/logs/\n_bmad-output/\n");
+      expect(result).toEqual(new Set([".ralph/logs/", "_bmad-output/"]));
+    });
+
+    it("handles Windows-style line endings", () => {
+      const result = parseGitignoreLines(".ralph/logs/\r\n_bmad-output/\r\n");
+      expect(result).toEqual(new Set([".ralph/logs/", "_bmad-output/"]));
+    });
+
+    it("trims whitespace from lines", () => {
+      const result = parseGitignoreLines("  .ralph/logs/  \n  _bmad-output/  ");
+      expect(result).toEqual(new Set([".ralph/logs/", "_bmad-output/"]));
+    });
+
+    it("skips empty lines", () => {
+      const result = parseGitignoreLines(".ralph/logs/\n\n\n_bmad-output/\n\n");
+      expect(result).toEqual(new Set([".ralph/logs/", "_bmad-output/"]));
+    });
+
+    it("returns empty set for empty content", () => {
+      expect(parseGitignoreLines("")).toEqual(new Set());
+      expect(parseGitignoreLines("\n\n")).toEqual(new Set());
+    });
+  });
+
+  describe("replaceSection", () => {
+    const content = [
+      "# Header",
+      "",
+      "## Section One",
+      "",
+      "Content of section one.",
+      "",
+      "## Target Section",
+      "",
+      "Old content here.",
+      "",
+      "## Section Three",
+      "",
+      "Content of section three.",
+    ].join("\n");
+
+    it("replaces section content between headings", () => {
+      const result = replaceSection(
+        content,
+        "## Target Section",
+        "\n## Target Section\n\nNew content.\n"
+      );
+      expect(result).toContain("New content.");
+      expect(result).not.toContain("Old content here.");
+      expect(result).toContain("## Section Three");
+    });
+
+    it("removes section when replacement is empty", () => {
+      const result = replaceSection(content, "## Target Section", "");
+      expect(result).not.toContain("Target Section");
+      expect(result).not.toContain("Old content here.");
+      expect(result).toContain("## Section Three");
+    });
+
+    it("returns content unchanged when marker not found", () => {
+      const result = replaceSection(content, "## Nonexistent", "\nNew content.\n");
+      expect(result).toBe(content);
+    });
+
+    it("handles section at end of file", () => {
+      const endContent = "## First\n\nContent.\n\n## Last Section\n\nLast content.";
+      const result = replaceSection(
+        endContent,
+        "## Last Section",
+        "\n## Last Section\n\nReplaced.\n"
+      );
+      expect(result).toContain("Replaced.");
+      expect(result).not.toContain("Last content.");
+    });
   });
 });

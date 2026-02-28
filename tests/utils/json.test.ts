@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readJsonFile } from "../../src/utils/json.js";
-import { mkdir, rm, writeFile, chmod } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, writeFile, chmod } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { platform } from "process";
 
 describe("readJsonFile", () => {

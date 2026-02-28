@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdir } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { runInit, runDoctor } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
 import { expectBmalphInitialized } from "./helpers/assertions.js";

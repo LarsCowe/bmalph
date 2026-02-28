@@ -7,9 +7,9 @@ import {
   readRalphStatus,
   type BmalphState,
 } from "../../src/utils/state.js";
-import { mkdir, rm, writeFile } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 describe("state", () => {
   let testDir: string;

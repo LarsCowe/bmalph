@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("chalk");
 
-vi.mock("inquirer", () => ({
-  default: {
-    prompt: vi.fn(),
-  },
+vi.mock("@inquirer/prompts", () => ({
+  select: vi.fn(),
+  input: vi.fn(),
+  confirm: vi.fn(),
 }));
 
 vi.mock("../../src/installer.js", () => ({
@@ -136,16 +136,13 @@ describe("init command", () => {
     const { isInitialized, installProject, mergeInstructionsFile } =
       await import("../../src/installer.js");
     const { writeConfig } = await import("../../src/utils/config.js");
-    const inquirer = await import("inquirer");
+    const { input } = await import("@inquirer/prompts");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
     vi.mocked(installProject).mockResolvedValue(undefined);
     vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
     vi.mocked(writeConfig).mockResolvedValue(undefined);
-    vi.mocked(inquirer.default.prompt).mockResolvedValue({
-      name: "prompted-name",
-      description: "prompted-desc",
-    });
+    vi.mocked(input).mockResolvedValueOnce("prompted-name").mockResolvedValueOnce("prompted-desc");
 
     const originalIsTTY = process.stdin.isTTY;
     process.stdin.isTTY = true as unknown as true;
@@ -153,7 +150,7 @@ describe("init command", () => {
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({ projectDir: process.cwd() });
 
-    expect(inquirer.default.prompt).toHaveBeenCalled();
+    expect(input).toHaveBeenCalled();
     expect(writeConfig).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
@@ -432,9 +429,6 @@ describe("init command", () => {
     process.stdin.isTTY = true as unknown as true;
     process.exitCode = undefined;
 
-    const inquirer = await import("inquirer");
-    vi.mocked(inquirer.default.prompt).mockResolvedValue({ name: "", description: "A project" });
-
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({ name: "", description: "A project", projectDir: process.cwd() });
 
@@ -502,7 +496,7 @@ describe("init command", () => {
       await import("../../src/installer.js");
     const { writeConfig } = await import("../../src/utils/config.js");
     const { detectPlatform } = await import("../../src/platform/detect.js");
-    const inquirer = await import("inquirer");
+    const { select, input } = await import("@inquirer/prompts");
 
     vi.mocked(isInitialized).mockResolvedValue(false);
     vi.mocked(installProject).mockResolvedValue(undefined);
@@ -518,20 +512,15 @@ describe("init command", () => {
     const originalIsTTY = process.stdin.isTTY;
     process.stdin.isTTY = true as unknown as true;
 
-    // Mock prompt to return both name/description AND platform selection
-    vi.mocked(inquirer.default.prompt)
-      .mockResolvedValueOnce({ platformId: "cursor" })
-      .mockResolvedValueOnce({ name: "my-proj", description: "A project" });
+    // Mock select for platform, input for name/description
+    vi.mocked(select).mockResolvedValue("cursor");
+    vi.mocked(input).mockResolvedValueOnce("my-proj").mockResolvedValueOnce("A project");
 
     const { initCommand } = await import("../../src/commands/init.js");
     await initCommand({ projectDir: process.cwd() });
 
-    // Verify the platform prompt was shown
-    const promptCalls = vi.mocked(inquirer.default.prompt).mock.calls;
-    const platformPrompt = promptCalls.find((call) =>
-      (call[0] as Array<{ name: string }>).some((q) => q.name === "platformId")
-    );
-    expect(platformPrompt).toBeDefined();
+    // Verify the platform select was called
+    expect(select).toHaveBeenCalled();
 
     expect(writeConfig).toHaveBeenCalledWith(
       expect.any(String),

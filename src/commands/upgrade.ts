@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import inquirer from "inquirer";
+import { confirm } from "@inquirer/prompts";
 import {
   isInitialized,
   copyBundledAssets,
@@ -49,15 +49,11 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
     if (!process.stdin.isTTY) {
       throw new Error("Non-interactive mode requires --force flag for upgrade");
     }
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: "This will overwrite managed files. Continue?",
-        default: false,
-      },
-    ]);
-    if (!confirm) {
+    const confirmed = await confirm({
+      message: "This will overwrite managed files. Continue?",
+      default: false,
+    });
+    if (!confirmed) {
       console.log("Aborted.");
       return;
     }

@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  formatError,
-  formatErrorMessage,
-  isEnoent,
-  withErrorHandling,
-} from "../../src/utils/errors.js";
+import { formatError, isEnoent, withErrorHandling } from "../../src/utils/errors.js";
 
 describe("errors", () => {
   describe("formatError", () => {
@@ -81,23 +76,6 @@ describe("errors", () => {
 
     it("returns false for plain object with code ENOENT", () => {
       expect(isEnoent({ code: "ENOENT" })).toBe(false);
-    });
-  });
-
-  describe("formatErrorMessage", () => {
-    it("creates formatted error message with prefix", () => {
-      const error = new Error("File not found");
-      expect(formatErrorMessage("Failed to read file", error)).toBe(
-        "Failed to read file: File not found"
-      );
-    });
-
-    it("works with string errors", () => {
-      expect(formatErrorMessage("Operation failed", "timeout")).toBe("Operation failed: timeout");
-    });
-
-    it("works with unknown error types", () => {
-      expect(formatErrorMessage("Task failed", 500)).toBe("Task failed: 500");
     });
   });
 

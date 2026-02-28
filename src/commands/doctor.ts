@@ -1,8 +1,9 @@
 import chalk from "chalk";
-import { readFile, stat } from "fs/promises";
-import { join } from "path";
+import { readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
 import { readJsonFile } from "../utils/json.js";
 import { readConfig } from "../utils/config.js";
+import { parseGitignoreLines } from "../utils/file-system.js";
 import { getBundledVersions } from "../installer.js";
 import { checkUpstream, getSkipReason } from "../utils/github.js";
 import { isEnoent, formatError, withErrorHandling } from "../utils/errors.js";
@@ -122,7 +123,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
 }
 
 async function checkCommandAvailable(command: string): Promise<boolean> {
-  const { execSync } = await import("child_process");
+  const { execSync } = await import("node:child_process");
   try {
     const cmd = process.platform === "win32" ? `where ${command}` : `which ${command}`;
     execSync(cmd, { stdio: "ignore" });
@@ -245,13 +246,7 @@ async function checkGitignore(projectDir: string): Promise<CheckResult> {
   const required = [".ralph/logs/", "_bmad-output/"];
   try {
     const content = await readFile(join(projectDir, ".gitignore"), "utf-8");
-    // Use line-by-line comparison to avoid substring matching issues
-    const existingLines = new Set(
-      content
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-    );
+    const existingLines = parseGitignoreLines(content);
     const missing = required.filter((e) => !existingLines.has(e));
     if (missing.length === 0) {
       return { label, passed: true };

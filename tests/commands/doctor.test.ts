@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdir, rm, writeFile } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 vi.mock("chalk");
 
 // Wrap fs/promises so readFile and stat are spy-able vi.fn() instances
 // that delegate to the real implementation by default.
-vi.mock("fs/promises", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("fs/promises")>();
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...actual,
     readFile: vi.fn(actual.readFile),
@@ -1108,7 +1108,7 @@ describe("doctor command", () => {
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       expect(output).toContain("upstream status");
       expect(output).toContain("skipped");
-      expect(output).toContain("offline");
+      expect(output).toContain("network error");
     });
 
     it("shows skipped when rate limited", async () => {
@@ -1142,7 +1142,7 @@ describe("doctor command", () => {
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
       // Upstream status check should pass even when network fails
       expect(output).toContain("upstream status");
-      expect(output).toContain("skipped: offline");
+      expect(output).toContain("skipped: network error");
       // The ✓ symbol indicates it passed (not ✗)
       expect(output).toMatch(/✓.*upstream status/);
     });

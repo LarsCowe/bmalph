@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { rm } from "fs/promises";
-import { join } from "path";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { runInit, runDoctor } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
 import { expectDoctorCheckPassed, expectDoctorCheckFailed } from "./helpers/assertions.js";

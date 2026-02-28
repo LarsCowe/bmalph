@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm, writeFile } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
   detectSpecFileType,
   determinePriority,
@@ -199,34 +199,28 @@ describe("specs-index", () => {
 
   describe("determinePriority", () => {
     it("returns critical for PRD/architecture/stories", () => {
-      expect(determinePriority("prd", 1000)).toBe("critical");
-      expect(determinePriority("architecture", 1000)).toBe("critical");
-      expect(determinePriority("stories", 1000)).toBe("critical");
+      expect(determinePriority("prd")).toBe("critical");
+      expect(determinePriority("architecture")).toBe("critical");
+      expect(determinePriority("stories")).toBe("critical");
     });
 
     it("returns high for test-design/readiness", () => {
-      expect(determinePriority("test-design", 1000)).toBe("high");
-      expect(determinePriority("readiness", 1000)).toBe("high");
+      expect(determinePriority("test-design")).toBe("high");
+      expect(determinePriority("readiness")).toBe("high");
     });
 
     it("returns medium for ux/sprint", () => {
-      expect(determinePriority("ux", 1000)).toBe("medium");
-      expect(determinePriority("sprint", 1000)).toBe("medium");
+      expect(determinePriority("ux")).toBe("medium");
+      expect(determinePriority("sprint")).toBe("medium");
     });
 
     it("returns high for research", () => {
-      expect(determinePriority("research", 1000)).toBe("high");
+      expect(determinePriority("research")).toBe("high");
     });
 
     it("returns low for brainstorm/other", () => {
-      expect(determinePriority("brainstorm", 1000)).toBe("low");
-      expect(determinePriority("other", 1000)).toBe("low");
-    });
-
-    it("does not downgrade critical files for large size", () => {
-      // Critical files stay critical even when large
-      expect(determinePriority("prd", 150000)).toBe("critical");
-      expect(determinePriority("architecture", 150000)).toBe("critical");
+      expect(determinePriority("brainstorm")).toBe("low");
+      expect(determinePriority("other")).toBe("low");
     });
   });
 

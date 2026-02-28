@@ -1,3 +1,6 @@
+import { debug } from "../utils/logger.js";
+import { formatError } from "../utils/errors.js";
+
 export class FileWatcher {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private readonly intervalMs: number;
@@ -23,8 +26,8 @@ export class FileWatcher {
   private async tick(): Promise<void> {
     try {
       await this.callback();
-    } catch {
-      // Swallow errors to keep polling alive
+    } catch (err) {
+      debug(`Watcher tick failed: ${formatError(err)}`);
     }
   }
 }

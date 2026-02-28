@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { readFile } from "fs/promises";
-import { join } from "path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { runInit, runInitDryRun } from "./helpers/cli-runner.js";
 import {
   createTestProject,

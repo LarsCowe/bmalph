@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import { access } from "fs/promises";
-import { join } from "path";
+import { access } from "node:fs/promises";
+import { join } from "node:path";
 import { runTransition } from "../transition/orchestration.js";
 import { withErrorHandling } from "../utils/errors.js";
 import { resolveProjectPlatform } from "../platform/resolve.js";

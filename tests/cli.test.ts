@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { execFileSync } from "child_process";
-import { join } from "path";
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 
 const CLI_PATH = join(__dirname, "..", "bin", "bmalph.js");
 

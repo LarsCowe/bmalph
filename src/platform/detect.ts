@@ -1,6 +1,6 @@
 import type { PlatformId } from "./types.js";
 import { exists } from "../utils/file-system.js";
-import { join } from "path";
+import { join } from "node:path";
 
 interface DetectionResult {
   detected: PlatformId | null;

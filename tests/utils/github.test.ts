@@ -734,16 +734,16 @@ describe("getSkipReason", () => {
     );
   });
 
-  it("returns 'offline' for network errors", () => {
-    expect(getSkipReason([{ type: "network", message: "fetch failed" }])).toBe("offline");
+  it("returns 'network error' for network errors", () => {
+    expect(getSkipReason([{ type: "network", message: "fetch failed" }])).toBe("network error");
   });
 
-  it("returns 'timeout' for timeout errors", () => {
-    expect(getSkipReason([{ type: "timeout", message: "timed out" }])).toBe("timeout");
+  it("returns 'request timed out' for timeout errors", () => {
+    expect(getSkipReason([{ type: "timeout", message: "timed out" }])).toBe("request timed out");
   });
 
-  it("returns 'error' for other error types", () => {
-    expect(getSkipReason([{ type: "api-error", message: "500" }])).toBe("error");
+  it("returns detailed reason for other error types", () => {
+    expect(getSkipReason([{ type: "api-error", message: "500" }])).toBe("API error (unknown)");
   });
 
   it("returns 'unknown' for empty error list", () => {

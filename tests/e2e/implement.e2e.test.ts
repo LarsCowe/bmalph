@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdir, writeFile } from "fs/promises";
-import { join } from "path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { runInit, runImplement } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
 import { expectFileExists } from "./helpers/assertions.js";

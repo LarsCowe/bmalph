@@ -5,7 +5,7 @@ import type { TransitionResult } from "../../src/transition/types.js";
 vi.mock("chalk");
 
 const mockAccess = vi.fn();
-vi.mock("fs/promises", () => ({
+vi.mock("node:fs/promises", () => ({
   access: mockAccess,
 }));
 

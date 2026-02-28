@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 import { debug } from "../utils/logger.js";
 import { exists } from "../utils/file-system.js";
 

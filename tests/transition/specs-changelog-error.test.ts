@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { join } from "path";
+import { join } from "node:path";
 
 const { mockReadFile } = vi.hoisted(() => ({
   mockReadFile: vi.fn(),
 }));
 
-vi.mock("fs/promises", async () => {
-  const actual = await vi.importActual<typeof import("fs/promises")>("fs/promises");
+vi.mock("node:fs/promises", async () => {
+  const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
   return { ...actual, readFile: mockReadFile };
 });
 

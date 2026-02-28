@@ -8,7 +8,7 @@ const { readdirMock, readFileMock, rmMock, existsMock, atomicWriteFileMock } = v
   atomicWriteFileMock: vi.fn(),
 }));
 
-vi.mock("fs/promises", () => ({
+vi.mock("node:fs/promises", () => ({
   readdir: readdirMock,
   readFile: readFileMock,
   rm: rmMock,
@@ -18,10 +18,16 @@ vi.mock("../src/installer.js", () => ({
   getSlashCommandsDir: vi.fn(() => "/bundled/slash-commands"),
 }));
 
-vi.mock("../src/utils/file-system.js", () => ({
-  exists: existsMock,
-  atomicWriteFile: atomicWriteFileMock,
-}));
+vi.mock("../src/utils/file-system.js", async () => {
+  const actual = await vi.importActual<typeof import("../src/utils/file-system.js")>(
+    "../src/utils/file-system.js"
+  );
+  return {
+    ...actual,
+    exists: existsMock,
+    atomicWriteFile: atomicWriteFileMock,
+  };
+});
 
 import type { Platform } from "../src/platform/types.js";
 import type { ResetPlan } from "../src/reset.js";

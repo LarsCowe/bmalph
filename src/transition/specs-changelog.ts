@@ -1,5 +1,5 @@
-import { readFile } from "fs/promises";
-import { join } from "path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { SpecsChange } from "./types.js";
 import { debug } from "../utils/logger.js";
 import { formatError } from "../utils/errors.js";

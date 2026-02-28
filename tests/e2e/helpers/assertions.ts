@@ -1,5 +1,5 @@
-import { access, readFile, stat } from "fs/promises";
-import { join } from "path";
+import { access, readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
 import { expect } from "vitest";
 
 /**

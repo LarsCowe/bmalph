@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { findArtifactsDir } from "../../src/transition/artifacts.js";
 
 describe("artifacts", () => {

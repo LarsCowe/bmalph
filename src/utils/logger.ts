@@ -7,16 +7,8 @@ export function setVerbose(value: boolean): void {
   verbose = value;
 }
 
-export function isVerbose(): boolean {
-  return verbose;
-}
-
 export function setQuiet(value: boolean): void {
   quiet = value;
-}
-
-export function isQuiet(): boolean {
-  return quiet;
 }
 
 export function debug(message: string): void {
@@ -34,13 +26,4 @@ export function info(message: string): void {
 export function warn(message: string): void {
   if (quiet) return;
   console.log(chalk.yellow(message));
-}
-
-export function error(message: string): void {
-  console.error(chalk.red(message));
-}
-
-export function success(message: string): void {
-  if (quiet) return;
-  console.log(chalk.green(message));
 }

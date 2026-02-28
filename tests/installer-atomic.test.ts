@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { mkdir, rm, writeFile, access, readFile } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, writeFile, access, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 const { mockRename } = vi.hoisted(() => ({
   mockRename: vi.fn(),
 }));
 
-vi.mock("fs/promises", async () => {
-  const actual = await vi.importActual<typeof import("fs/promises")>("fs/promises");
+vi.mock("node:fs/promises", async () => {
+  const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
   return { ...actual, rename: mockRename };
 });
 
@@ -36,7 +36,7 @@ describe("installer atomic copy", { timeout: 30000 }, () => {
     await writeFile(join(bmadDir, "core", "marker.txt"), "original");
 
     const { rename: realRename } =
-      await vi.importActual<typeof import("fs/promises")>("fs/promises");
+      await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
     mockRename.mockImplementation(async (src: string, dest: string) => {
       // Fail the final swap: _bmad.new → _bmad
       if (String(src).endsWith("_bmad.new") && String(dest).endsWith("_bmad")) {
@@ -62,7 +62,7 @@ describe("installer atomic copy", { timeout: 30000 }, () => {
     await writeFile(join(testDir, "_bmad", "core", "marker.txt"), "will be replaced");
 
     const { rename: realRename } =
-      await vi.importActual<typeof import("fs/promises")>("fs/promises");
+      await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
     mockRename.mockImplementation(async (src: string, dest: string) => {
       return (realRename as typeof import("fs/promises").rename)(src, dest);
     });
@@ -84,7 +84,7 @@ describe("installer atomic copy", { timeout: 30000 }, () => {
     await writeFile(join(testDir, "_bmad.old", "stale", "data.txt"), "stale data");
 
     const { rename: realRename } =
-      await vi.importActual<typeof import("fs/promises")>("fs/promises");
+      await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
     mockRename.mockImplementation(async (src: string, dest: string) => {
       return (realRename as typeof import("fs/promises").rename)(src, dest);
     });
@@ -101,7 +101,7 @@ describe("installer atomic copy", { timeout: 30000 }, () => {
 
     // No _bmad directory exists — first install
     const { rename: realRename } =
-      await vi.importActual<typeof import("fs/promises")>("fs/promises");
+      await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
     mockRename.mockImplementation(async (src: string, dest: string) => {
       return (realRename as typeof import("fs/promises").rename)(src, dest);
     });

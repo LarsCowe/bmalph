@@ -2,10 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("chalk");
 
-vi.mock("inquirer", () => ({
-  default: {
-    prompt: vi.fn(),
-  },
+vi.mock("@inquirer/prompts", () => ({
+  confirm: vi.fn(),
 }));
 
 vi.mock("../../src/installer.js", () => ({
@@ -113,12 +111,12 @@ describe("reset command", () => {
     const { isInitialized } = await import("../../src/installer.js");
     const { buildResetPlan, executeResetPlan, planToDryRunActions } =
       await import("../../src/reset.js");
-    const inquirer = await import("inquirer");
+    const { confirm } = await import("@inquirer/prompts");
 
     vi.mocked(isInitialized).mockResolvedValue(true);
     vi.mocked(buildResetPlan).mockResolvedValue(fullPlan);
     vi.mocked(planToDryRunActions).mockReturnValue([{ type: "delete", path: "_bmad/" }]);
-    vi.mocked(inquirer.default.prompt).mockResolvedValue({ confirm: false });
+    vi.mocked(confirm).mockResolvedValue(false);
 
     const originalIsTTY = process.stdin.isTTY;
     process.stdin.isTTY = true as unknown as true;

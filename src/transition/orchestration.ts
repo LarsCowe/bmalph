@@ -1,5 +1,5 @@
-import { readFile, readdir, cp, mkdir, access, rm, rename } from "fs/promises";
-import { join } from "path";
+import { readFile, readdir, cp, mkdir, access, rm, rename } from "node:fs/promises";
+import { join } from "node:path";
 import { debug, info, warn } from "../utils/logger.js";
 import { isEnoent, formatError } from "../utils/errors.js";
 import { atomicWriteFile, exists } from "../utils/file-system.js";

@@ -41,26 +41,6 @@ export function formatError(error: unknown): string {
 }
 
 /**
- * Create a formatted error message with a prefix.
- *
- * @param prefix - Context for the error (e.g., "Failed to read file")
- * @param error - The caught error
- * @returns Formatted message like "Failed to read file: <error message>"
- *
- * @example
- * ```ts
- * try {
- *   await readFile(path);
- * } catch (err) {
- *   throw new Error(formatErrorMessage("Failed to read config", err));
- * }
- * ```
- */
-export function formatErrorMessage(prefix: string, error: unknown): string {
-  return `${prefix}: ${formatError(error)}`;
-}
-
-/**
  * Wrap an async command function with standard error handling.
  *
  * Catches any errors, prints them in red to stderr, and sets process.exitCode to 1.

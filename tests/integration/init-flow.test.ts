@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm, readFile, access } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { mkdir, rm, readFile, access } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { installProject, mergeInstructionsFile } from "../../src/installer.js";
 import { writeConfig, readConfig, type BmalphConfig } from "../../src/utils/config.js";
 

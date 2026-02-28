@@ -1,7 +1,5 @@
 import type { Platform } from "./types.js";
-import { readFile } from "fs/promises";
-import { join } from "path";
-import { isEnoent, formatError } from "../utils/errors.js";
+import { buildPlatformDoctorChecks } from "./doctor-checks.js";
 
 export const codexPlatform: Platform = {
   id: "codex",
@@ -41,28 +39,7 @@ Run the BMAD master agent to navigate phases. Ask for help to discover all avail
 | UX Designer | User experience, wireframes |
 | QA Engineer | Test automation, quality assurance |
 `,
-  getDoctorChecks: () => [
-    {
-      id: "instructions-file",
-      label: "AGENTS.md contains BMAD snippet",
-      check: async (projectDir: string) => {
-        try {
-          const content = await readFile(join(projectDir, "AGENTS.md"), "utf-8");
-          if (content.includes("BMAD-METHOD Integration")) {
-            return { passed: true };
-          }
-          return {
-            passed: false,
-            detail: "missing BMAD-METHOD Integration section",
-            hint: "Run: bmalph init",
-          };
-        } catch (err) {
-          if (isEnoent(err)) {
-            return { passed: false, detail: "AGENTS.md not found", hint: "Run: bmalph init" };
-          }
-          return { passed: false, detail: formatError(err), hint: "Check file permissions" };
-        }
-      },
-    },
-  ],
+  getDoctorChecks() {
+    return buildPlatformDoctorChecks(this);
+  },
 };

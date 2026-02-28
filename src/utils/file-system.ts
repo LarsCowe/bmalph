@@ -1,6 +1,6 @@
-import { access, readFile, readdir, stat, writeFile, rename, unlink } from "fs/promises";
-import { join, extname } from "path";
-import { randomUUID } from "crypto";
+import { access, readFile, readdir, stat, writeFile, rename, unlink } from "node:fs/promises";
+import { join, extname } from "node:path";
+import { randomUUID } from "node:crypto";
 import { isEnoent } from "./errors.js";
 
 /**
@@ -61,6 +61,42 @@ export async function getFilesRecursive(dir: string, basePath = ""): Promise<str
   }
 
   return files;
+}
+
+/**
+ * Parse .gitignore content into a set of trimmed, non-empty lines.
+ */
+export function parseGitignoreLines(content: string): Set<string> {
+  return new Set(
+    content
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+  );
+}
+
+/**
+ * Replace or remove a markdown section identified by a heading marker.
+ * Finds the marker, then locates the next level-2 heading to determine section bounds.
+ *
+ * @param content - The full file content
+ * @param marker - The section heading to find (e.g. "## BMAD-METHOD Integration")
+ * @param replacement - New content for the section, or empty string to remove it
+ * @returns Updated content with section replaced/removed
+ */
+export function replaceSection(content: string, marker: string, replacement: string): string {
+  if (!content.includes(marker)) return content;
+
+  const sectionStart = content.indexOf(marker);
+  const before = content.slice(0, sectionStart);
+  const afterSection = content.slice(sectionStart);
+
+  const headingText = marker.startsWith("## ") ? marker.slice(3) : marker;
+  const headingTextEscaped = headingText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const nextHeadingMatch = afterSection.match(new RegExp(`\\n## (?!${headingTextEscaped})`));
+  const after = nextHeadingMatch ? afterSection.slice(nextHeadingMatch.index!) : "";
+
+  return before.trimEnd() + replacement + after;
 }
 
 export interface FileWithContent {

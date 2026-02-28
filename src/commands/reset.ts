@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import inquirer from "inquirer";
+import { confirm } from "@inquirer/prompts";
 import { isInitialized } from "../installer.js";
 import { buildResetPlan, executeResetPlan, planToDryRunActions } from "../reset.js";
 import { formatDryRunSummary } from "../utils/dryrun.js";
@@ -58,15 +58,11 @@ async function runReset(options: ResetOptions): Promise<void> {
     if (!process.stdin.isTTY) {
       throw new Error("Non-interactive mode requires --force flag for reset");
     }
-    const { confirm } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm",
-        message: "This will remove all bmalph files from the project. Continue?",
-        default: false,
-      },
-    ]);
-    if (!confirm) {
+    const confirmed = await confirm({
+      message: "This will remove all bmalph files from the project. Continue?",
+      default: false,
+    });
+    if (!confirmed) {
       console.log("Aborted.");
       return;
     }

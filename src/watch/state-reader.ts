@@ -1,8 +1,10 @@
-import { join } from "path";
-import { open, readFile } from "fs/promises";
+import { join } from "node:path";
+import { open, readFile } from "node:fs/promises";
 import { readJsonFile } from "../utils/json.js";
 import { RALPH_DIR } from "../utils/constants.js";
 import { parseFixPlan } from "../transition/fix-plan.js";
+import { debug } from "../utils/logger.js";
+import { formatError } from "../utils/errors.js";
 import {
   validateCircuitBreakerState,
   validateRalphSession,
@@ -71,7 +73,8 @@ export async function readLoopInfo(projectDir: string): Promise<LoopInfo | null>
       callsMadeThisHour,
       maxCallsPerHour,
     };
-  } catch {
+  } catch (err) {
+    debug(`Failed to read loop info: ${formatError(err)}`);
     return null;
   }
 }
@@ -94,7 +97,8 @@ export async function readCircuitBreakerInfo(
       totalOpens,
       reason: validated.reason,
     };
-  } catch {
+  } catch (err) {
+    debug(`Failed to read circuit breaker info: ${formatError(err)}`);
     return null;
   }
 }
@@ -103,7 +107,8 @@ export async function readStoryProgress(projectDir: string): Promise<StoryProgre
   let content: string;
   try {
     content = await readFile(join(projectDir, RALPH_DIR, "@fix_plan.md"), "utf-8");
-  } catch {
+  } catch (err) {
+    debug(`Failed to read fix plan: ${formatError(err)}`);
     return null;
   }
 
@@ -146,7 +151,8 @@ export async function readAnalysisInfo(projectDir: string): Promise<AnalysisInfo
       hasPermissionDenials,
       permissionDenialCount,
     };
-  } catch {
+  } catch (err) {
+    debug(`Failed to read analysis info: ${formatError(err)}`);
     return null;
   }
 }
@@ -164,7 +170,8 @@ export async function readExecutionProgress(projectDir: string): Promise<Executi
     const elapsedSeconds = typeof data.elapsed_seconds === "number" ? data.elapsed_seconds : 0;
 
     return { status, elapsedSeconds };
-  } catch {
+  } catch (err) {
+    debug(`Failed to read execution progress: ${formatError(err)}`);
     return null;
   }
 }
@@ -182,7 +189,8 @@ export async function readSessionInfo(projectDir: string): Promise<SessionInfo |
       createdAt: validated.created_at,
       lastUsed: validated.last_used,
     };
-  } catch {
+  } catch (err) {
+    debug(`Failed to read session info: ${formatError(err)}`);
     return null;
   }
 }
@@ -213,7 +221,8 @@ export async function readRecentLogs(
     } finally {
       await fh.close();
     }
-  } catch {
+  } catch (err) {
+    debug(`Failed to read recent logs: ${formatError(err)}`);
     return [];
   }
 

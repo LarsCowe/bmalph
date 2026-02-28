@@ -1,7 +1,12 @@
-import { readdir, readFile, rm } from "fs/promises";
-import { join, posix } from "path";
+import { readdir, readFile, rm } from "node:fs/promises";
+import { join, posix } from "node:path";
 import { getSlashCommandsDir } from "./installer.js";
-import { exists, atomicWriteFile } from "./utils/file-system.js";
+import {
+  exists,
+  atomicWriteFile,
+  parseGitignoreLines,
+  replaceSection,
+} from "./utils/file-system.js";
 import { isEnoent } from "./utils/errors.js";
 import { BMAD_DIR, RALPH_DIR, BMALPH_DIR, BMAD_OUTPUT_DIR } from "./utils/constants.js";
 import type { Platform } from "./platform/types.js";
@@ -79,12 +84,7 @@ export async function buildResetPlan(projectDir: string, platform: Platform): Pr
   // Check .gitignore for bmalph entries
   try {
     const content = await readFile(join(projectDir, ".gitignore"), "utf-8");
-    const existingLines = new Set(
-      content
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean)
-    );
+    const existingLines = parseGitignoreLines(content);
     const bmalpEntries = [".ralph/logs/", "_bmad-output/"];
     for (const entry of bmalpEntries) {
       if (existingLines.has(entry)) {
@@ -135,7 +135,7 @@ export async function executeResetPlan(projectDir: string, plan: ResetPlan): Pro
       let content = await readFile(filePath, "utf-8");
 
       for (const marker of plan.instructionsCleanup.sectionsToRemove) {
-        content = removeSection(content, marker);
+        content = replaceSection(content, marker, "");
       }
 
       content = content.trim();
@@ -161,21 +161,6 @@ export async function executeResetPlan(projectDir: string, plan: ResetPlan): Pro
       if (!isEnoent(err)) throw err;
     }
   }
-}
-
-function removeSection(content: string, marker: string): string {
-  if (!content.includes(marker)) return content;
-
-  const sectionStart = content.indexOf(marker);
-  const before = content.slice(0, sectionStart);
-  const afterSection = content.slice(sectionStart);
-
-  // Find next level-2 heading that doesn't match this section's heading
-  const markerEscaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const nextHeadingMatch = afterSection.match(new RegExp(`\\n## (?!${markerEscaped.slice(3)})`));
-  const after = nextHeadingMatch ? afterSection.slice(nextHeadingMatch.index!) : "";
-
-  return before.trimEnd() + after;
 }
 
 function removeGitignoreLines(content: string, linesToRemove: string[]): string {

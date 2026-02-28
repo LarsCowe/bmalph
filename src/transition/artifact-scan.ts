@@ -1,5 +1,5 @@
-import { readdir } from "fs/promises";
-import { relative } from "path";
+import { readdir } from "node:fs/promises";
+import { relative } from "node:path";
 import { findArtifactsDir } from "./artifacts.js";
 
 export interface ArtifactClassification {

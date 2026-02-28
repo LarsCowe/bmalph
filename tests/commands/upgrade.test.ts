@@ -2,10 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 vi.mock("chalk");
 
-vi.mock("inquirer", () => ({
-  default: {
-    prompt: vi.fn(),
-  },
+vi.mock("@inquirer/prompts", () => ({
+  confirm: vi.fn(),
 }));
 
 vi.mock("../../src/installer.js", () => ({
@@ -375,22 +373,22 @@ describe("upgrade command", () => {
     it("shows confirmation prompt without --force", async () => {
       const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
-      const inquirer = await import("inquirer");
+      const { confirm } = await import("@inquirer/prompts");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
       vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
-      vi.mocked(inquirer.default.prompt).mockResolvedValue({ confirm: true });
+      vi.mocked(confirm).mockResolvedValue(true);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ projectDir: process.cwd() });
 
-      expect(inquirer.default.prompt).toHaveBeenCalled();
+      expect(confirm).toHaveBeenCalled();
     });
 
     it("skips prompt with --force", async () => {
       const { isInitialized, copyBundledAssets, mergeInstructionsFile } =
         await import("../../src/installer.js");
-      const inquirer = await import("inquirer");
+      const { confirm } = await import("@inquirer/prompts");
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
       vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
@@ -398,14 +396,14 @@ describe("upgrade command", () => {
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ force: true, projectDir: process.cwd() });
 
-      expect(inquirer.default.prompt).not.toHaveBeenCalled();
+      expect(confirm).not.toHaveBeenCalled();
     });
 
     it("aborts when user declines confirmation", async () => {
       const { isInitialized, copyBundledAssets } = await import("../../src/installer.js");
-      const inquirer = await import("inquirer");
+      const { confirm } = await import("@inquirer/prompts");
       vi.mocked(isInitialized).mockResolvedValue(true);
-      vi.mocked(inquirer.default.prompt).mockResolvedValue({ confirm: false });
+      vi.mocked(confirm).mockResolvedValue(false);
 
       const { upgradeCommand } = await import("../../src/commands/upgrade.js");
       await upgradeCommand({ projectDir: process.cwd() });

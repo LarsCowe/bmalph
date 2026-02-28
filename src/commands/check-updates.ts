@@ -1,6 +1,11 @@
 import chalk from "chalk";
 import { getBundledVersions } from "../installer.js";
-import { checkUpstream, type UpstreamStatus, type GitHubError } from "../utils/github.js";
+import {
+  checkUpstream,
+  getErrorReason,
+  type UpstreamStatus,
+  type GitHubError,
+} from "../utils/github.js";
 import { withErrorHandling } from "../utils/errors.js";
 
 interface CheckUpdatesOptions {
@@ -62,22 +67,5 @@ async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
     console.log(chalk.green("Up to date."));
   } else if (result.bmad !== null && !result.bmad.isUpToDate) {
     console.log(chalk.yellow("Updates available."));
-  }
-}
-
-function getErrorReason(error: GitHubError): string {
-  switch (error.type) {
-    case "network":
-      return "network error";
-    case "timeout":
-      return "request timed out";
-    case "rate-limit":
-      return "rate limited";
-    case "not-found":
-      return "repository not found";
-    case "api-error":
-      return `API error (${error.status || "unknown"})`;
-    default:
-      return "unknown error";
   }
 }

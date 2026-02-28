@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdir, writeFile, readFile } from "fs/promises";
-import { join } from "path";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { runInit } from "./helpers/cli-runner.js";
 import { createTestProject, type TestProject } from "./helpers/project-scaffold.js";
 import { runTransition } from "../../src/transition/orchestration.js";

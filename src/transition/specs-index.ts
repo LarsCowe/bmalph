@@ -47,7 +47,7 @@ function detectFromContent(content: string): SpecFileType {
 /**
  * Determines the reading priority for a spec file based on its type.
  */
-export function determinePriority(type: SpecFileType, _size: number): Priority {
+export function determinePriority(type: SpecFileType): Priority {
   switch (type) {
     case "prd":
     case "architecture":
@@ -110,7 +110,7 @@ export async function generateSpecsIndex(specsDir: string): Promise<SpecsIndex> 
 
   const metadata: SpecFileMetadata[] = files.map((file) => {
     const type = detectSpecFileType(file.path, file.content);
-    const priority = determinePriority(type, file.size);
+    const priority = determinePriority(type);
     const description = extractDescription(file.content);
 
     return {

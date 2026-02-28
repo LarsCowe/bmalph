@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import inquirer from "inquirer";
+import { select, input } from "@inquirer/prompts";
 import { writeConfig, type BmalphConfig } from "../utils/config.js";
 import {
   installProject,
@@ -12,7 +12,7 @@ import { formatDryRunSummary, type DryRunAction } from "../utils/dryrun.js";
 import { validateProjectName } from "../utils/validate.js";
 import { withErrorHandling } from "../utils/errors.js";
 import { exists } from "../utils/file-system.js";
-import { join } from "path";
+import { join } from "node:path";
 import { isPlatformId, getPlatform } from "../platform/registry.js";
 import { detectPlatform } from "../platform/detect.js";
 import type { Platform, PlatformId } from "../platform/types.js";
@@ -65,15 +65,11 @@ async function resolvePlatform(projectDir: string, explicit?: string): Promise<P
       { name: "Aider", value: "aider" },
     ];
 
-    const { platformId } = await inquirer.prompt([
-      {
-        type: "list",
-        name: "platformId",
-        message: "Which platform are you using?",
-        choices,
-        default: detection.candidates[0] ?? "claude-code",
-      },
-    ]);
+    const platformId = await select({
+      message: "Which platform are you using?",
+      choices,
+      default: detection.candidates[0] ?? "claude-code",
+    });
 
     return getPlatform(platformId);
   }
@@ -124,30 +120,12 @@ async function runInit(options: InitOptions): Promise<void> {
     const dirName = projectDir.split(/[/\\]/).pop();
     const defaultName = dirName && dirName.trim() ? dirName : "my-project";
 
-    const answers = await inquirer.prompt([
-      ...(name
-        ? []
-        : [
-            {
-              type: "input" as const,
-              name: "name",
-              message: "Project name:",
-              default: defaultName,
-            },
-          ]),
-      ...(description
-        ? []
-        : [
-            {
-              type: "input" as const,
-              name: "description",
-              message: "Project description:",
-            },
-          ]),
-    ]);
-
-    name = name ?? answers.name;
-    description = description ?? answers.description;
+    if (!name) {
+      name = await input({ message: "Project name:", default: defaultName });
+    }
+    if (!description) {
+      description = await input({ message: "Project description:" });
+    }
   }
 
   // Validate project name (filesystem safety, reserved names, etc.)

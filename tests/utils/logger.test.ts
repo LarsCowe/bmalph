@@ -44,31 +44,6 @@ describe("logger", () => {
     });
   });
 
-  describe("isVerbose", () => {
-    it("returns false by default", async () => {
-      const { isVerbose } = await import("../../src/utils/logger.js");
-
-      expect(isVerbose()).toBe(false);
-    });
-
-    it("returns true after setVerbose(true)", async () => {
-      const { setVerbose, isVerbose } = await import("../../src/utils/logger.js");
-
-      setVerbose(true);
-
-      expect(isVerbose()).toBe(true);
-    });
-
-    it("returns false after setVerbose(false)", async () => {
-      const { setVerbose, isVerbose } = await import("../../src/utils/logger.js");
-
-      setVerbose(true);
-      setVerbose(false);
-
-      expect(isVerbose()).toBe(false);
-    });
-  });
-
   describe("debug", () => {
     it("includes [debug] prefix in output", async () => {
       const { setVerbose, debug } = await import("../../src/utils/logger.js");
@@ -108,15 +83,6 @@ describe("logger", () => {
       expect(consoleSpy).not.toHaveBeenCalled();
     });
 
-    it("suppresses success output when quiet is enabled", async () => {
-      const { setQuiet, success } = await import("../../src/utils/logger.js");
-
-      setQuiet(true);
-      success("should not appear");
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-    });
-
     it("suppresses debug output when quiet is enabled", async () => {
       const { setVerbose, setQuiet, debug } = await import("../../src/utils/logger.js");
 
@@ -134,19 +100,6 @@ describe("logger", () => {
       warn("warning should not appear");
 
       expect(consoleSpy).not.toHaveBeenCalled();
-    });
-
-    it("does not suppress error output when quiet is enabled", async () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const { setQuiet, error } = await import("../../src/utils/logger.js");
-
-      setQuiet(true);
-      error("error should still appear");
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("error should still appear")
-      );
-      consoleErrorSpy.mockRestore();
     });
 
     it("resumes normal output when quiet is disabled", async () => {
@@ -181,38 +134,6 @@ describe("logger", () => {
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[yellow]"));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("warning message"));
-    });
-  });
-
-  describe("error", () => {
-    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-
-    beforeEach(() => {
-      consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      consoleErrorSpy.mockRestore();
-    });
-
-    it("outputs message with red color to stderr", async () => {
-      const { error } = await import("../../src/utils/logger.js");
-
-      error("error message");
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("[red]"));
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("error message"));
-    });
-  });
-
-  describe("success", () => {
-    it("outputs message with green color", async () => {
-      const { success } = await import("../../src/utils/logger.js");
-
-      success("success message");
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[green]"));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("success message"));
     });
   });
 });

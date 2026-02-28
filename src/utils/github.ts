@@ -300,15 +300,31 @@ export class GitHubClient {
 }
 
 /**
+ * Returns a human-readable reason for a GitHub error.
+ */
+export function getErrorReason(error: GitHubError): string {
+  switch (error.type) {
+    case "network":
+      return "network error";
+    case "timeout":
+      return "request timed out";
+    case "rate-limit":
+      return "rate limited";
+    case "not-found":
+      return "repository not found";
+    case "api-error":
+      return `API error (${error.status || "unknown"})`;
+    default:
+      return "unknown error";
+  }
+}
+
+/**
  * Determines why upstream checks were skipped based on error types.
  */
 export function getSkipReason(errors: GitHubError[]): string {
   if (errors.length === 0) return "unknown";
-  const types = new Set(errors.map((e) => e.type));
-  if (types.has("rate-limit")) return "rate limited";
-  if (types.has("network")) return "offline";
-  if (types.has("timeout")) return "timeout";
-  return "error";
+  return getErrorReason(errors[0]!);
 }
 
 // Default client instance for backward compatibility
