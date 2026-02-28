@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0](https://github.com/LarsCowe/bmalph/compare/v2.5.0...v2.6.0) (2026-02-28)
+
+
+### Features
+
+* add bmalph run command to start Ralph loop with dashboard ([70bf737](https://github.com/LarsCowe/bmalph/commit/70bf737c791582cef2d8caebf15ba8abe21b1e3d))
+* deprecate bmalph watch in favor of bmalph run ([4da6764](https://github.com/LarsCowe/bmalph/commit/4da676466b5cac915d649f07dbf8870c99cd5bf7))
+* promote Copilot to full tier with experimental flag ([a776dc3](https://github.com/LarsCowe/bmalph/commit/a776dc38d0fd2e1d3a032aaa9efd60dfc1083665))
+
+
+### Code Quality
+
+* simplify codebase and extract shared platform logic ([233f4be](https://github.com/LarsCowe/bmalph/commit/233f4be6924e47fa79c7225b3e39041c8897bb73))
+
 ## [2.5.0](https://github.com/LarsCowe/bmalph/compare/v2.4.0...v2.5.0) (2026-02-27)
 
 
