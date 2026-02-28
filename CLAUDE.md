@@ -34,8 +34,8 @@ bmalph: CLI + transition logic
 ```
 project-root/
 ├── _bmad/              # Actual BMAD agents, workflows, core
-├── .ralph/             # Ralph loop, libs, specs, logs (drivers for claude-code and codex only)
-│   └── drivers/        # Platform driver scripts (claude-code.sh, codex.sh)
+├── .ralph/             # Ralph loop, libs, specs, logs (drivers for claude-code, codex, and copilot)
+│   └── drivers/        # Platform driver scripts (claude-code.sh, codex.sh, copilot.sh)
 ├── bmalph/             # bmalph state (config.json with platform, state/)
 └── <instructions file> # Varies by platform (CLAUDE.md, AGENTS.md, etc.)
 ```
@@ -135,6 +135,7 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 - `ralph/` — Bundled Ralph loop and libraries
 - `ralph/drivers/claude-code.sh` — Ralph driver for Claude Code (`claude` CLI)
 - `ralph/drivers/codex.sh` — Ralph driver for OpenAI Codex (`codex exec`)
+- `ralph/drivers/copilot.sh` — Ralph driver for GitHub Copilot (`copilot --autopilot`, experimental)
 - `slash-commands/` — Slash commands (6 bmalph + 45 BMAD)
 
 ## Dev Workflow

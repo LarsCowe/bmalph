@@ -89,7 +89,7 @@ bmalph/
 │   └── e2e/                # End-to-end tests
 ├── bmad/                   # Bundled BMAD-METHOD assets
 ├── ralph/                  # Bundled Ralph assets
-│   └── drivers/            # Platform driver scripts (claude-code.sh, codex.sh)
+│   └── drivers/            # Platform driver scripts (claude-code.sh, codex.sh, copilot.sh)
 ├── slash-commands/         # bmalph slash commands
 ├── bin/                    # CLI entry point
 └── dist/                   # Compiled JavaScript (generated)
