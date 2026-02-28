@@ -17,13 +17,14 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
       - name: Update release PR branch
         if: steps.release.outputs.pr
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
         run: |
           PR_NUMBER=$(echo '${{ steps.release.outputs.pr }}' | jq -r '.number')
           gh pr update-branch "$PR_NUMBER" || true
