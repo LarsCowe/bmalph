@@ -122,7 +122,7 @@ program
 
 program
   .command("watch")
-  .description("Live dashboard showing Ralph loop status, circuit breaker, and activity")
+  .description("[deprecated] Use 'bmalph run' instead")
   .option("--interval <ms>", "Refresh interval in milliseconds (default: 2000)")
   .action(async (opts) =>
     watchCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })

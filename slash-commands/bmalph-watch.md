@@ -1,5 +1,7 @@
 # Ralph Live Dashboard
 
+> **Deprecated:** Use `bmalph run` instead, which starts Ralph and shows the live dashboard. The `watch` command will be removed in a future release.
+
 Launch the bmalph live dashboard to monitor Ralph loop progress in real-time.
 
 ## How to Run

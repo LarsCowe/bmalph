@@ -14,6 +14,16 @@ describe("bmalph watch e2e", { timeout: 60000 }, () => {
     }
   });
 
+  it("prints deprecation warning", async () => {
+    project = await createTestProject();
+    await runInit(project.path);
+
+    const result = await runWatch(project.path, 500, 3000);
+
+    expect(result.stderr).toContain("deprecated");
+    expect(result.stderr).toContain("bmalph run");
+  });
+
   it("renders dashboard with Ralph state files", async () => {
     project = await createTestProject();
     await runInit(project.path);

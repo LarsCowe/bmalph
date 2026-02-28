@@ -30,7 +30,7 @@ bmalph provides:
 - `bmalph check-updates` — Check for upstream updates
 - `bmalph status` — Show project status and phase
 - `bmalph reset` — Remove all bmalph files
-- `bmalph watch` — Live Ralph loop dashboard
+- ~~`bmalph watch`~~ — _(deprecated)_ Use `bmalph run` instead
 
 ## Supported Platforms
 
@@ -208,7 +208,7 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `bmalph implement`     | Transition BMAD planning artifacts to Ralph format  |
 | `bmalph run`           | Start Ralph loop with live dashboard                |
 | `bmalph reset`         | Remove all bmalph files from the project            |
-| `bmalph watch`         | Live dashboard showing Ralph loop status            |
+| `bmalph watch`         | _(deprecated)_ Use `bmalph run` instead             |
 
 ### Global options
 
@@ -277,6 +277,8 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `--no-dashboard`      | Run Ralph without the dashboard overlay                    |
 
 ### watch options
+
+> **Deprecated:** Use `bmalph run` instead. The `watch` command will be removed in a future release.
 
 | Flag              | Description                                      |
 | ----------------- | ------------------------------------------------ |

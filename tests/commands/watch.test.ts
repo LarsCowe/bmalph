@@ -9,6 +9,7 @@ vi.mock("../../src/watch/dashboard.js", () => ({
   startDashboard: vi.fn().mockResolvedValue(undefined),
 }));
 
+import chalk from "chalk";
 import { watchCommand } from "../../src/commands/watch.js";
 import { startDashboard } from "../../src/watch/dashboard.js";
 
@@ -35,6 +36,24 @@ describe("watchCommand", () => {
     } catch {
       /* Windows file locking */
     }
+  });
+
+  it("prints deprecation warning", async () => {
+    await writeFile(
+      join(testDir, "bmalph", "config.json"),
+      JSON.stringify({
+        name: "test-project",
+        description: "",
+        createdAt: "2026-02-25T00:00:00Z",
+      })
+    );
+
+    await watchCommand({ projectDir: testDir });
+
+    expect(chalk.yellow).toHaveBeenCalledWith(
+      'Warning: "bmalph watch" is deprecated. Use "bmalph run" instead.'
+    );
+    expect(consoleSpy).toHaveBeenCalled();
   });
 
   it("fails when project is not initialized", async () => {

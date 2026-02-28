@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { readConfig } from "../utils/config.js";
 import { withErrorHandling } from "../utils/errors.js";
 import { parseInterval } from "../utils/validate.js";
@@ -13,6 +14,8 @@ export async function watchCommand(options: WatchCommandOptions): Promise<void> 
 }
 
 async function runWatch(options: WatchCommandOptions): Promise<void> {
+  console.error(chalk.yellow('Warning: "bmalph watch" is deprecated. Use "bmalph run" instead.'));
+
   const projectDir = options.projectDir;
 
   const config = await readConfig(projectDir);

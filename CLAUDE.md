@@ -19,7 +19,7 @@ bmalph provides:
 - `bmalph status` — Show project installation status
 - `bmalph reset` — Remove all bmalph files from the project
 - `bmalph run` — Start Ralph loop with live dashboard
-- `bmalph watch` — Live dashboard for Ralph loop status
+- `bmalph watch` — Live dashboard for Ralph loop status (deprecated, use `bmalph run`)
 
 ## Architecture
 
@@ -54,7 +54,7 @@ The instructions file depends on the configured platform — see `src/platform/`
 | `bmalph implement`     | Transition BMAD artifacts to Ralph format |
 | `bmalph run`           | Start Ralph loop with live dashboard      |
 | `bmalph reset`         | Remove all bmalph files from the project  |
-| `bmalph watch`         | Live dashboard for Ralph loop status      |
+| `bmalph watch`         | _(deprecated)_ Use `bmalph run` instead   |
 
 ## Slash Commands
 
