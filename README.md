@@ -26,6 +26,7 @@ bmalph provides:
 - `bmalph upgrade` — Update to latest versions
 - `bmalph doctor` — Check installation health
 - `bmalph implement` — Transition from BMAD to Ralph
+- `bmalph run` — Start Ralph loop with live dashboard
 - `bmalph check-updates` — Check for upstream updates
 - `bmalph status` — Show project status and phase
 - `bmalph reset` — Remove all bmalph files
@@ -168,15 +169,13 @@ This transitions your BMAD artifacts into Ralph's format:
 3. Copies specs to `.ralph/specs/` with changelog tracking
 4. Instructs you to start the Ralph autonomous loop
 
-Then start Ralph using the driver for your platform:
+Then start Ralph:
 
 ```bash
-# Claude Code
-bash .ralph/drivers/claude-code.sh
-
-# OpenAI Codex
-bash .ralph/drivers/codex.sh
+bmalph run
 ```
+
+> **Advanced:** You can also run drivers directly with `bash .ralph/drivers/claude-code.sh` or `bash .ralph/drivers/codex.sh`.
 
 Ralph picks stories one by one, implements with TDD, and commits. The loop stops when all stories are done or the circuit breaker triggers.
 
@@ -207,6 +206,7 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | `bmalph check-updates` | Check if bundled BMAD/Ralph versions are up to date |
 | `bmalph status`        | Show current project status and phase               |
 | `bmalph implement`     | Transition BMAD planning artifacts to Ralph format  |
+| `bmalph run`           | Start Ralph loop with live dashboard                |
 | `bmalph reset`         | Remove all bmalph files from the project            |
 | `bmalph watch`         | Live dashboard showing Ralph loop status            |
 
@@ -267,6 +267,14 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 | ----------- | ------------------------ |
 | `--dry-run` | Preview changes          |
 | `--force`   | Skip confirmation prompt |
+
+### run options
+
+| Flag                  | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `--driver <platform>` | Override platform driver (claude-code, codex)              |
+| `--interval <ms>`     | Dashboard refresh interval in milliseconds (default: 2000) |
+| `--no-dashboard`      | Run Ralph without the dashboard overlay                    |
 
 ### watch options
 
@@ -383,7 +391,7 @@ Safety mechanisms:
 - **Response analyzer** — detects stuck or repeating outputs
 - **Completion** — loop exits when all `@fix_plan.md` items are checked off
 
-Press `Ctrl+C` to stop the loop at any time.
+Run `bmalph run` to start the loop with a live dashboard, or `bmalph run --no-dashboard` for headless mode. Press `Ctrl+C` to stop the loop at any time.
 
 ## Troubleshooting
 
@@ -518,7 +526,7 @@ claude
 #    Run: bmalph implement
 
 # 5. Start autonomous implementation
-bash .ralph/drivers/claude-code.sh
+bmalph run
 ```
 
 **Other platforms:**
@@ -534,7 +542,7 @@ bash .ralph/drivers/claude-code.sh
 
 # 4. For full tier platforms (Codex), transition to Ralph:
 #    Run: bmalph implement
-bash .ralph/drivers/codex.sh
+#    Then: bmalph run
 ```
 
 ## Contributing

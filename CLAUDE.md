@@ -18,6 +18,7 @@ bmalph provides:
 - `bmalph check-updates` — Check for upstream updates
 - `bmalph status` — Show project installation status
 - `bmalph reset` — Remove all bmalph files from the project
+- `bmalph run` — Start Ralph loop with live dashboard
 - `bmalph watch` — Live dashboard for Ralph loop status
 
 ## Architecture
@@ -51,6 +52,7 @@ The instructions file depends on the configured platform — see `src/platform/`
 | `bmalph check-updates` | Check for upstream updates                |
 | `bmalph status`        | Show project installation status          |
 | `bmalph implement`     | Transition BMAD artifacts to Ralph format |
+| `bmalph run`           | Start Ralph loop with live dashboard      |
 | `bmalph reset`         | Remove all bmalph files from the project  |
 | `bmalph watch`         | Live dashboard for Ralph loop status      |
 
@@ -98,7 +100,11 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 - `src/commands/status.ts` — Show project installation status
 - `src/commands/implement.ts` — CLI implement handler
 - `src/commands/reset.ts` — CLI reset handler
+- `src/commands/run.ts` — CLI run handler (Ralph + dashboard)
 - `src/commands/watch.ts` — Launch live dashboard
+- `src/run/types.ts` — Run module types (RalphProcessState, RalphProcess)
+- `src/run/ralph-process.ts` — Ralph process spawning and lifecycle
+- `src/run/run-dashboard.ts` — Dashboard with Ralph status bar and quit prompt
 - `src/reset.ts` — Reset plan-build + execute logic
 - `src/watch/dashboard.ts` — Live dashboard orchestrator
 - `src/watch/renderer.ts` — Terminal UI rendering

@@ -126,6 +126,22 @@ export async function runResetDryRun(cwd: string): Promise<CliResult> {
 }
 
 /**
+ * Run run command with short timeout (it normally blocks).
+ * Used for testing error paths where it exits quickly.
+ */
+export async function runRun(
+  cwd: string,
+  options: { driver?: string; noDashboard?: boolean; interval?: number } = {},
+  timeout = 10000
+): Promise<CliResult> {
+  const args = ["run"];
+  if (options.driver) args.push("--driver", options.driver);
+  if (options.noDashboard) args.push("--no-dashboard");
+  if (options.interval) args.push("--interval", String(options.interval));
+  return runCli(args, { cwd, timeout });
+}
+
+/**
  * Run watch command for a fixed duration then kill the process.
  * Since watch is interactive (no TTY in subprocess → can't send "q"),
  * we kill after durationMs and resolve with captured output.

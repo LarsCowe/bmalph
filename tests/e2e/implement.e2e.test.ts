@@ -109,7 +109,7 @@ describe("bmalph implement CLI", { timeout: 60000 }, () => {
     const result = await runImplement(project.path);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("bash .ralph/drivers/");
+    expect(result.stdout).toContain("bmalph run");
   });
 
   it("succeeds with --force when readiness report says NO-GO", async () => {

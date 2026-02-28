@@ -1,7 +1,7 @@
 import type { BmalphConfig, UpstreamVersions } from "./config.js";
 import type { BmalphState } from "./state.js";
 import type { PlatformId } from "../platform/types.js";
-import { MAX_PROJECT_NAME_LENGTH } from "./constants.js";
+import { DEFAULT_INTERVAL_MS, MAX_PROJECT_NAME_LENGTH, MIN_INTERVAL_MS } from "./constants.js";
 
 const VALID_PLATFORM_IDS: readonly string[] = [
   "claude-code",
@@ -325,4 +325,12 @@ export function validateProjectName(name: string): string {
   }
 
   return name;
+}
+
+export function parseInterval(value?: string): number {
+  const interval = value ? parseInt(value, 10) : DEFAULT_INTERVAL_MS;
+  if (isNaN(interval) || interval < MIN_INTERVAL_MS) {
+    throw new Error(`Interval must be a number >= ${MIN_INTERVAL_MS} (milliseconds)`);
+  }
+  return interval;
 }

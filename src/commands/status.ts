@@ -258,7 +258,7 @@ function getNextAction(
     case 4:
       if (!ralphStatus || ralphStatus.status === "not_started") {
         if (platform.tier === "full") {
-          return `Start Ralph loop with: bash .ralph/drivers/${platform.id}.sh`;
+          return "Start Ralph loop with: bmalph run";
         }
         return "Ralph requires a full-tier platform (Claude Code or Codex)";
       }

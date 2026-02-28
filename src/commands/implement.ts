@@ -81,7 +81,7 @@ async function runImplement(options: ImplementOptions): Promise<void> {
   console.log("");
   if (platform.tier === "full") {
     console.log(`Start the Ralph loop:\n`);
-    console.log(`    bash .ralph/drivers/${platform.id}.sh`);
+    console.log(`    bmalph run`);
   } else {
     console.log(
       `Ralph requires a full-tier platform (claude-code or codex). ` +

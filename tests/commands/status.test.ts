@@ -150,7 +150,7 @@ describe("status command", () => {
       expect(output).toContain("bmalph implement");
     });
 
-    it("suggests platform driver path for phase 4 not started", async () => {
+    it("suggests bmalph run for phase 4 not started", async () => {
       await setupProject();
       await setupState({ currentPhase: 4, status: "implementing" });
 
@@ -158,7 +158,7 @@ describe("status command", () => {
       await runStatus({ projectDir: testDir });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
-      expect(output).toContain("bash .ralph/drivers/claude-code.sh");
+      expect(output).toContain("bmalph run");
     });
 
     it("shows full-tier requirement for instructions-only platform at phase 4", async () => {

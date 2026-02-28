@@ -8,7 +8,9 @@ import {
   validateRalphLoopStatus,
   validateProjectName,
   normalizeRalphStatus,
+  parseInterval,
 } from "../../src/utils/validate.js";
+import { DEFAULT_INTERVAL_MS } from "../../src/utils/constants.js";
 
 describe("validateConfig", () => {
   it("accepts a valid config", () => {
@@ -508,5 +510,27 @@ describe("normalizeRalphStatus", () => {
   it("maps bash status 'graceful_exit' to 'completed'", () => {
     const result = normalizeRalphStatus({ loop_count: 15, status: "graceful_exit" });
     expect(result.status).toBe("completed");
+  });
+});
+
+describe("parseInterval", () => {
+  it("returns DEFAULT_INTERVAL_MS when value is undefined", () => {
+    expect(parseInterval(undefined)).toBe(DEFAULT_INTERVAL_MS);
+  });
+
+  it("parses valid string to number", () => {
+    expect(parseInterval("5000")).toBe(5000);
+  });
+
+  it("accepts boundary value of 500", () => {
+    expect(parseInterval("500")).toBe(500);
+  });
+
+  it("throws for value below minimum", () => {
+    expect(() => parseInterval("100")).toThrow("500");
+  });
+
+  it("throws for non-numeric value", () => {
+    expect(() => parseInterval("abc")).toThrow("500");
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { Platform } from "../../src/platform/types.js";
 import type { TransitionResult } from "../../src/transition/types.js";
+import { mockPlatform } from "../helpers/mock-platform.js";
 
 vi.mock("chalk");
 
@@ -16,20 +16,6 @@ vi.mock("../../src/transition/orchestration.js", () => ({
 vi.mock("../../src/platform/resolve.js", () => ({
   resolveProjectPlatform: vi.fn(),
 }));
-
-function mockPlatform(overrides?: Partial<Platform>): Platform {
-  return {
-    id: "claude-code",
-    displayName: "Claude Code",
-    tier: "full",
-    instructionsFile: "CLAUDE.md",
-    commandDelivery: { kind: "directory", dir: ".claude/commands" },
-    instructionsSectionMarker: "## BMAD-METHOD Integration",
-    generateInstructionsSnippet: () => "snippet",
-    getDoctorChecks: () => [],
-    ...overrides,
-  };
-}
 
 function mockTransitionResult(overrides?: Partial<TransitionResult>): TransitionResult {
   return {
@@ -257,7 +243,7 @@ describe("implement command", () => {
       await implementCommand({ projectDir: "/test/project" });
 
       const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
-      expect(output).toContain("bash .ralph/drivers/claude-code.sh");
+      expect(output).toContain("bmalph run");
     });
 
     it("shows requires full-tier message for instructions-only platform", async () => {

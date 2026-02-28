@@ -64,3 +64,13 @@ export const CONFIG_FILE = "bmalph/config.json";
 
 /** Ralph status file path */
 export const RALPH_STATUS_FILE = ".ralph/status.json";
+
+// =============================================================================
+// Dashboard constants
+// =============================================================================
+
+/** Default dashboard refresh interval in milliseconds */
+export const DEFAULT_INTERVAL_MS = 2000;
+
+/** Minimum allowed dashboard refresh interval in milliseconds */
+export const MIN_INTERVAL_MS = 500;

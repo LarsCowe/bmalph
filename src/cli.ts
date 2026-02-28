@@ -9,6 +9,7 @@ import { statusCommand } from "./commands/status.js";
 import { implementCommand } from "./commands/implement.js";
 import { resetCommand } from "./commands/reset.js";
 import { watchCommand } from "./commands/watch.js";
+import { runCommand } from "./commands/run.js";
 import { setVerbose, setQuiet } from "./utils/logger.js";
 import { getPackageVersion } from "./installer.js";
 import { isEnoent } from "./utils/errors.js";
@@ -125,6 +126,16 @@ program
   .option("--interval <ms>", "Refresh interval in milliseconds (default: 2000)")
   .action(async (opts) =>
     watchCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  );
+
+program
+  .command("run")
+  .description("Start Ralph loop with live dashboard")
+  .option("--driver <platform>", "Override platform driver (claude-code, codex)")
+  .option("--interval <ms>", "Dashboard refresh interval in milliseconds (default: 2000)")
+  .option("--no-dashboard", "Run Ralph without the dashboard overlay")
+  .action(async (opts) =>
+    runCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
   );
 
 void program.parseAsync();
