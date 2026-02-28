@@ -25,7 +25,6 @@ import {
   renderSideBySide,
   progressBar,
   formatSessionAge,
-  formatStatus,
   formatCBState,
 } from "../../src/watch/renderer.js";
 import type {
@@ -483,26 +482,6 @@ describe("renderer", () => {
       const result = formatSessionAge("2026-02-23T14:25:15Z");
 
       expect(result).toBe("48h 0m");
-    });
-  });
-
-  describe("formatStatus", () => {
-    it("returns status string for running", () => {
-      const result = formatStatus("running");
-
-      expect(result).toContain("running");
-    });
-
-    it("returns status string for halted", () => {
-      const result = formatStatus("halted");
-
-      expect(result).toContain("halted");
-    });
-
-    it("returns status string for completed", () => {
-      const result = formatStatus("completed");
-
-      expect(result).toContain("completed");
     });
   });
 

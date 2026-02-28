@@ -43,17 +43,17 @@ describe("installer", () => {
   });
 
   describe("getPackageVersion", () => {
-    it("returns a version string instead of throwing", () => {
-      const version = getPackageVersion();
+    it("returns a version string instead of throwing", async () => {
+      const version = await getPackageVersion();
       expect(typeof version).toBe("string");
       expect(version.length).toBeGreaterThan(0);
     });
 
-    it("never throws, always returns a string", () => {
+    it("never throws, always returns a string", async () => {
       // The contract is: getPackageVersion() always returns a string, never throws.
       // When package.json is present, it returns a semver version.
       // When it can't be read, it returns "unknown".
-      const version = getPackageVersion();
+      const version = await getPackageVersion();
       expect(typeof version).toBe("string");
       expect(version).toMatch(/^\d+\.\d+\.\d+/); // Normal case: semver
     });

@@ -1,5 +1,4 @@
 import { cp, mkdir, readFile, readdir, rm, chmod, rename } from "node:fs/promises";
-import { readFileSync } from "node:fs";
 import { join, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { debug, warn } from "./utils/logger.js";
@@ -16,10 +15,10 @@ import type { Platform } from "./platform/types.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export function getPackageVersion(): string {
+export async function getPackageVersion(): Promise<string> {
   const pkgPath = join(__dirname, "..", "package.json");
   try {
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
     return pkg.version ?? "unknown";
   } catch (err) {
     if (!isEnoent(err)) {
@@ -33,10 +32,10 @@ export interface BundledVersions {
   bmadCommit: string;
 }
 
-export function getBundledVersions(): BundledVersions {
+export async function getBundledVersions(): Promise<BundledVersions> {
   const versionsPath = join(__dirname, "..", "bundled-versions.json");
   try {
-    const versions = JSON.parse(readFileSync(versionsPath, "utf-8"));
+    const versions = JSON.parse(await readFile(versionsPath, "utf-8"));
     if (!versions || typeof versions.bmadCommit !== "string") {
       throw new Error("Invalid bundled-versions.json structure: missing bmadCommit");
     }
@@ -313,7 +312,7 @@ modules:
   // Copy Ralph loop and lib → .ralph/
   // Add version marker to ralph_loop.sh
   const loopContent = await readFile(join(ralphDir, "ralph_loop.sh"), "utf-8");
-  const markerLine = `# bmalph-version: ${getPackageVersion()}`;
+  const markerLine = `# bmalph-version: ${await getPackageVersion()}`;
   // Use .* to handle empty version (edge case) and EOF without newline
   const markedContent = loopContent.includes("# bmalph-version:")
     ? loopContent.replace(/# bmalph-version:.*/, markerLine)

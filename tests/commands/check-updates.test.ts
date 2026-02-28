@@ -6,7 +6,7 @@ vi.mock("../../src/installer.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/installer.js")>();
   return {
     ...actual,
-    getBundledVersions: vi.fn(() => ({
+    getBundledVersions: vi.fn(async () => ({
       bmadCommit: "48881f86",
     })),
   };

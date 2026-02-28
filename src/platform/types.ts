@@ -6,7 +6,15 @@
  */
 
 /** Supported platform identifiers. */
-export type PlatformId = "claude-code" | "codex" | "cursor" | "windsurf" | "copilot" | "aider";
+export const PLATFORM_IDS = [
+  "claude-code",
+  "codex",
+  "cursor",
+  "windsurf",
+  "copilot",
+  "aider",
+] as const;
+export type PlatformId = (typeof PLATFORM_IDS)[number];
 
 /** Full platforms support Phases 1-4 (planning + Ralph implementation). */
 /** Instructions-only platforms support Phases 1-3 (planning only). */

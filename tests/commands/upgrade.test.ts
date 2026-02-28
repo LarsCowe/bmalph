@@ -197,7 +197,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
       vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
-      vi.mocked(getBundledVersions).mockReturnValue({
+      vi.mocked(getBundledVersions).mockResolvedValue({
         bmadCommit: "abc12345",
       });
       vi.mocked(readConfig).mockResolvedValue({
@@ -227,7 +227,7 @@ describe("upgrade command", () => {
       vi.mocked(isInitialized).mockResolvedValue(true);
       vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
       vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
-      vi.mocked(getBundledVersions).mockReturnValue({
+      vi.mocked(getBundledVersions).mockResolvedValue({
         bmadCommit: "abc12345",
       });
       vi.mocked(readConfig).mockResolvedValue({

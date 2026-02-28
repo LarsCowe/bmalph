@@ -134,7 +134,7 @@ async function runInit(options: InitOptions): Promise<void> {
 
   await installProject(projectDir, platform);
 
-  const bundledVersions = getBundledVersions();
+  const bundledVersions = await getBundledVersions();
   const config: BmalphConfig = {
     name: validatedName,
     description: description ?? "",

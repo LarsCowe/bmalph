@@ -7,9 +7,9 @@ vi.mock("node:child_process", () => ({
   spawn: mockSpawn,
 }));
 
-const mockAccess = vi.fn();
-vi.mock("node:fs/promises", () => ({
-  access: mockAccess,
+const mockExists = vi.fn();
+vi.mock("../../src/utils/file-system.js", () => ({
+  exists: mockExists,
 }));
 
 function createMockChild(overrides?: Partial<ChildProcess>): ChildProcess {
@@ -79,22 +79,22 @@ describe("validateRalphLoop", () => {
   });
 
   it("resolves when ralph_loop.sh exists", async () => {
-    mockAccess.mockResolvedValue(undefined);
+    mockExists.mockResolvedValue(true);
 
     const { validateRalphLoop } = await import("../../src/run/ralph-process.js");
     await expect(validateRalphLoop("/project")).resolves.toBeUndefined();
-    expect(mockAccess).toHaveBeenCalledWith(expect.stringContaining("ralph_loop.sh"));
+    expect(mockExists).toHaveBeenCalledWith(expect.stringContaining("ralph_loop.sh"));
   });
 
   it("throws when ralph_loop.sh is missing", async () => {
-    mockAccess.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+    mockExists.mockResolvedValue(false);
 
     const { validateRalphLoop } = await import("../../src/run/ralph-process.js");
     await expect(validateRalphLoop("/project")).rejects.toThrow("ralph_loop.sh");
   });
 
   it("re-throws non-ENOENT errors instead of masking them", async () => {
-    mockAccess.mockRejectedValue(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+    mockExists.mockRejectedValue(Object.assign(new Error("EACCES"), { code: "EACCES" }));
 
     const { validateRalphLoop } = await import("../../src/run/ralph-process.js");
     await expect(validateRalphLoop("/project")).rejects.toThrow("EACCES");

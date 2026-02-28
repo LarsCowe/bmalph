@@ -1,8 +1,8 @@
 import chalk from "chalk";
-import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { runTransition } from "../transition/orchestration.js";
-import { isEnoent, withErrorHandling } from "../utils/errors.js";
+import { withErrorHandling } from "../utils/errors.js";
+import { exists } from "../utils/file-system.js";
 import { resolveProjectPlatform } from "../platform/resolve.js";
 import { getFullTierPlatformNames } from "../platform/registry.js";
 import type { PreflightIssue } from "../transition/types.js";
@@ -20,21 +20,16 @@ async function runImplement(options: ImplementOptions): Promise<void> {
   const { projectDir, force } = options;
 
   // Re-run protection: warn if implement was already run
-  try {
-    await access(join(projectDir, ".ralph/@fix_plan.md"));
-    if (!force) {
-      console.log(chalk.yellow("Warning: bmalph implement has already been run."));
-      console.log(
-        "Re-running will overwrite PROMPT.md, PROJECT_CONTEXT.md, @AGENT.md, and SPECS_INDEX.md."
-      );
-      console.log("Fix plan progress will be preserved.\n");
-      console.log(`Use ${chalk.bold("--force")} to proceed anyway.`);
-      process.exitCode = 1;
-      return;
-    }
-  } catch (err) {
-    if (!isEnoent(err)) throw err;
-    // fix_plan doesn't exist — first run, proceed
+  const alreadyRun = await exists(join(projectDir, ".ralph/@fix_plan.md"));
+  if (alreadyRun && !force) {
+    console.log(chalk.yellow("Warning: bmalph implement has already been run."));
+    console.log(
+      "Re-running will overwrite PROMPT.md, PROJECT_CONTEXT.md, @AGENT.md, and SPECS_INDEX.md."
+    );
+    console.log("Fix plan progress will be preserved.\n");
+    console.log(`Use ${chalk.bold("--force")} to proceed anyway.`);
+    process.exitCode = 1;
+    return;
   }
 
   const platform = await resolveProjectPlatform(projectDir);

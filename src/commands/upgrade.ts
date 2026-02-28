@@ -67,7 +67,7 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
   // Update upstreamVersions in config to match bundled versions
   const config = await readConfig(projectDir);
   if (config) {
-    config.upstreamVersions = getBundledVersions();
+    config.upstreamVersions = await getBundledVersions();
     await writeConfig(projectDir, config);
   }
 

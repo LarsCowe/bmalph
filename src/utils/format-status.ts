@@ -21,6 +21,8 @@ export function formatStatus(status: string): string {
     case "stopped":
     case "blocked":
       return chalk.red(status);
+    case "not_started":
+      return chalk.dim("not started");
     default:
       return status;
   }

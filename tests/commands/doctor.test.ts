@@ -23,7 +23,7 @@ vi.mock("../../src/installer.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/installer.js")>();
   return {
     ...actual,
-    getBundledVersions: vi.fn(() => ({
+    getBundledVersions: vi.fn(async () => ({
       bmadCommit: TEST_BMAD_COMMIT,
     })),
   };
@@ -406,7 +406,7 @@ describe("doctor command", () => {
       await setupFullProject();
       // Get package version and update ralph_loop.sh with marker
       const { getPackageVersion } = await import("../../src/installer.js");
-      const version = getPackageVersion();
+      const version = await getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
         `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
@@ -463,7 +463,7 @@ describe("doctor command", () => {
       await setupFullProject();
       // Add version marker to make all tests pass
       const { getPackageVersion } = await import("../../src/installer.js");
-      const version = getPackageVersion();
+      const version = await getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
         `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
@@ -488,7 +488,7 @@ describe("doctor command", () => {
     it("shows all checks OK when fully configured", async () => {
       await setupFullProject();
       const { getPackageVersion } = await import("../../src/installer.js");
-      const version = getPackageVersion();
+      const version = await getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
         `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
@@ -552,7 +552,7 @@ describe("doctor command", () => {
     it("does not set exitCode to 1 when all checks pass", async () => {
       await setupFullProject();
       const { getPackageVersion } = await import("../../src/installer.js");
-      const version = getPackageVersion();
+      const version = await getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
         `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`
@@ -919,7 +919,7 @@ describe("doctor command", () => {
     it("uses projectDir instead of process.cwd() when provided", async () => {
       await setupFullProject();
       const { getPackageVersion } = await import("../../src/installer.js");
-      const version = getPackageVersion();
+      const version = await getPackageVersion();
       await writeFile(
         join(testDir, ".ralph/ralph_loop.sh"),
         `#!/bin/bash\n# bmalph-version: ${version}\necho hello\n`

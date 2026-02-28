@@ -171,34 +171,26 @@ export async function runTransition(
   // Generate changelog before overwriting specs/
   const specsDir = join(projectDir, ".ralph/specs");
   const bmadOutputDir = join(projectDir, "_bmad-output");
-  try {
-    await access(bmadOutputDir);
-    const changes = await generateSpecsChangelog(specsDir, bmadOutputDir);
-    if (changes.length > 0) {
-      const changelog = formatChangelog(changes, new Date().toISOString());
-      await atomicWriteFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
-      generatedFiles.push({ path: ".ralph/SPECS_CHANGELOG.md", action: "updated" });
-      debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
-    }
-  } catch (err) {
-    if (isEnoent(err)) {
-      debug("Skipping SPECS_CHANGELOG.md (no _bmad-output directory)");
-    } else {
+  if (await exists(bmadOutputDir)) {
+    try {
+      const changes = await generateSpecsChangelog(specsDir, bmadOutputDir);
+      if (changes.length > 0) {
+        const changelog = formatChangelog(changes, new Date().toISOString());
+        await atomicWriteFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
+        generatedFiles.push({ path: ".ralph/SPECS_CHANGELOG.md", action: "updated" });
+        debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
+      }
+    } catch (err) {
       warn(`Could not generate SPECS_CHANGELOG.md: ${formatError(err)}`);
     }
+  } else {
+    debug("Skipping SPECS_CHANGELOG.md (no _bmad-output directory)");
   }
 
   // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
-  let bmadOutputExists = false;
-  try {
-    await access(bmadOutputDir);
-    bmadOutputExists = true;
-  } catch (err) {
-    if (isEnoent(err)) {
-      debug("_bmad-output not found, falling back to artifacts directory");
-    } else {
-      warn(`Error checking _bmad-output: ${formatError(err)}`);
-    }
+  const bmadOutputExists = await exists(bmadOutputDir);
+  if (!bmadOutputExists) {
+    debug("_bmad-output not found, falling back to artifacts directory");
   }
 
   info("Copying specs to .ralph/specs/...");

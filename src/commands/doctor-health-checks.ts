@@ -50,7 +50,7 @@ export async function checkVersionMarker(projectDir: string): Promise<CheckResul
       return { label, passed: true, detail: "no marker (pre-0.8.0 install)" };
     }
     const { getPackageVersion } = await import("../installer.js");
-    const current = getPackageVersion();
+    const current = await getPackageVersion();
     if (match[1]!.trim() === current) {
       return { label, passed: true, detail: `v${current}` };
     }
@@ -79,7 +79,7 @@ export async function checkUpstreamVersions(projectDir: string): Promise<CheckRe
     if (!config.upstreamVersions) {
       return { label, passed: true, detail: "not tracked (pre-1.2.0 install)" };
     }
-    const bundled = getBundledVersions();
+    const bundled = await getBundledVersions();
     const { bmadCommit } = config.upstreamVersions;
     const bmadMatch = bmadCommit === bundled.bmadCommit;
     if (bmadMatch) {

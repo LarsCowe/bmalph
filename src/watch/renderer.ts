@@ -68,8 +68,6 @@ export function formatSessionAge(createdAt: string): string {
   return `${String(minutes)}m ${String(seconds)}s`;
 }
 
-export { formatStatus };
-
 export function formatCBState(state: string): string {
   switch (state) {
     case "CLOSED":

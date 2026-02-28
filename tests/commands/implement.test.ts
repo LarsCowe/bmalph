@@ -4,9 +4,9 @@ import { mockPlatform } from "../helpers/mock-platform.js";
 
 vi.mock("chalk");
 
-const mockAccess = vi.fn();
-vi.mock("node:fs/promises", () => ({
-  access: mockAccess,
+const mockExists = vi.fn();
+vi.mock("../../src/utils/file-system.js", () => ({
+  exists: mockExists,
 }));
 
 vi.mock("../../src/transition/orchestration.js", () => ({
@@ -40,7 +40,7 @@ describe("implement command", () => {
     originalExitCode = process.exitCode;
     process.exitCode = undefined;
     // Default: fix_plan does not exist (first run)
-    mockAccess.mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+    mockExists.mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -304,7 +304,7 @@ describe("implement command", () => {
 
   describe("re-run protection", () => {
     it("blocks re-run when fix_plan exists and --force not set", async () => {
-      mockAccess.mockResolvedValue(undefined); // fix_plan exists
+      mockExists.mockResolvedValue(true); // fix_plan exists
       const { resolveProjectPlatform } = await import("../../src/platform/resolve.js");
       vi.mocked(resolveProjectPlatform).mockResolvedValue(mockPlatform());
 
@@ -318,7 +318,7 @@ describe("implement command", () => {
     });
 
     it("--force bypasses re-run guard", async () => {
-      mockAccess.mockResolvedValue(undefined); // fix_plan exists
+      mockExists.mockResolvedValue(true); // fix_plan exists
       const { runTransition } = await import("../../src/transition/orchestration.js");
       const { resolveProjectPlatform } = await import("../../src/platform/resolve.js");
       vi.mocked(resolveProjectPlatform).mockResolvedValue(mockPlatform());
@@ -332,7 +332,7 @@ describe("implement command", () => {
     });
 
     it("first run proceeds normally when fix_plan does not exist", async () => {
-      // mockAccess already defaults to ENOENT in beforeEach
+      // mockExists already defaults to false in beforeEach
       const { runTransition } = await import("../../src/transition/orchestration.js");
       const { resolveProjectPlatform } = await import("../../src/platform/resolve.js");
       vi.mocked(resolveProjectPlatform).mockResolvedValue(mockPlatform());
@@ -347,8 +347,8 @@ describe("implement command", () => {
   });
 
   describe("re-run detection error discrimination", () => {
-    it("re-throws non-ENOENT errors from access check", async () => {
-      mockAccess.mockRejectedValue(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+    it("re-throws non-ENOENT errors from exists check", async () => {
+      mockExists.mockRejectedValue(Object.assign(new Error("EACCES"), { code: "EACCES" }));
 
       const { implementCommand } = await import("../../src/commands/implement.js");
       await implementCommand({ projectDir: "/test/project" });

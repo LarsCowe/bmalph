@@ -22,7 +22,7 @@
     "fmt:fix": "prettier --write .",
     "type-check": "tsc --noEmit",
     "ci": "npm run type-check && npm run lint && npm run fmt:check && npm run build && npm run test:all",
-    "prepublishOnly": "npm run lint && npm run build && npm test",
+    "prepublishOnly": "npm run lint && npm run build && npm run test:all",
     "update-bundled": "bash scripts/update-bundled.sh"
   },
   "keywords": [

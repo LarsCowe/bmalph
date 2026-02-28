@@ -137,7 +137,7 @@ export async function checkApiCalls(projectDir: string): Promise<CheckResult> {
 export async function checkUpstreamGitHubStatus(_projectDir: string): Promise<CheckResult> {
   const label = "upstream status";
   try {
-    const bundled = getBundledVersions();
+    const bundled = await getBundledVersions();
     const result = await checkUpstream(bundled);
 
     if (result.bmad === null) {

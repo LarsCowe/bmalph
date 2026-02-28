@@ -149,7 +149,7 @@ export async function runStatus(options: StatusOptions): Promise<void> {
   if (phase === 4 && ralphStatus) {
     console.log("");
     console.log(chalk.bold("  Ralph Loop"));
-    console.log(`    ${chalk.cyan("Status:")} ${formatRalphStatus(ralphStatus.status)}`);
+    console.log(`    ${chalk.cyan("Status:")} ${formatStatus(ralphStatus.status)}`);
     console.log(`    ${chalk.cyan("Loop count:")} ${ralphStatus.loopCount}`);
     console.log(
       `    ${chalk.cyan("Tasks:")} ${ralphStatus.tasksCompleted}/${ralphStatus.tasksTotal}`
@@ -198,21 +198,6 @@ function printArtifactChecklist(scan: ProjectArtifactScan): void {
       const suffix = def.required ? " (required)" : "";
       console.log(`      ${chalk.dim("-")} ${def.name}${suffix}`);
     }
-  }
-}
-
-function formatRalphStatus(status: string): string {
-  switch (status) {
-    case "running":
-      return chalk.yellow("running");
-    case "blocked":
-      return chalk.red("blocked");
-    case "completed":
-      return chalk.green("completed");
-    case "not_started":
-      return chalk.dim("not started");
-    default:
-      return status;
   }
 }
 

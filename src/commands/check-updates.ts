@@ -23,7 +23,7 @@ export async function checkUpdatesCommand(options: CheckUpdatesOptions = {}): Pr
 }
 
 async function runCheckUpdates(options: CheckUpdatesOptions): Promise<void> {
-  const bundled = getBundledVersions();
+  const bundled = await getBundledVersions();
 
   if (!options.json) {
     console.log(chalk.dim("Checking upstream versions...\n"));

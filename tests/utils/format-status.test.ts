@@ -2,6 +2,16 @@ import { describe, it, expect } from "vitest";
 import { formatStatus } from "../../src/utils/format-status.js";
 
 describe("formatStatus", () => {
+  it("returns styled string for 'planning'", () => {
+    const result = formatStatus("planning");
+    expect(result).toContain("planning");
+  });
+
+  it("returns styled string for 'implementing'", () => {
+    const result = formatStatus("implementing");
+    expect(result).toContain("implementing");
+  });
+
   it("returns styled string for 'running'", () => {
     const result = formatStatus("running");
     expect(result).toContain("running");
@@ -32,17 +42,12 @@ describe("formatStatus", () => {
     expect(result).toContain("blocked");
   });
 
-  it("returns styled string for 'planning'", () => {
-    const result = formatStatus("planning");
-    expect(result).toContain("planning");
+  it("transforms not_started to human-readable form", () => {
+    const result = formatStatus("not_started");
+    expect(result).toContain("not started");
   });
 
-  it("returns styled string for 'implementing'", () => {
-    const result = formatStatus("implementing");
-    expect(result).toContain("implementing");
-  });
-
-  it("returns raw string for unknown status", () => {
+  it("passes through unknown status values unchanged", () => {
     const result = formatStatus("unknown-status");
     expect(result).toBe("unknown-status");
   });

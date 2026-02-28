@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name("bmalph")
   .description("BMAD-METHOD + Ralph integration — structured planning to autonomous implementation")
-  .version(getPackageVersion())
+  .version(await getPackageVersion())
   .option("--verbose", "Enable debug logging")
   .option("--no-color", "Disable colored output")
   .option("--quiet", "Suppress non-essential output")

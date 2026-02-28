@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockReadFileSync = vi.fn();
-vi.mock("node:fs", () => ({
-  readFileSync: mockReadFileSync,
-}));
+const mockReadFile = vi.fn();
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    readFile: mockReadFile,
+  };
+});
 
 const mockDebug = vi.fn();
 vi.mock("../src/utils/logger.js", () => ({
@@ -20,12 +24,10 @@ describe("getPackageVersion error discrimination", () => {
     const permissionError = Object.assign(new Error("EACCES: permission denied"), {
       code: "EACCES",
     });
-    mockReadFileSync.mockImplementation(() => {
-      throw permissionError;
-    });
+    mockReadFile.mockRejectedValue(permissionError);
 
     const { getPackageVersion } = await import("../src/installer.js");
-    const version = getPackageVersion();
+    const version = await getPackageVersion();
 
     expect(version).toBe("unknown");
     expect(mockDebug).toHaveBeenCalledWith(expect.stringContaining("EACCES"));
@@ -33,12 +35,10 @@ describe("getPackageVersion error discrimination", () => {
 
   it("does not log debug for ENOENT errors", async () => {
     const notFoundError = Object.assign(new Error("ENOENT: no such file"), { code: "ENOENT" });
-    mockReadFileSync.mockImplementation(() => {
-      throw notFoundError;
-    });
+    mockReadFile.mockRejectedValue(notFoundError);
 
     const { getPackageVersion } = await import("../src/installer.js");
-    const version = getPackageVersion();
+    const version = await getPackageVersion();
 
     expect(version).toBe("unknown");
     expect(mockDebug).not.toHaveBeenCalled();
