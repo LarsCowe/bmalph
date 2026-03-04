@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1](https://github.com/LarsCowe/bmalph/compare/v2.7.0...v2.7.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* **doctor:** return non-zero exit for failed checks in json mode ([53801bd](https://github.com/LarsCowe/bmalph/commit/53801bd136953ea5c5630b44817640f054673dd1))
+* **run:** propagate Ralph exit code ([176350d](https://github.com/LarsCowe/bmalph/commit/176350d141eda413d1948ab38ff0e7b438282794))
+* **run:** use bash-safe relative ralph loop spawn path ([abc0627](https://github.com/LarsCowe/bmalph/commit/abc0627f80de6738cb34113fd7c813bc76d0cf79))
+
 ## [2.7.0](https://github.com/LarsCowe/bmalph/compare/v2.6.0...v2.7.0) (2026-03-04)
 
 
