@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0](https://github.com/LarsCowe/bmalph/compare/v2.6.0...v2.7.0) (2026-03-04)
+
+
+### Features
+
+* add Codex skills delivery, promote Cursor to full tier, and add lite PRD workflow ([36c5c72](https://github.com/LarsCowe/bmalph/commit/36c5c726ae887ff144e6fe464264904c7b1bb578))
+* promote Cursor to full tier with experimental flag ([1b3a9e6](https://github.com/LarsCowe/bmalph/commit/1b3a9e69f6c55c5f06e074bc8eb828c1a6490177))
+
+
+### Bug Fixes
+
+* harden error handling, eliminate injection surfaces, and reduce duplication ([d5e169b](https://github.com/LarsCowe/bmalph/commit/d5e169bb7bcc24a0a01f5eb82ebcd873d0d3e0bf))
+* harden process lifecycle, tighten artifact matching, and fill test gaps ([ebf75ac](https://github.com/LarsCowe/bmalph/commit/ebf75ac2afe128eca70324b0bcadfaae71435c83))
+
+
+### Code Quality
+
+* eliminate duplication, normalize patterns, and expand test coverage ([238a1d8](https://github.com/LarsCowe/bmalph/commit/238a1d8c9f2f97f5dfb8b21e049a345d7aacbf84))
+
 ## [2.6.0](https://github.com/LarsCowe/bmalph/compare/v2.5.0...v2.6.0) (2026-02-28)
 
 
