@@ -70,7 +70,7 @@ process.exit(Number(process.env.BMALPH_FAKE_BATS_EXIT_CODE ?? "0"));
 
   await writeFile(
     filePath,
-    `#!/usr/bin/env sh
+    `#!/bin/sh
 bin_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 if [ "$1" = "--version" ]; then
@@ -82,8 +82,9 @@ if [ "$1" != "-lc" ]; then
 fi
 
 command=$2
-if printf '%s\n' "$command" | grep -Eq '^command -v [[:alnum:]_]+ >/dev/null 2>&1$'; then
-  tool=$(printf '%s\n' "$command" | awk '{print $3}')
+if [ "\${command#command -v }" != "$command" ] && [ "\${command% >/dev/null 2>&1}" != "$command" ]; then
+  tool=\${command#command -v }
+  tool=\${tool% >/dev/null 2>&1}
   if [ -f "$bin_dir/$tool" ] || [ -f "$bin_dir/$tool.cmd" ]; then
     exit 0
   fi
@@ -119,7 +120,7 @@ async function createFakeBats(binDir: string, exitCode: number): Promise<void> {
 
   await writeFile(
     filePath,
-    `#!/usr/bin/env sh
+    `#!/bin/sh
 if [ "$1" = "--version" ]; then
   exit 0
 fi
@@ -148,7 +149,7 @@ async function createFakeJq(binDir: string): Promise<void> {
     return;
   }
 
-  await writeFile(filePath, "#!/usr/bin/env sh\nexit 0\n", "utf8");
+  await writeFile(filePath, "#!/bin/sh\nexit 0\n", "utf8");
   await chmod(filePath, 0o755);
 }
 
