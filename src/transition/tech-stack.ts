@@ -1,13 +1,6 @@
 import type { TechStack } from "./types.js";
 import { extractFirstMatchingSection } from "./context.js";
-
-const TECH_STACK_SOURCE_SECTION_PATTERNS = [
-  /^##\s+Tech Stack/m,
-  /^##\s+Technology Stack/m,
-  /^##\s+Stack/m,
-  /^##\s+Core Architectural Decisions/m,
-  /^##\s+Starter Template Evaluation/m,
-] as const;
+import { TECH_STACK_SOURCE_SECTION_PATTERNS } from "./section-patterns.js";
 
 export function extractTechStackSource(content: string): string {
   return extractFirstMatchingSection(

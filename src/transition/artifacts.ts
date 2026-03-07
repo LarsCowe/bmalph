@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { debug } from "../utils/logger.js";
 import { exists } from "../utils/file-system.js";
 
@@ -19,4 +19,19 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
   }
   debug(`No artifacts found. Checked: ${candidates.join(", ")}`);
   return null;
+}
+
+export function resolvePlanningSpecsSubpath(projectDir: string, artifactsDir: string): string {
+  const bmadOutputDir = join(projectDir, "_bmad-output");
+  const relativePath = relative(bmadOutputDir, artifactsDir).replace(/\\/g, "/");
+
+  if (!relativePath || relativePath === "." || relativePath === "..") {
+    return "";
+  }
+
+  if (relativePath.startsWith("../")) {
+    return "";
+  }
+
+  return relativePath;
 }

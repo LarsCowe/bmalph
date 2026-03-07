@@ -1,6 +1,11 @@
 import type { ProjectContext, TruncationInfo } from "./types.js";
-import { PRD_SCOPE_SECTION_PATTERNS } from "./section-patterns.js";
+import {
+  NON_FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS,
+  PRD_SCOPE_SECTION_PATTERNS,
+  PROJECT_GOALS_SECTION_PATTERNS,
+} from "./section-patterns.js";
 import { SECTION_EXTRACT_MAX_LENGTH } from "../utils/constants.js";
+import { collectTransitionArtifacts } from "./artifact-collection.js";
 
 export interface ExtractProjectContextResult {
   context: ProjectContext;
@@ -101,11 +106,12 @@ export function extractProjectContext(artifacts: Map<string, string>): ExtractPr
   let archContent = "";
   let uxContent = "";
   let researchContent = "";
+  const collectedArtifacts = collectTransitionArtifacts([...artifacts.keys()]);
 
   for (const [filename, content] of artifacts) {
-    if (/prd/i.test(filename)) prdContent += "\n" + content;
-    if (/architect/i.test(filename)) archContent += "\n" + content;
-    if (/readiness/i.test(filename)) archContent += "\n" + content;
+    if (collectedArtifacts.prdFiles.includes(filename)) prdContent += "\n" + content;
+    if (collectedArtifacts.architectureFiles.includes(filename)) archContent += "\n" + content;
+    if (collectedArtifacts.readinessFiles.includes(filename)) archContent += "\n" + content;
     if (/ux/i.test(filename)) uxContent += "\n" + content;
     if (/research|market|domain|brief/i.test(filename)) researchContent += "\n" + content;
   }
@@ -117,12 +123,7 @@ export function extractProjectContext(artifacts: Map<string, string>): ExtractPr
     {
       field: "projectGoals",
       source: prdContent || allContent,
-      patterns: [
-        /^##\s+Executive Summary/m,
-        /^##\s+Vision/m,
-        /^##\s+Goals/m,
-        /^##\s+Project Goals/m,
-      ],
+      patterns: [...PROJECT_GOALS_SECTION_PATTERNS],
     },
     {
       field: "successMetrics",
@@ -157,12 +158,7 @@ export function extractProjectContext(artifacts: Map<string, string>): ExtractPr
     {
       field: "nonFunctionalRequirements",
       source: prdContent || allContent,
-      patterns: [
-        /^##\s+Non-Functional/m,
-        /^##\s+NFR/m,
-        /^##\s+Quality/m,
-        /^##\s+Quality Attributes/m,
-      ],
+      patterns: [...NON_FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS],
     },
     {
       field: "designGuidelines",
@@ -309,15 +305,15 @@ For each story in @fix_plan.md:
 ## Current Objectives
 1. Read .ralph/PROJECT_CONTEXT.md for project goals, constraints, and scope
 2. Read .ralph/SPECS_INDEX.md for prioritized spec file overview
-3. Study .ralph/specs/ following the reading order in SPECS_INDEX.md:
-   - planning-artifacts/: PRD, architecture, epics/stories, test design, UX
-   - implementation-artifacts/: sprint plans, detailed stories (if present)
-   - brainstorming/: brainstorming sessions (if present)
-4. Check docs/ for project knowledge and research documents (if present)
-5. Review .ralph/@fix_plan.md for current priorities
-6. Implement the highest priority story using TDD
-7. Run tests after each implementation
-8. Update @fix_plan.md with your progress
+3. Study .ralph/specs/ following the reading order in SPECS_INDEX.md
+4. Use the exact spec paths listed in SPECS_INDEX.md instead of assuming a fixed subdirectory layout
+5. Prioritize planning specs first (PRD, architecture, epics/stories, test design, UX)
+6. Review implementation artifacts next (sprint plans, detailed stories) when they exist
+7. Check docs/ for project knowledge and research documents (if present)
+8. Review .ralph/@fix_plan.md for current priorities
+9. Implement the highest priority story using TDD
+10. Run tests after each implementation
+11. Update @fix_plan.md with your progress
 
 ## Key Principles
 - ONE story per loop - focus completely on it

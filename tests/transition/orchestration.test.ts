@@ -163,6 +163,294 @@ describe("orchestration", () => {
     });
   });
 
+  describe("canonical artifact aggregation", () => {
+    it("aggregates stories from multiple epic files and preserves per-story source links", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-login.md"),
+        `## Epic 1: Auth
+
+### Story 1.1: Sign in
+
+User can sign in.
+
+**Acceptance Criteria:**
+**Given** a valid account
+**When** credentials are submitted
+**Then** access is granted
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-billing.md"),
+        `## Epic 2: Billing
+
+### Story 2.1: Sync invoices
+
+Invoices can be synced.
+
+**Acceptance Criteria:**
+**Given** a connected gateway
+**When** sync runs
+**Then** invoices are imported
+`
+      );
+
+      const result = await runTransition(testDir);
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+
+      expect(result.storiesCount).toBe(2);
+      expect(fixPlan).toContain("specs/planning-artifacts/epics-login.md#story-1-1");
+      expect(fixPlan).toContain("specs/planning-artifacts/epics-billing.md#story-2-1");
+      expect(fixPlan.indexOf("Story 1.1")).toBeLessThan(fixPlan.indexOf("Story 2.1"));
+    });
+
+    it("discovers stories from sharded epic directories", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts/epics"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics/epic-1.md"),
+        `## Epic 1: Auth
+
+### Story 1.1: Sign in
+
+User can sign in.
+
+**Acceptance Criteria:**
+**Given** a valid account
+**When** credentials are submitted
+**Then** access is granted
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics/epic-2.md"),
+        `## Epic 2: Billing
+
+### Story 2.1: Sync invoices
+
+Invoices can be synced.
+
+**Acceptance Criteria:**
+**Given** a connected gateway
+**When** sync runs
+**Then** invoices are imported
+`
+      );
+
+      const result = await runTransition(testDir);
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+
+      expect(result.storiesCount).toBe(2);
+      expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-1.md#story-1-1");
+      expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-2.md#story-2-1");
+    });
+
+    it("fails when duplicate story IDs are present across epic files", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-login.md"),
+        `## Epic 1: Auth
+
+### Story 1.1: Sign in
+
+User can sign in.
+
+**Acceptance Criteria:**
+**Given** a valid account
+**When** credentials are submitted
+**Then** access is granted
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-billing.md"),
+        `## Epic 2: Billing
+
+### Story 1.1: Sync invoices
+
+Invoices can be synced.
+
+**Acceptance Criteria:**
+**Given** a connected gateway
+**When** sync runs
+**Then** invoices are imported
+`
+      );
+
+      await expect(runTransition(testDir)).rejects.toThrow(/duplicate story id/i);
+    });
+
+    it("uses sprint-status as the source of truth over stale fix plan progress", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, ".ralph/@fix_plan.md"),
+        `# Ralph Fix Plan
+
+## Stories to Implement
+
+- [x] Story 1.1: Setup project
+- [x] Story 1.2: Create logo SVG
+- [x] Story 1.3: Login page UI
+- [x] Story 2.1: Database migration
+- [x] Story 2.2: API endpoint
+- [x] Story 2.3: Full login flow
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
+        `## Epic 1: Auth
+
+### Story 1.1: Setup project
+
+Description.
+
+**Acceptance Criteria:**
+**Given** setup exists
+**When** install runs
+**Then** the project builds
+
+### Story 1.2: Create logo SVG
+
+Description.
+
+**Acceptance Criteria:**
+**Given** assets exist
+**When** the app renders
+**Then** the logo is visible
+
+### Story 1.3: Login page UI
+
+Description.
+
+**Acceptance Criteria:**
+**Given** a login route
+**When** the page opens
+**Then** the form renders
+
+## Epic 2: Backend
+
+### Story 2.1: Database migration
+
+Description.
+
+**Acceptance Criteria:**
+**Given** a schema change
+**When** migrations run
+**Then** the schema is updated
+
+### Story 2.2: API endpoint
+
+Description.
+
+**Acceptance Criteria:**
+**Given** a request
+**When** the endpoint is called
+**Then** it returns success
+
+### Story 2.3: Full login flow
+
+Description.
+
+**Acceptance Criteria:**
+**Given** a valid user
+**When** authentication runs
+**Then** a session starts
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/sprint-status.yaml"),
+        `generated: 2026-03-07
+project: Example
+project_key: EX
+tracking_system: file-system
+story_location: stories
+
+development_status:
+  epic-1: backlog
+  1-1-setup-project: done
+  1-2-create-logo-svg: backlog
+  1-3-login-page-ui: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-database-migration: backlog
+  2-2-api-endpoint: backlog
+  2-3-full-login-flow: backlog
+  epic-2-retrospective: optional
+`
+      );
+
+      await runTransition(testDir, { force: true });
+
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      const completed = fixPlan.match(/- \[x\] Story/g) ?? [];
+
+      expect(completed).toHaveLength(1);
+      expect(fixPlan).toContain("- [x] Story 1.1: Setup project");
+      expect(fixPlan).toContain("- [ ] Story 1.2: Create logo SVG");
+      expect(fixPlan).toContain("- [ ] Story 2.3: Full login flow");
+    });
+
+    it("uses sprint-status from implementation-artifacts over stale fix plan progress", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await mkdir(join(testDir, "_bmad-output/implementation-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, ".ralph/@fix_plan.md"),
+        `# Ralph Fix Plan
+
+## Stories to Implement
+
+- [x] Story 1.1: Setup project
+- [x] Story 1.2: Create logo SVG
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/epics-and-stories.md"),
+        `## Epic 1: Auth
+
+### Story 1.1: Setup project
+
+Description.
+
+**Acceptance Criteria:**
+**Given** setup exists
+**When** install runs
+**Then** the project builds
+
+### Story 1.2: Create logo SVG
+
+Description.
+
+**Acceptance Criteria:**
+**Given** assets exist
+**When** the app renders
+**Then** the logo is visible
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/implementation-artifacts/sprint-status.yaml"),
+        `generated: 2026-03-07
+project: Example
+project_key: EX
+tracking_system: file-system
+story_location: stories
+
+development_status:
+  epic-1: backlog
+  1-1-setup-project: done
+  1-2-create-logo-svg: backlog
+  epic-1-retrospective: optional
+`
+      );
+
+      await runTransition(testDir, { force: true });
+
+      const fixPlan = await readFile(join(testDir, ".ralph/@fix_plan.md"), "utf-8");
+      const completed = fixPlan.match(/- \[x\] Story/g) ?? [];
+
+      expect(completed).toHaveLength(1);
+      expect(fixPlan).toContain("- [x] Story 1.1: Setup project");
+      expect(fixPlan).toContain("- [ ] Story 1.2: Create logo SVG");
+    });
+  });
+
   describe("generated files tracking", () => {
     it("returns generatedFiles with correct actions", async () => {
       await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
@@ -571,6 +859,73 @@ describe("orchestration", () => {
       // Should succeed but have warnings for missing sections
       expect(result.storiesCount).toBe(1);
       expect(result.warnings).toContainEqual(expect.stringMatching(/prd missing/i));
+    });
+
+    it("reports filename-specific warnings when one of multiple PRDs is malformed", async () => {
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/stories.md"),
+        `## Epic 1: Core
+
+### Story 1.1: Feature
+
+Do something.
+
+**Acceptance Criteria:**
+**Given** a valid request
+**When** the feature runs
+**Then** it succeeds
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/prd-login.md"),
+        `# PRD
+
+## Resumo Executivo
+
+Context.
+
+## Requisitos Funcionais
+
+Reqs.
+
+## Requisitos N\u00E3o Funcionais
+
+NFRs.
+
+## Escopo
+
+Scope.
+`
+      );
+      await writeFile(
+        join(testDir, "_bmad-output/planning-artifacts/prd-billing.md"),
+        `# PRD
+
+## Executive Summary
+
+Context.
+
+## Scope
+
+Scope.
+`
+      );
+
+      const result = await runTransition(testDir);
+
+      expect(result.preflightIssues).toContainEqual(
+        expect.objectContaining({
+          id: "W4",
+          message: expect.stringMatching(/prd-billing\.md/i),
+        })
+      );
+      expect(result.preflightIssues).toContainEqual(
+        expect.objectContaining({
+          id: "W5",
+          message: expect.stringMatching(/prd-billing\.md/i),
+        })
+      );
     });
 
     it("respects force option to downgrade E1 to warning", async () => {

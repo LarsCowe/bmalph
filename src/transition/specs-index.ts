@@ -1,6 +1,12 @@
 import type { SpecFileType, Priority, SpecFileMetadata, SpecsIndex } from "./types.js";
 import { getMarkdownFilesWithContent } from "../utils/file-system.js";
 import { LARGE_FILE_THRESHOLD_BYTES, DEFAULT_SNIPPET_MAX_LENGTH } from "../utils/constants.js";
+import {
+  FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS,
+  PROJECT_GOALS_SECTION_PATTERNS,
+  TECH_STACK_SOURCE_SECTION_PATTERNS,
+  matchesAnyPattern,
+} from "./section-patterns.js";
 
 /**
  * Detects the type of a spec file based on its filename.
@@ -28,9 +34,15 @@ export function detectSpecFileType(filename: string, content: string): SpecFileT
 function detectFromContent(content: string): SpecFileType {
   const snippet = content.slice(0, 2000);
 
-  if (/^##\s+Functional Requirements/m.test(snippet) || /^##\s+Executive Summary/m.test(snippet))
+  if (
+    matchesAnyPattern(snippet, FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS) ||
+    matchesAnyPattern(snippet, PROJECT_GOALS_SECTION_PATTERNS)
+  )
     return "prd";
-  if (/^##\s+Tech Stack/m.test(snippet) || /^##\s+Architecture Decision/m.test(snippet))
+  if (
+    matchesAnyPattern(snippet, TECH_STACK_SOURCE_SECTION_PATTERNS) ||
+    /^##\s+Architecture Decision/m.test(snippet)
+  )
     return "architecture";
   if (/^###\s+Story\s+\d+\.\d+:/m.test(snippet)) return "stories";
   if (/^##\s+Design Principles/m.test(snippet) || /^##\s+User Flows/m.test(snippet)) return "ux";

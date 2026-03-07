@@ -1,11 +1,11 @@
-import { readFile, readdir, cp, mkdir, access, rm, rename } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile, rm, rename } from "node:fs/promises";
+import { join, relative } from "node:path";
 import { debug, info, warn } from "../utils/logger.js";
 import { isEnoent, formatError } from "../utils/errors.js";
-import { atomicWriteFile, exists } from "../utils/file-system.js";
+import { atomicWriteFile, exists, getFilesRecursive } from "../utils/file-system.js";
 import { readConfig } from "../utils/config.js";
 import { readState, writeState, type BmalphState } from "../utils/state.js";
-import type { TransitionResult, TransitionOptions, GeneratedFile } from "./types.js";
+import type { Story, TransitionResult, TransitionOptions, GeneratedFile } from "./types.js";
 import { parseStoriesWithWarnings } from "./story-parsing.js";
 import {
   generateFixPlan,
@@ -17,8 +17,9 @@ import {
   normalizeTitle,
 } from "./fix-plan.js";
 import { detectTechStack, customizeAgentMd } from "./tech-stack.js";
-import { findArtifactsDir } from "./artifacts.js";
+import { findArtifactsDir, resolvePlanningSpecsSubpath } from "./artifacts.js";
 import { runPreflight, PreflightValidationError } from "./preflight.js";
+import { collectTransitionArtifacts, combineArtifactContents } from "./artifact-collection.js";
 import {
   extractProjectContext,
   generateProjectContextMd,
@@ -27,6 +28,83 @@ import {
 } from "./context.js";
 import { generateSpecsChangelog, formatChangelog } from "./specs-changelog.js";
 import { generateSpecsIndex, formatSpecsIndexMd } from "./specs-index.js";
+import { parseSprintStatus } from "./sprint-status.js";
+import { prepareSpecsDirectory } from "./specs-sync.js";
+
+function compareStoryIds(left: string, right: string): number {
+  const [leftEpic = 0, leftStory = 0] = left.split(".").map((part) => Number(part));
+  const [rightEpic = 0, rightStory = 0] = right.split(".").map((part) => Number(part));
+
+  if (leftEpic !== rightEpic) {
+    return leftEpic - rightEpic;
+  }
+
+  return leftStory - rightStory;
+}
+
+function ensureUniqueStoryIds(stories: Story[]): void {
+  const sourceById = new Map<string, string>();
+
+  for (const story of stories) {
+    const existingSource = sourceById.get(story.id);
+    if (existingSource) {
+      throw new Error(
+        `Duplicate story ID "${story.id}" found in ${existingSource} and ${story.sourceFile}`
+      );
+    }
+
+    sourceById.set(story.id, story.sourceFile);
+  }
+}
+
+interface ResolvedSprintStatusSource {
+  displayPath: string;
+  content: string | null;
+  readError?: string;
+}
+
+async function resolveSprintStatusSource(
+  projectDir: string,
+  artifactsDir: string,
+  collectedArtifacts: ReturnType<typeof collectTransitionArtifacts>,
+  artifactContents: ReadonlyMap<string, string>
+): Promise<ResolvedSprintStatusSource | null> {
+  const canonicalCandidates = [
+    "_bmad-output/implementation-artifacts/sprint-status.yaml",
+    "_bmad-output/implementation_artifacts/sprint-status.yaml",
+  ];
+
+  for (const candidate of canonicalCandidates) {
+    const candidatePath = join(projectDir, candidate);
+    if (!(await exists(candidatePath))) {
+      continue;
+    }
+
+    try {
+      return {
+        displayPath: candidate,
+        content: await readFile(candidatePath, "utf-8"),
+      };
+    } catch (err) {
+      return {
+        displayPath: candidate,
+        content: null,
+        readError: formatError(err),
+      };
+    }
+  }
+
+  if (!collectedArtifacts.sprintStatusFile) {
+    return null;
+  }
+
+  const artifactsRelativeDir = relative(projectDir, artifactsDir).replace(/\\/g, "/");
+
+  return {
+    displayPath: `${artifactsRelativeDir}/${collectedArtifacts.sprintStatusFile}`,
+    content: artifactContents.get(collectedArtifacts.sprintStatusFile) ?? null,
+  };
+}
 
 export async function runTransition(
   projectDir: string,
@@ -40,46 +118,69 @@ export async function runTransition(
     );
   }
 
-  // Find and parse stories file
-  const files = await readdir(artifactsDir);
+  const files = await getFilesRecursive(artifactsDir);
+  const collectedArtifacts = collectTransitionArtifacts(files);
 
   // Read artifact contents early for preflight validation and later use
   const artifactContents = new Map<string, string>();
-  for (const file of files) {
-    if (file.endsWith(".md")) {
-      try {
-        const content = await readFile(join(artifactsDir, file), "utf-8");
-        artifactContents.set(file, content);
-      } catch (err) {
-        warn(`Could not read artifact ${file}: ${formatError(err)}`);
-      }
+  for (const file of collectedArtifacts.files) {
+    if (!/\.(?:md|ya?ml)$/i.test(file)) {
+      continue;
+    }
+
+    try {
+      const content = await readFile(join(artifactsDir, file), "utf-8");
+      artifactContents.set(file, content);
+    } catch (err) {
+      warn(`Could not read artifact ${file}: ${formatError(err)}`);
     }
   }
 
-  const storiesPattern = /^(epics[-_]?(and[-_]?)?)?stor(y|ies)([-_]\d+)?\.md$/i;
-  const storiesFile = files.find((f) => storiesPattern.test(f) || /epic/i.test(f));
-
-  if (!storiesFile) {
-    debug(`Files in artifacts dir: ${files.join(", ")}`);
+  if (collectedArtifacts.storyFiles.length === 0) {
+    debug(`Files in artifacts dir: ${collectedArtifacts.files.join(", ")}`);
     throw new Error(
-      `No epics/stories file found in ${artifactsDir}. Available files: ${files.join(", ")}. Run 'CE' (Create Epics and Stories) first.`
+      `No epics/stories file found in ${artifactsDir}. Available files: ${collectedArtifacts.files.join(", ")}. Run 'CE' (Create Epics and Stories) first.`
     );
   }
-  debug(`Using stories file: ${storiesFile}`);
+  debug(`Using stories files: ${collectedArtifacts.storyFiles.join(", ")}`);
 
-  const storiesContent = await readFile(join(artifactsDir, storiesFile), "utf-8");
   info("Parsing stories...");
-  const { stories, warnings: parseWarnings } = parseStoriesWithWarnings(storiesContent);
+  const stories: Story[] = [];
+  const parseWarnings: string[] = [];
+  for (const storyFile of collectedArtifacts.storyFiles) {
+    const storiesContent = artifactContents.get(storyFile);
+    if (!storiesContent) {
+      warn(`Could not read stories artifact ${storyFile}`);
+      continue;
+    }
+
+    const parsedStories = parseStoriesWithWarnings(storiesContent, storyFile);
+    stories.push(...parsedStories.stories);
+    parseWarnings.push(...parsedStories.warnings);
+  }
+
+  ensureUniqueStoryIds(stories);
+  stories.sort(
+    (left, right) =>
+      compareStoryIds(left.id, right.id) ||
+      left.sourceFile.localeCompare(right.sourceFile) ||
+      left.title.localeCompare(right.title)
+  );
 
   if (stories.length === 0) {
     throw new Error(
-      "No stories parsed from the epics file. Ensure stories follow the format: ### Story N.M: Title"
+      "No stories parsed from the epics files. Ensure stories follow the format: ### Story N.M: Title"
     );
   }
 
   // Pre-flight validation
   info("Pre-flight validation...");
-  const preflightResult = runPreflight(artifactContents, files, stories, parseWarnings);
+  const preflightResult = runPreflight(
+    artifactContents,
+    collectedArtifacts.files,
+    stories,
+    parseWarnings
+  );
 
   if (!preflightResult.pass) {
     if (options?.force) {
@@ -95,13 +196,19 @@ export async function runTransition(
   // Check existing fix_plan for completed items (smart merge)
   let completedIds = new Set<string>();
   let existingItems: { id: string; completed: boolean; title?: string }[] = [];
+  let orphanWarnings: string[] = [];
+  let renumberWarnings: string[] = [];
+  const completionWarnings: string[] = [];
+  let useTitleBasedMerge = true;
+  let fixPlanPreserved = false;
   const fixPlanPath = join(projectDir, ".ralph/@fix_plan.md");
   const fixPlanExisted = await exists(fixPlanPath);
   try {
     const existingFixPlan = await readFile(fixPlanPath, "utf-8");
     existingItems = parseFixPlan(existingFixPlan);
-    completedIds = new Set(existingItems.filter((i) => i.completed).map((i) => i.id));
-    debug(`Found ${completedIds.size} completed stories in existing fix_plan`);
+    debug(
+      `Found ${existingItems.filter((item) => item.completed).length} completed stories in existing fix_plan`
+    );
   } catch (err) {
     if (isEnoent(err)) {
       debug("No existing fix_plan found, starting fresh");
@@ -110,96 +217,107 @@ export async function runTransition(
     }
   }
 
-  // Detect orphaned completed stories (Bug #2)
-  const newStoryIds = new Set(stories.map((s) => s.id));
-  const orphanWarnings = detectOrphanedCompletedStories(existingItems, newStoryIds);
+  const sprintStatusSource = await resolveSprintStatusSource(
+    projectDir,
+    artifactsDir,
+    collectedArtifacts,
+    artifactContents
+  );
+  if (sprintStatusSource) {
+    useTitleBasedMerge = false;
+    if (sprintStatusSource.readError) {
+      completionWarnings.push(
+        `Sprint status file "${sprintStatusSource.displayPath}" could not be read: ${sprintStatusSource.readError}. All stories were left unchecked.`
+      );
+    } else if (!sprintStatusSource.content) {
+      completionWarnings.push(
+        `Sprint status file "${sprintStatusSource.displayPath}" could not be read. All stories were left unchecked.`
+      );
+    } else {
+      const sprintStatus = parseSprintStatus(sprintStatusSource.content);
+      completionWarnings.push(...sprintStatus.warnings);
 
-  // Build title maps for title-based merge (Gap 3: renumbered story preservation)
+      if (sprintStatus.valid) {
+        completedIds = new Set(
+          stories
+            .filter((story) => sprintStatus.storyStatusById.get(story.id) === "done")
+            .map((story) => story.id)
+        );
+        fixPlanPreserved = completedIds.size > 0;
+
+        for (const story of stories) {
+          if (!sprintStatus.storyStatusById.has(story.id)) {
+            completionWarnings.push(
+              `Sprint status is missing story ${story.id} (${story.title}); leaving it unchecked.`
+            );
+          }
+        }
+      }
+    }
+  } else {
+    completedIds = new Set(existingItems.filter((item) => item.completed).map((item) => item.id));
+    fixPlanPreserved = completedIds.size > 0;
+
+    // Detect orphaned completed stories (Bug #2)
+    const newStoryIds = new Set(stories.map((story) => story.id));
+    orphanWarnings = detectOrphanedCompletedStories(existingItems, newStoryIds);
+
+    // Build title maps for title-based merge (Gap 3: renumbered story preservation)
+    const completedTitles = buildCompletedTitleMap(existingItems);
+    const newTitleMap = new Map(stories.map((story) => [story.id, story.title]));
+
+    // Detect which stories were preserved via title match (for renumber warning suppression)
+    const preservedIds = new Set<string>();
+    for (const [id, title] of newTitleMap) {
+      if (!completedIds.has(id) && completedTitles.has(normalizeTitle(title))) {
+        preservedIds.add(id);
+      }
+    }
+
+    // Detect renumbered stories (Bug #3), skipping auto-preserved ones
+    renumberWarnings = detectRenumberedStories(existingItems, stories, preservedIds);
+  }
+
   const completedTitles = buildCompletedTitleMap(existingItems);
-  const newTitleMap = new Map(stories.map((s) => [s.id, s.title]));
+  const newTitleMap = new Map(stories.map((story) => [story.id, story.title]));
 
   // Generate new fix_plan from current stories, preserving completion status
   info(`Generating fix plan for ${stories.length} stories...`);
-  const newFixPlan = generateFixPlan(stories, storiesFile);
+  const planningSpecsSubpath = resolvePlanningSpecsSubpath(projectDir, artifactsDir);
+  const newFixPlan = generateFixPlan(stories, undefined, planningSpecsSubpath);
   const mergedFixPlan = mergeFixPlanProgress(
     newFixPlan,
     completedIds,
-    newTitleMap,
-    completedTitles
+    useTitleBasedMerge ? newTitleMap : undefined,
+    useTitleBasedMerge ? completedTitles : undefined
   );
-
-  // Detect which stories were preserved via title match (for renumber warning suppression)
-  const preservedIds = new Set<string>();
-  for (const [id, title] of newTitleMap) {
-    if (!completedIds.has(id) && completedTitles.has(normalizeTitle(title))) {
-      preservedIds.add(id);
-    }
-  }
-
-  // Detect renumbered stories (Bug #3), skipping auto-preserved ones
-  const renumberWarnings = detectRenumberedStories(existingItems, stories, preservedIds);
   await atomicWriteFile(fixPlanPath, mergedFixPlan);
   generatedFiles.push({
     path: ".ralph/@fix_plan.md",
     action: fixPlanExisted ? "updated" : "created",
   });
 
-  // Track whether progress was preserved for return value
-  const fixPlanPreserved = completedIds.size > 0;
-
-  // Generate changelog before overwriting specs/
   const specsDir = join(projectDir, ".ralph/specs");
-  const bmadOutputDir = join(projectDir, "_bmad-output");
-  const bmadOutputExists = await exists(bmadOutputDir);
-  if (bmadOutputExists) {
-    try {
-      const changes = await generateSpecsChangelog(specsDir, bmadOutputDir);
-      if (changes.length > 0) {
-        const changelog = formatChangelog(changes, new Date().toISOString());
-        await atomicWriteFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
-        generatedFiles.push({ path: ".ralph/SPECS_CHANGELOG.md", action: "updated" });
-        debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
-      }
-    } catch (err) {
-      warn(`Could not generate SPECS_CHANGELOG.md: ${formatError(err)}`);
-    }
-  } else {
-    debug("Skipping SPECS_CHANGELOG.md (no _bmad-output directory)");
-  }
+  const specsTmpDir = join(projectDir, ".ralph/specs.new");
+  info("Preparing specs tree...");
+  await prepareSpecsDirectory(projectDir, artifactsDir, collectedArtifacts.files, specsTmpDir);
 
-  // Copy entire _bmad-output/ tree to .ralph/specs/ (preserving structure)
-  if (!bmadOutputExists) {
-    debug("_bmad-output not found, falling back to artifacts directory");
+  try {
+    const changes = await generateSpecsChangelog(specsDir, specsTmpDir);
+    if (changes.length > 0) {
+      const changelog = formatChangelog(changes, new Date().toISOString());
+      await atomicWriteFile(join(projectDir, ".ralph/SPECS_CHANGELOG.md"), changelog);
+      generatedFiles.push({ path: ".ralph/SPECS_CHANGELOG.md", action: "updated" });
+      debug(`Generated SPECS_CHANGELOG.md with ${changes.length} changes`);
+    }
+  } catch (err) {
+    warn(`Could not generate SPECS_CHANGELOG.md: ${formatError(err)}`);
   }
 
   info("Copying specs to .ralph/specs/...");
-  const specsTmpDir = join(projectDir, ".ralph/specs.new");
-  if (bmadOutputExists) {
-    // Atomic copy: write to temp dir, verify, then swap
-    await rm(specsTmpDir, { recursive: true, force: true });
-    await mkdir(specsTmpDir, { recursive: true });
-    await cp(bmadOutputDir, specsTmpDir, { recursive: true, dereference: false });
-    // Verify the copy succeeded before swapping
-    await access(specsTmpDir);
-    await rm(specsDir, { recursive: true, force: true });
-    await rename(specsTmpDir, specsDir);
-    generatedFiles.push({ path: ".ralph/specs/", action: "updated" });
-    debug("Copied _bmad-output/ to .ralph/specs/ (atomic)");
-  } else {
-    // Fall back to just artifactsDir if _bmad-output root doesn't exist
-    await rm(specsTmpDir, { recursive: true, force: true });
-    await mkdir(specsTmpDir, { recursive: true });
-    for (const file of files) {
-      await cp(join(artifactsDir, file), join(specsTmpDir, file), {
-        recursive: true,
-        dereference: false,
-      });
-    }
-    await access(specsTmpDir);
-    await rm(specsDir, { recursive: true, force: true });
-    await rename(specsTmpDir, specsDir);
-    generatedFiles.push({ path: ".ralph/specs/", action: "updated" });
-  }
+  await rm(specsDir, { recursive: true, force: true });
+  await rename(specsTmpDir, specsDir);
+  generatedFiles.push({ path: ".ralph/specs/", action: "updated" });
 
   // Generate SPECS_INDEX.md for intelligent spec reading
   info("Generating SPECS_INDEX.md...");
@@ -275,23 +393,23 @@ export async function runTransition(
   generatedFiles.push({ path: ".ralph/PROMPT.md", action: promptExisted ? "updated" : "created" });
 
   // Customize @AGENT.md based on detected tech stack from architecture
-  const architectureFile = files.find((f) => /architect/i.test(f));
-  if (architectureFile) {
-    const archContent = artifactContents.get(architectureFile);
-    if (archContent) {
-      try {
-        const stack = detectTechStack(archContent);
-        if (stack) {
-          const agentPath = join(projectDir, ".ralph/@AGENT.md");
-          const agentTemplate = await readFile(agentPath, "utf-8");
-          const customized = customizeAgentMd(agentTemplate, stack);
-          await atomicWriteFile(agentPath, customized);
-          generatedFiles.push({ path: ".ralph/@AGENT.md", action: "updated" });
-          debug("Customized @AGENT.md with detected tech stack");
-        }
-      } catch (err) {
-        warn(`Could not customize @AGENT.md: ${formatError(err)}`);
+  const combinedArchitectureContent = combineArtifactContents(
+    collectedArtifacts.architectureFiles,
+    artifactContents
+  );
+  if (combinedArchitectureContent) {
+    try {
+      const stack = detectTechStack(combinedArchitectureContent);
+      if (stack) {
+        const agentPath = join(projectDir, ".ralph/@AGENT.md");
+        const agentTemplate = await readFile(agentPath, "utf-8");
+        const customized = customizeAgentMd(agentTemplate, stack);
+        await atomicWriteFile(agentPath, customized);
+        generatedFiles.push({ path: ".ralph/@AGENT.md", action: "updated" });
+        debug("Customized @AGENT.md with detected tech stack");
       }
+    } catch (err) {
+      warn(`Could not customize @AGENT.md: ${formatError(err)}`);
     }
   }
 
@@ -311,6 +429,7 @@ export async function runTransition(
   const warnings = [
     ...preflightWarnings,
     ...nonPreflightParseWarnings,
+    ...completionWarnings,
     ...orphanWarnings,
     ...renumberWarnings,
     ...truncationWarnings,

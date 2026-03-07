@@ -68,11 +68,14 @@ function parseAcBlocks(lines: string[]): string[] {
   return criteria;
 }
 
-export function parseStories(content: string): Story[] {
-  return parseStoriesWithWarnings(content).stories;
+export function parseStories(content: string, sourceFile = "stories.md"): Story[] {
+  return parseStoriesWithWarnings(content, sourceFile).stories;
 }
 
-export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
+export function parseStoriesWithWarnings(
+  content: string,
+  sourceFile = "stories.md"
+): ParseStoriesResult {
   const stories: Story[] = [];
   const warnings: string[] = [];
   let currentEpic = "";
@@ -157,6 +160,7 @@ export function parseStoriesWithWarnings(content: string): ParseStoriesResult {
         title,
         description: descLines.join(" "),
         acceptanceCriteria,
+        sourceFile,
       });
     }
   }

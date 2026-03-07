@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { findArtifactsDir } from "../../src/transition/artifacts.js";
+import { findArtifactsDir, resolvePlanningSpecsSubpath } from "../../src/transition/artifacts.js";
 
 describe("artifacts", () => {
   let testDir: string;
@@ -66,6 +66,32 @@ describe("artifacts", () => {
       const result = await findArtifactsDir(testDir);
 
       expect(result).toBe(bmadPath);
+    });
+  });
+
+  describe("resolvePlanningSpecsSubpath", () => {
+    it("returns planning-artifacts for the canonical BMAD root", () => {
+      const result = resolvePlanningSpecsSubpath(
+        testDir,
+        join(testDir, "_bmad-output/planning-artifacts")
+      );
+
+      expect(result).toBe("planning-artifacts");
+    });
+
+    it("returns planning_artifacts for underscore-based BMAD roots", () => {
+      const result = resolvePlanningSpecsSubpath(
+        testDir,
+        join(testDir, "_bmad-output/planning_artifacts")
+      );
+
+      expect(result).toBe("planning_artifacts");
+    });
+
+    it("returns an empty path for docs/planning fallback roots", () => {
+      const result = resolvePlanningSpecsSubpath(testDir, join(testDir, "docs/planning"));
+
+      expect(result).toBe("");
     });
   });
 

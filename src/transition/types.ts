@@ -17,6 +17,21 @@ export interface Story {
   title: string;
   description: string;
   acceptanceCriteria: string[];
+  sourceFile: string;
+}
+
+export type SprintStoryStatus =
+  | "backlog"
+  | "ready-for-dev"
+  | "in-progress"
+  | "review"
+  | "done"
+  | "drafted";
+
+export interface SprintStatusParseResult {
+  storyStatusById: Map<string, SprintStoryStatus>;
+  warnings: string[];
+  valid: boolean;
 }
 
 export interface TechStack {

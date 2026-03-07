@@ -112,6 +112,62 @@ describe("preflight", () => {
       expect(issues.find((i) => i.id === "W3")).toBeUndefined();
     });
 
+    it("accepts Portuguese PRD headings", () => {
+      const prd = `# PRD
+
+## Resumo Executivo
+
+Visao geral.
+
+## Requisitos Funcionais
+
+Reqs.
+
+## Requisitos N\u00E3o Funcionais
+
+NFRs.
+
+## Escopo
+
+Scope.
+`;
+
+      const issues = validatePrd(prd);
+
+      expect(issues.find((i) => i.id === "W3")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W4")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W5")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W6")).toBeUndefined();
+    });
+
+    it("accepts Spanish PRD headings", () => {
+      const prd = `# PRD
+
+## Resumen Ejecutivo
+
+Vision general.
+
+## Requisitos Funcionales
+
+Reqs.
+
+## Requisitos No Funcionales
+
+NFRs.
+
+## Alcance
+
+Scope.
+`;
+
+      const issues = validatePrd(prd);
+
+      expect(issues.find((i) => i.id === "W3")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W4")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W5")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W6")).toBeUndefined();
+    });
+
     it("returns W4 when missing Functional Requirements", () => {
       const prd = `# PRD\n\n## Executive Summary\n\nSummary.\n\n## Non-Functional Requirements\n\nNFRs.\n\n## Scope\n\nScope.\n`;
 

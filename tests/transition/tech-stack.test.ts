@@ -316,6 +316,41 @@ describe("tech-stack", () => {
       expect(stack!.test).toBe("pytest");
       expect(stack!.build).toBe("python -m build");
     });
+
+    it("detects tech stack from Portuguese heading aliases", () => {
+      const content = `# Architecture
+
+## Pilha Tecnol\u00F3gica
+
+- Node.js 20
+- TypeScript
+- Vitest
+
+## Other
+`;
+      const stack = detectTechStack(content);
+
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toBe("npm install");
+      expect(stack!.test).toBe("npx vitest run");
+    });
+
+    it("detects tech stack from Spanish heading aliases", () => {
+      const content = `# Architecture
+
+## Pila Tecnol\u00F3gica
+
+- Python 3.12
+- pytest
+
+## Other
+`;
+      const stack = detectTechStack(content);
+
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toBe("pip install -r requirements.txt");
+      expect(stack!.test).toBe("pytest");
+    });
   });
 
   describe("customizeAgentMd", () => {

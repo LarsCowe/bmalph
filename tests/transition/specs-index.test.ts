@@ -102,6 +102,20 @@ describe("specs-index", () => {
           "# Requirements\n\n## Executive Summary\n\nThis project aims to..."
         )
       ).toBe("prd");
+
+      expect(
+        detectSpecFileType(
+          "requirements.md",
+          "# Requisitos\n\n## Resumo Executivo\n\nEste projeto oferece um fluxo de autenticacao."
+        )
+      ).toBe("prd");
+
+      expect(
+        detectSpecFileType(
+          "requirements.md",
+          "# Requisitos\n\n## Requisitos Funcionales\n\n- Inicio de sesion\n- Panel"
+        )
+      ).toBe("prd");
     });
 
     it("detects architecture from content headings", () => {
@@ -116,6 +130,13 @@ describe("specs-index", () => {
         detectSpecFileType(
           "decisions.md",
           "# Decisions\n\n## Architecture Decision Records\n\nADR-001: Use TypeScript"
+        )
+      ).toBe("architecture");
+
+      expect(
+        detectSpecFileType(
+          "arquitectura.md",
+          "# Arquitectura\n\n## Pila Tecnol\u00F3gica\n\n- Node.js\n- PostgreSQL"
         )
       ).toBe("architecture");
     });

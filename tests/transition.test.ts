@@ -54,6 +54,7 @@ So that I can access my data.
         description: expect.stringContaining("visitor"),
         epicDescription: "Secure user access management",
         acceptanceCriteria: [],
+        sourceFile: "stories.md",
       });
       expect(stories[1]).toEqual({
         epic: "User Authentication",
@@ -62,6 +63,7 @@ So that I can access my data.
         description: expect.stringContaining("registered user"),
         epicDescription: "Secure user access management",
         acceptanceCriteria: [],
+        sourceFile: "stories.md",
       });
     });
 

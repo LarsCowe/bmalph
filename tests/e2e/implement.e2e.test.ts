@@ -264,4 +264,191 @@ describe("bmalph implement CLI", { timeout: 60000 }, () => {
     expect(agent).toContain("npm install");
     expect(agent).toContain("npx vitest run");
   });
+
+  it("aggregates multi-file artifacts and lets sprint-status override stale fix plan progress", async () => {
+    project = await createTestProject();
+    await runInit(project.path);
+
+    const artifactsDir = join(project.path, "_bmad-output/planning-artifacts");
+    const implementationArtifactsDir = join(project.path, "_bmad-output/implementation-artifacts");
+    await mkdir(artifactsDir, { recursive: true });
+    await mkdir(join(artifactsDir, "epics"), { recursive: true });
+    await mkdir(implementationArtifactsDir, { recursive: true });
+    await writeFile(
+      join(artifactsDir, "prd-login.md"),
+      `# PRD
+
+## Resumo Executivo
+
+Fluxo de autenticacao para clientes.
+
+## Requisitos Funcionais
+
+- Login
+- Logout
+
+## Requisitos N\u00E3o Funcionais
+
+- Auditoria
+
+## Escopo
+
+- Em escopo: autenticacao
+- Fora de escopo: faturamento
+`
+    );
+    await writeFile(
+      join(artifactsDir, "prd-billing.md"),
+      `# PRD
+
+## Resumen Ejecutivo
+
+Flujo de facturacion para administradores.
+
+## Requisitos Funcionales
+
+- Facturas
+
+## Requisitos No Funcionales
+
+- Registros de auditoria
+
+## Alcance
+
+- En alcance: facturacion
+- Fuera de alcance: marketing
+`
+    );
+    await writeFile(
+      join(artifactsDir, "architecture.md"),
+      `# Architecture
+
+## Pila Tecnol\u00F3gica
+
+- Node.js 20
+- TypeScript
+- Vitest
+`
+    );
+    await writeFile(
+      join(artifactsDir, "epics/epic-1.md"),
+      `## Epic 1: Authentication
+
+### Story 1.1: Setup project
+
+Create the project foundation.
+
+**Acceptance Criteria:**
+**Given** a fresh repository
+**When** setup completes
+**Then** the app can boot
+
+### Story 1.2: Create logo SVG
+
+Create the login logo.
+
+**Acceptance Criteria:**
+**Given** branding assets
+**When** the app renders
+**Then** the SVG is visible
+
+### Story 1.3: Login page UI
+
+Render the login page.
+
+**Acceptance Criteria:**
+**Given** the login route
+**When** the page opens
+**Then** the form is visible
+`
+    );
+    await writeFile(
+      join(artifactsDir, "epics/epic-2.md"),
+      `## Epic 2: Billing
+
+### Story 2.1: Database migration
+
+Create the billing schema.
+
+**Acceptance Criteria:**
+**Given** a pending migration
+**When** it runs
+**Then** the schema is updated
+
+### Story 2.2: API endpoint
+
+Expose the billing endpoint.
+
+**Acceptance Criteria:**
+**Given** a valid request
+**When** the endpoint is called
+**Then** it returns success
+
+### Story 2.3: Full login flow
+
+Complete the sign-in flow.
+
+**Acceptance Criteria:**
+**Given** a valid user
+**When** authentication completes
+**Then** a session starts
+`
+    );
+    await writeFile(
+      join(implementationArtifactsDir, "sprint-status.yaml"),
+      `generated: 2026-03-07
+project: Example
+project_key: EX
+tracking_system: file-system
+story_location: stories
+
+development_status:
+  epic-1: backlog
+  1-1-setup-project: done
+  1-2-create-logo-svg: backlog
+  1-3-login-page-ui: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-database-migration: backlog
+  2-2-api-endpoint: backlog
+  2-3-full-login-flow: backlog
+  epic-2-retrospective: optional
+`
+    );
+    await writeFile(
+      join(project.path, ".ralph/@fix_plan.md"),
+      `# Ralph Fix Plan
+
+## Stories to Implement
+
+- [x] Story 1.1: Setup project
+- [x] Story 1.2: Create logo SVG
+- [x] Story 1.3: Login page UI
+- [x] Story 2.1: Database migration
+- [x] Story 2.2: API endpoint
+- [x] Story 2.3: Full login flow
+`
+    );
+
+    const result = await runImplement(project.path, true);
+    const fixPlan = await readFile(join(project.path, ".ralph/@fix_plan.md"), "utf-8");
+    const completed = fixPlan.match(/- \[x\] Story/g) ?? [];
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain("PRD missing Executive Summary or Vision section");
+    expect(result.stdout).not.toContain("PRD missing Functional Requirements section");
+    expect(result.stdout).not.toContain("PRD missing Non-Functional Requirements section");
+    expect(result.stdout).not.toContain("PRD missing Scope section");
+    expect(result.stdout).not.toContain("Architecture missing Tech Stack section");
+    expect(fixPlan).toContain("- [x] Story 1.1: Setup project");
+    expect(fixPlan).toContain("- [ ] Story 1.2: Create logo SVG");
+    expect(fixPlan).toContain("- [ ] Story 1.3: Login page UI");
+    expect(fixPlan).toContain("- [ ] Story 2.1: Database migration");
+    expect(fixPlan).toContain("- [ ] Story 2.2: API endpoint");
+    expect(fixPlan).toContain("- [ ] Story 2.3: Full login flow");
+    expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-1.md#story-1-1");
+    expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-2.md#story-2-1");
+    expect(completed).toHaveLength(1);
+  });
 });

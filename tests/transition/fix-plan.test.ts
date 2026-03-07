@@ -18,6 +18,7 @@ function makeStory(overrides: Partial<Story> = {}): Story {
     title: "Login form",
     description: "As a user, I want to log in.",
     acceptanceCriteria: ["Given valid creds, When submit, Then logged in"],
+    sourceFile: "",
     ...overrides,
   };
 }
@@ -91,6 +92,22 @@ describe("fix-plan", () => {
 
       expect(plan).toContain("specs/planning-artifacts/epics-and-stories.md#story-1-1");
       expect(plan).toContain("specs/planning-artifacts/epics-and-stories.md#story-1-2");
+    });
+
+    it("uses the resolved planning_artifacts specs directory in spec links", () => {
+      const stories = [makeStory({ id: "1.1", sourceFile: "epics/epic-1.md" })];
+      const plan = generateFixPlan(stories, undefined, "planning_artifacts");
+
+      expect(plan).toContain("Spec: specs/planning_artifacts/epics/epic-1.md#story-1-1");
+      expect(plan).not.toContain("specs/planning-artifacts/epics/epic-1.md#story-1-1");
+    });
+
+    it("uses the specs root when planning artifacts come from docs/planning", () => {
+      const stories = [makeStory({ id: "1.1", sourceFile: "epics/epic-1.md" })];
+      const plan = generateFixPlan(stories, undefined, "");
+
+      expect(plan).toContain("Spec: specs/epics/epic-1.md#story-1-1");
+      expect(plan).not.toContain("specs/planning-artifacts/epics/epic-1.md#story-1-1");
     });
 
     it("returns plan with standard sections for empty input", () => {

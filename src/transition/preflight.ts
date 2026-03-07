@@ -1,7 +1,13 @@
 import type { Story, PreflightIssue, PreflightResult } from "./types.js";
 import { extractFirstMatchingSection } from "./context.js";
-import { PRD_SCOPE_SECTION_PATTERNS } from "./section-patterns.js";
+import {
+  FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS,
+  NON_FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS,
+  PRD_SCOPE_SECTION_PATTERNS,
+  PROJECT_GOALS_SECTION_PATTERNS,
+} from "./section-patterns.js";
 import { extractTechStackSource } from "./tech-stack.js";
+import { collectTransitionArtifacts, combineArtifactContents } from "./artifact-collection.js";
 
 function hasSection(content: string, patterns: readonly RegExp[]): boolean {
   return extractFirstMatchingSection(content, patterns) !== "";
@@ -36,14 +42,7 @@ export function validatePrd(content: string | null): PreflightIssue[] {
 
   const issues: PreflightIssue[] = [];
 
-  if (
-    !hasSection(content, [
-      /^##\s+Executive Summary/m,
-      /^##\s+Vision/m,
-      /^##\s+Goals/m,
-      /^##\s+Project Goals/m,
-    ])
-  ) {
+  if (!hasSection(content, PROJECT_GOALS_SECTION_PATTERNS)) {
     issues.push({
       id: "W3",
       severity: "warning",
@@ -52,7 +51,7 @@ export function validatePrd(content: string | null): PreflightIssue[] {
     });
   }
 
-  if (!hasSection(content, [/^##\s+Functional Requirements/m])) {
+  if (!hasSection(content, FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS)) {
     issues.push({
       id: "W4",
       severity: "warning",
@@ -61,7 +60,7 @@ export function validatePrd(content: string | null): PreflightIssue[] {
     });
   }
 
-  if (!hasSection(content, [/^##\s+Non-Functional/m, /^##\s+NFR/m, /^##\s+Quality/m])) {
+  if (!hasSection(content, NON_FUNCTIONAL_REQUIREMENTS_SECTION_PATTERNS)) {
     issues.push({
       id: "W5",
       severity: "warning",
@@ -178,17 +177,32 @@ export function runPreflight(
   stories: Story[],
   parseWarnings: string[]
 ): PreflightResult {
-  const prdFile = files.find((f) => /prd/i.test(f));
-  const prdContent = prdFile ? (artifactContents.get(prdFile) ?? null) : null;
-
-  const archFile = files.find((f) => /architect/i.test(f));
-  const archContent = archFile ? (artifactContents.get(archFile) ?? null) : null;
-
-  const readinessFile = files.find((f) => /readiness/i.test(f));
-  const readinessContent = readinessFile ? (artifactContents.get(readinessFile) ?? null) : null;
+  const collectedArtifacts = collectTransitionArtifacts(files);
+  const prdIssues =
+    collectedArtifacts.prdDocuments.length === 0
+      ? validatePrd(null)
+      : collectedArtifacts.prdDocuments.flatMap((prdDocument) =>
+          validatePrd(combineArtifactContents(prdDocument.files, artifactContents) || null).map(
+            (issue) =>
+              collectedArtifacts.prdDocuments.length > 1
+                ? {
+                    ...issue,
+                    message: `${issue.message} (${prdDocument.label})`,
+                  }
+                : issue
+          )
+        );
+  const archContent =
+    collectedArtifacts.architectureFiles.length > 0
+      ? combineArtifactContents(collectedArtifacts.architectureFiles, artifactContents)
+      : null;
+  const readinessContent =
+    collectedArtifacts.readinessFiles.length > 0
+      ? combineArtifactContents(collectedArtifacts.readinessFiles, artifactContents)
+      : null;
 
   const issues = [
-    ...validatePrd(prdContent),
+    ...prdIssues,
     ...validateArchitecture(archContent),
     ...validateStories(stories, parseWarnings),
     ...validateReadiness(readinessContent),

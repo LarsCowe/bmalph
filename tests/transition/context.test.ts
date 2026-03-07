@@ -144,6 +144,27 @@ Our project aims to build a developer CLI tool.
       expect(context.projectGoals).toContain("Our project aims to build a developer CLI tool.");
     });
 
+    it("extracts project goals from Portuguese PRD headings", () => {
+      const artifacts = new Map([
+        [
+          "prd-login.md",
+          `# PRD
+
+## Resumo Executivo
+
+Construir uma ferramenta CLI para equipes de produto.
+
+## Outro
+`,
+        ],
+      ]);
+
+      const { context } = extractProjectContext(artifacts);
+      expect(context.projectGoals).toContain(
+        "Construir uma ferramenta CLI para equipes de produto."
+      );
+    });
+
     it("extracts architecture constraints", () => {
       const artifacts = new Map([
         [
@@ -241,6 +262,31 @@ Third-party API rate limits.
 
       expect(context.scopeBoundaries).toContain("project onboarding");
       expect(context.scopeBoundaries).toContain("marketplace billing");
+    });
+
+    it("extracts Spanish scope and non-functional requirements", () => {
+      const artifacts = new Map([
+        [
+          "prd-billing.md",
+          `# PRD
+
+## Requisitos No Funcionales
+
+- Mantener la auditoria disponible
+
+## Alcance
+
+- En alcance: autenticacion
+- Fuera de alcance: facturacion
+`,
+        ],
+      ]);
+
+      const { context } = extractProjectContext(artifacts);
+
+      expect(context.nonFunctionalRequirements).toContain("Mantener la auditoria disponible");
+      expect(context.scopeBoundaries).toContain("autenticacion");
+      expect(context.scopeBoundaries).toContain("facturacion");
     });
 
     it("extracts success metrics from KPIs section", () => {
@@ -598,6 +644,14 @@ ${longContent}
       expect(prompt).toContain("High");
       expect(prompt).toContain("Medium");
       expect(prompt).toContain("Low");
+    });
+
+    it("uses SPECS_INDEX.md instead of hardcoded planning subdirectories", () => {
+      const prompt = generatePrompt("Test");
+
+      expect(prompt).toContain("Use the exact spec paths listed in SPECS_INDEX.md");
+      expect(prompt).not.toContain("planning-artifacts/:");
+      expect(prompt).not.toContain("implementation-artifacts/:");
     });
 
     it("embeds project context when provided", () => {
