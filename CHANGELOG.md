@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.4](https://github.com/LarsCowe/bmalph/compare/v2.7.3...v2.7.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* handle malformed story IDs deterministically ([c7beddb](https://github.com/LarsCowe/bmalph/commit/c7beddb6db5ccd96804704eb477d79264663051e))
+* parse Codex JSONL responses in Ralph loop ([#89](https://github.com/LarsCowe/bmalph/issues/89)) ([90677d0](https://github.com/LarsCowe/bmalph/commit/90677d060883f7efefd8f427e7250046f1e8e908))
+* preserve specs on transition swap failure ([208c2eb](https://github.com/LarsCowe/bmalph/commit/208c2eb1b4cd86c0a1d35a3274d2acbbf3120bb5)), closes [#85](https://github.com/LarsCowe/bmalph/issues/85)
+
 ## [2.7.3](https://github.com/LarsCowe/bmalph/compare/v2.7.2...v2.7.3) (2026-03-07)
 
 
