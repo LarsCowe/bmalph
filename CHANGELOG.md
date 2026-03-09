@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.5](https://github.com/LarsCowe/bmalph/compare/v2.7.4...v2.7.5) (2026-03-09)
+
+
+### Bug Fixes
+
+* harden Cursor runtime contract and docs ([ac1404a](https://github.com/LarsCowe/bmalph/commit/ac1404aa211b435783e799d18008d2a62fa13d8f))
+* **installer:** restore _bmad after post-swap failures ([e3f6354](https://github.com/LarsCowe/bmalph/commit/e3f635461c1d9afdf74184afcb6c648a7dcfa269)), closes [#83](https://github.com/LarsCowe/bmalph/issues/83)
+* kill Ralph process tree on Windows ([c9f2327](https://github.com/LarsCowe/bmalph/commit/c9f2327414f82bc9289090b93c1c2cfc50096bd8))
+* stabilize ci test runners ([28d9195](https://github.com/LarsCowe/bmalph/commit/28d91950f3b79f1c81fe27e7e438edf8d4bc76b3))
+
 ## [2.7.4](https://github.com/LarsCowe/bmalph/compare/v2.7.3...v2.7.4) (2026-03-09)
 
 
