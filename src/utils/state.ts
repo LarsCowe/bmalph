@@ -1,12 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { readJsonFile } from "./json.js";
-import { validateState, validateRalphLoopStatus, normalizeRalphStatus } from "./validate.js";
+import { validateState } from "./validate.js";
 import type { RalphLoopStatus } from "./validate.js";
-import { STATE_DIR, RALPH_STATUS_FILE } from "./constants.js";
+import { STATE_DIR } from "./constants.js";
 import { atomicWriteFile } from "./file-system.js";
 import { warn } from "./logger.js";
 import { formatError } from "./errors.js";
+import { readRalphRuntimeStatus } from "./ralph-runtime-state.js";
 
 export interface BmalphState {
   currentPhase: number;
@@ -205,19 +206,24 @@ const DEFAULT_RALPH_STATUS: RalphLoopStatus = {
 };
 
 export async function readRalphStatus(projectDir: string): Promise<RalphLoopStatus> {
-  const data = await readJsonFile<unknown>(join(projectDir, RALPH_STATUS_FILE));
-  if (data === null) {
+  const result = await readRalphRuntimeStatus(projectDir);
+  if (result.kind === "missing") {
     return DEFAULT_RALPH_STATUS;
   }
-  try {
-    return validateRalphLoopStatus(data);
-  } catch {
-    // camelCase validation failed — try bash snake_case format
+
+  if (result.kind === "ok") {
+    return {
+      loopCount: result.value.loopCount,
+      status: result.value.status,
+      tasksCompleted: result.value.tasksCompleted,
+      tasksTotal: result.value.tasksTotal,
+    };
   }
-  try {
-    return normalizeRalphStatus(data);
-  } catch (err) {
-    warn(`Ralph status file is corrupted, using defaults: ${formatError(err)}`);
-    return DEFAULT_RALPH_STATUS;
-  }
+
+  const label =
+    result.kind === "unreadable"
+      ? "Ralph status file is unreadable"
+      : "Ralph status file is corrupted";
+  warn(`${label}, using defaults: ${formatError(result.error)}`);
+  return DEFAULT_RALPH_STATUS;
 }

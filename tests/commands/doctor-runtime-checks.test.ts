@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-vi.mock("node:fs/promises", () => ({
-  readFile: vi.fn(),
-}));
-
 vi.mock("../../src/installer.js", () => ({
   getBundledVersions: vi.fn(() =>
     Promise.resolve({
@@ -17,34 +13,24 @@ vi.mock("../../src/utils/github.js", () => ({
   getSkipReason: vi.fn(),
 }));
 
-vi.mock("../../src/utils/validate.js", () => ({
-  validateCircuitBreakerState: vi.fn(),
-  validateRalphSession: vi.fn(),
-  validateRalphApiStatus: vi.fn(),
-}));
-
 vi.mock("../../src/utils/constants.js", () => ({
   SESSION_AGE_WARNING_MS: 24 * 60 * 60 * 1000,
   API_USAGE_WARNING_PERCENT: 90,
-  RALPH_STATUS_FILE: ".ralph/status.json",
 }));
 
-vi.mock("../../src/utils/errors.js", () => ({
-  isEnoent: vi.fn(
-    (err: unknown) =>
-      err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT"
-  ),
-  formatError: vi.fn((err: unknown) => (err instanceof Error ? err.message : String(err))),
+vi.mock("../../src/utils/ralph-runtime-state.js", () => ({
+  readRalphCircuitBreaker: vi.fn(),
+  readRalphRuntimeSession: vi.fn(),
+  readRalphRuntimeStatus: vi.fn(),
 }));
 
-import { readFile } from "node:fs/promises";
 import { getBundledVersions } from "../../src/installer.js";
 import { checkUpstream, getSkipReason } from "../../src/utils/github.js";
 import {
-  validateCircuitBreakerState,
-  validateRalphSession,
-  validateRalphApiStatus,
-} from "../../src/utils/validate.js";
+  readRalphCircuitBreaker,
+  readRalphRuntimeSession,
+  readRalphRuntimeStatus,
+} from "../../src/utils/ralph-runtime-state.js";
 import {
   checkCircuitBreaker,
   checkRalphSession,
@@ -52,18 +38,76 @@ import {
   checkUpstreamGitHubStatus,
 } from "../../src/commands/doctor-runtime-checks.js";
 
-const mockReadFile = vi.mocked(readFile);
 const mockGetBundledVersions = vi.mocked(getBundledVersions);
 const mockCheckUpstream = vi.mocked(checkUpstream);
 const mockGetSkipReason = vi.mocked(getSkipReason);
-const mockValidateCircuitBreakerState = vi.mocked(validateCircuitBreakerState);
-const mockValidateRalphSession = vi.mocked(validateRalphSession);
-const mockValidateRalphApiStatus = vi.mocked(validateRalphApiStatus);
+const mockReadRalphCircuitBreaker = vi.mocked(readRalphCircuitBreaker);
+const mockReadRalphRuntimeSession = vi.mocked(readRalphRuntimeSession);
+const mockReadRalphRuntimeStatus = vi.mocked(readRalphRuntimeStatus);
 
-function enoentError(): NodeJS.ErrnoException {
-  const err = new Error("ENOENT: no such file or directory") as NodeJS.ErrnoException;
-  err.code = "ENOENT";
-  return err;
+function circuitBreakerResult(
+  overrides: Partial<{
+    state: "CLOSED" | "HALF_OPEN" | "OPEN";
+    consecutiveNoProgress: number;
+    totalOpens: number;
+    reason?: string;
+  }> = {}
+) {
+  return {
+    kind: "ok" as const,
+    path: "/projects/webapp/.ralph/.circuit_breaker_state",
+    value: {
+      state: "CLOSED" as const,
+      consecutiveNoProgress: 0,
+      totalOpens: 0,
+      ...overrides,
+    },
+  };
+}
+
+function sessionResult(
+  overrides: Partial<{
+    session_id: string;
+    created_at: string;
+    last_used?: string;
+  }> = {}
+) {
+  return {
+    kind: "ok" as const,
+    path: "/projects/webapp/.ralph/.ralph_session",
+    value: {
+      session_id: "sess-2025-abc123",
+      created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      ...overrides,
+    },
+  };
+}
+
+function statusResult(
+  overrides: Partial<{
+    loopCount: number;
+    status: "running" | "blocked" | "completed" | "not_started" | "unknown";
+    tasksCompleted: number;
+    tasksTotal: number;
+    callsMadeThisHour: number;
+    maxCallsPerHour: number;
+    lastAction: string;
+  }> = {}
+) {
+  return {
+    kind: "ok" as const,
+    path: "/projects/webapp/.ralph/status.json",
+    value: {
+      loopCount: 1,
+      status: "running" as const,
+      tasksCompleted: 0,
+      tasksTotal: 0,
+      callsMadeThisHour: 0,
+      maxCallsPerHour: 0,
+      lastAction: "",
+      ...overrides,
+    },
+  };
 }
 
 beforeEach(() => {
@@ -77,16 +121,7 @@ beforeEach(() => {
 
 describe("checkCircuitBreaker", () => {
   it("passes when circuit breaker state is CLOSED", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        state: "CLOSED",
-        consecutive_no_progress: 0,
-      })
-    );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "CLOSED",
-      consecutive_no_progress: 0,
-    });
+    mockReadRalphCircuitBreaker.mockResolvedValue(circuitBreakerResult());
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -94,16 +129,9 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("includes loop count in detail when CLOSED", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        state: "CLOSED",
-        consecutive_no_progress: 3,
-      })
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({ consecutiveNoProgress: 3 })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "CLOSED",
-      consecutive_no_progress: 3,
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -111,16 +139,9 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("passes when circuit breaker is HALF_OPEN", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        state: "HALF_OPEN",
-        consecutive_no_progress: 5,
-      })
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({ state: "HALF_OPEN", consecutiveNoProgress: 5 })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "HALF_OPEN",
-      consecutive_no_progress: 5,
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -128,16 +149,9 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("shows monitoring status in detail when HALF_OPEN", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        state: "HALF_OPEN",
-        consecutive_no_progress: 5,
-      })
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({ state: "HALF_OPEN", consecutiveNoProgress: 5 })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "HALF_OPEN",
-      consecutive_no_progress: 5,
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -145,18 +159,14 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("fails when circuit breaker is OPEN", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({
         state: "OPEN",
-        consecutive_no_progress: 10,
+        consecutiveNoProgress: 10,
+        totalOpens: 2,
         reason: "repeated test failures",
       })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "OPEN",
-      consecutive_no_progress: 10,
-      reason: "repeated test failures",
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -164,18 +174,14 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("includes the reason in detail when OPEN", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({
         state: "OPEN",
-        consecutive_no_progress: 10,
+        consecutiveNoProgress: 10,
+        totalOpens: 2,
         reason: "repeated test failures",
       })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "OPEN",
-      consecutive_no_progress: 10,
-      reason: "repeated test failures",
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -183,16 +189,9 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("uses default reason when OPEN without explicit reason", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        state: "OPEN",
-        consecutive_no_progress: 8,
-      })
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({ state: "OPEN", consecutiveNoProgress: 8, totalOpens: 1 })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "OPEN",
-      consecutive_no_progress: 8,
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -200,18 +199,14 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("provides a hint to review logs when OPEN", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
+    mockReadRalphCircuitBreaker.mockResolvedValue(
+      circuitBreakerResult({
         state: "OPEN",
-        consecutive_no_progress: 10,
+        consecutiveNoProgress: 10,
+        totalOpens: 2,
         reason: "build keeps failing",
       })
     );
-    mockValidateCircuitBreakerState.mockReturnValue({
-      state: "OPEN",
-      consecutive_no_progress: 10,
-      reason: "build keeps failing",
-    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -219,7 +214,10 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("passes with 'not running' when state file does not exist", async () => {
-    mockReadFile.mockRejectedValue(enoentError());
+    mockReadRalphCircuitBreaker.mockResolvedValue({
+      kind: "missing",
+      path: "/projects/webapp/.ralph/.circuit_breaker_state",
+    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -227,15 +225,22 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("shows 'not running' detail when state file is missing", async () => {
-    mockReadFile.mockRejectedValue(enoentError());
+    mockReadRalphCircuitBreaker.mockResolvedValue({
+      kind: "missing",
+      path: "/projects/webapp/.ralph/.circuit_breaker_state",
+    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
     expect(result.detail).toBe("not running");
   });
 
-  it("reports corrupt state file when JSON is invalid", async () => {
-    mockReadFile.mockResolvedValue("not valid json {{{");
+  it("reports corrupt state file when parsing is invalid", async () => {
+    mockReadRalphCircuitBreaker.mockResolvedValue({
+      kind: "invalid",
+      path: "/projects/webapp/.ralph/.circuit_breaker_state",
+      error: new Error("Invalid JSON"),
+    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
@@ -243,27 +248,34 @@ describe("checkCircuitBreaker", () => {
   });
 
   it("suggests deleting the state file on corruption", async () => {
-    mockReadFile.mockResolvedValue("not valid json {{{");
+    mockReadRalphCircuitBreaker.mockResolvedValue({
+      kind: "invalid",
+      path: "/projects/webapp/.ralph/.circuit_breaker_state",
+      error: new Error("Invalid JSON"),
+    });
 
     const result = await checkCircuitBreaker("/projects/webapp");
 
     expect(result.hint).toContain("Delete .ralph/.circuit_breaker_state");
+  });
+
+  it("reports unreadable state files separately", async () => {
+    mockReadRalphCircuitBreaker.mockResolvedValue({
+      kind: "unreadable",
+      path: "/projects/webapp/.ralph/.circuit_breaker_state",
+      error: new Error("EISDIR"),
+    });
+
+    const result = await checkCircuitBreaker("/projects/webapp");
+
+    expect(result.detail).toBe("unreadable state file");
   });
 });
 
 describe("checkRalphSession", () => {
   it("passes for a fresh session created recently", async () => {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-abc123",
-        created_at: tenMinutesAgo,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-abc123",
-      created_at: tenMinutesAgo,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: tenMinutesAgo }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -272,16 +284,7 @@ describe("checkRalphSession", () => {
 
   it("shows age in minutes for recent sessions", async () => {
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-def456",
-        created_at: thirtyMinutesAgo,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-def456",
-      created_at: thirtyMinutesAgo,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: thirtyMinutesAgo }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -290,16 +293,7 @@ describe("checkRalphSession", () => {
 
   it("shows age in hours and minutes for older sessions", async () => {
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-ghi789",
-        created_at: threeHoursAgo,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-ghi789",
-      created_at: threeHoursAgo,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: threeHoursAgo }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -308,16 +302,7 @@ describe("checkRalphSession", () => {
 
   it("fails when session is older than 24 hours", async () => {
     const thirtyHoursAgo = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-stale-session",
-        created_at: thirtyHoursAgo,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-stale-session",
-      created_at: thirtyHoursAgo,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: thirtyHoursAgo }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -326,16 +311,7 @@ describe("checkRalphSession", () => {
 
   it("mentions max age in detail for stale sessions", async () => {
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-very-old",
-        created_at: twoDaysAgo,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-very-old",
-      created_at: twoDaysAgo,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: twoDaysAgo }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -344,16 +320,7 @@ describe("checkRalphSession", () => {
 
   it("suggests starting a fresh session when stale", async () => {
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-expired",
-        created_at: twoDaysAgo,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-expired",
-      created_at: twoDaysAgo,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: twoDaysAgo }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -362,16 +329,7 @@ describe("checkRalphSession", () => {
 
   it("fails when session timestamp is in the future", async () => {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-time-traveler",
-        created_at: tomorrow,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-time-traveler",
-      created_at: tomorrow,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: tomorrow }));
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -380,33 +338,33 @@ describe("checkRalphSession", () => {
 
   it("reports 'invalid timestamp (future)' for future sessions", async () => {
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "sess-2025-future",
-        created_at: nextWeek,
-      })
-    );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "sess-2025-future",
-      created_at: nextWeek,
-    });
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: nextWeek }));
 
     const result = await checkRalphSession("/projects/webapp");
 
     expect(result.detail).toBe("invalid timestamp (future)");
   });
 
+  it("fails when session timestamp cannot be parsed", async () => {
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: "not-a-date" }));
+
+    const result = await checkRalphSession("/projects/webapp");
+
+    expect(result.passed).toBe(false);
+  });
+
+  it("reports 'invalid timestamp' for unparsable session timestamps", async () => {
+    mockReadRalphRuntimeSession.mockResolvedValue(sessionResult({ created_at: "not-a-date" }));
+
+    const result = await checkRalphSession("/projects/webapp");
+
+    expect(result.detail).toBe("invalid timestamp");
+  });
+
   it("passes with 'no active session' when session_id is empty", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "",
-        created_at: "2025-06-15T10:30:00.000Z",
-      })
+    mockReadRalphRuntimeSession.mockResolvedValue(
+      sessionResult({ session_id: "", created_at: "2025-06-15T10:30:00.000Z" })
     );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "",
-      created_at: "2025-06-15T10:30:00.000Z",
-    });
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -414,16 +372,9 @@ describe("checkRalphSession", () => {
   });
 
   it("shows 'no active session' detail when session_id is empty", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        session_id: "",
-        created_at: "2025-06-15T10:30:00.000Z",
-      })
+    mockReadRalphRuntimeSession.mockResolvedValue(
+      sessionResult({ session_id: "", created_at: "2025-06-15T10:30:00.000Z" })
     );
-    mockValidateRalphSession.mockReturnValue({
-      session_id: "",
-      created_at: "2025-06-15T10:30:00.000Z",
-    });
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -431,15 +382,22 @@ describe("checkRalphSession", () => {
   });
 
   it("passes with 'no active session' when session file is missing", async () => {
-    mockReadFile.mockRejectedValue(enoentError());
+    mockReadRalphRuntimeSession.mockResolvedValue({
+      kind: "missing",
+      path: "/projects/webapp/.ralph/.ralph_session",
+    });
 
     const result = await checkRalphSession("/projects/webapp");
 
     expect(result.passed).toBe(true);
   });
 
-  it("reports corrupt session file for invalid JSON", async () => {
-    mockReadFile.mockResolvedValue("{invalid json content");
+  it("reports corrupt session file for invalid content", async () => {
+    mockReadRalphRuntimeSession.mockResolvedValue({
+      kind: "invalid",
+      path: "/projects/webapp/.ralph/.ralph_session",
+      error: new Error("Invalid JSON"),
+    });
 
     const result = await checkRalphSession("/projects/webapp");
 
@@ -447,26 +405,35 @@ describe("checkRalphSession", () => {
   });
 
   it("suggests deleting session file on corruption", async () => {
-    mockReadFile.mockResolvedValue("{broken");
+    mockReadRalphRuntimeSession.mockResolvedValue({
+      kind: "invalid",
+      path: "/projects/webapp/.ralph/.ralph_session",
+      error: new Error("Invalid JSON"),
+    });
 
     const result = await checkRalphSession("/projects/webapp");
 
     expect(result.hint).toContain("Delete .ralph/.ralph_session");
   });
+
+  it("reports unreadable session files separately", async () => {
+    mockReadRalphRuntimeSession.mockResolvedValue({
+      kind: "unreadable",
+      path: "/projects/webapp/.ralph/.ralph_session",
+      error: new Error("EISDIR"),
+    });
+
+    const result = await checkRalphSession("/projects/webapp");
+
+    expect(result.detail).toBe("unreadable session file");
+  });
 });
 
 describe("checkApiCalls", () => {
   it("passes when API usage is well within limits", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 15,
-        max_calls_per_hour: 100,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 15, maxCallsPerHour: 100 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 15,
-      max_calls_per_hour: 100,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -474,16 +441,9 @@ describe("checkApiCalls", () => {
   });
 
   it("shows usage fraction in detail", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 42,
-        max_calls_per_hour: 200,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 42, maxCallsPerHour: 200 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 42,
-      max_calls_per_hour: 200,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -491,16 +451,9 @@ describe("checkApiCalls", () => {
   });
 
   it("fails when API usage reaches 90% of the limit", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 90,
-        max_calls_per_hour: 100,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 90, maxCallsPerHour: 100 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 90,
-      max_calls_per_hour: 100,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -508,16 +461,9 @@ describe("checkApiCalls", () => {
   });
 
   it("fails when API usage exceeds the limit", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 105,
-        max_calls_per_hour: 100,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 105, maxCallsPerHour: 100 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 105,
-      max_calls_per_hour: 100,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -525,16 +471,9 @@ describe("checkApiCalls", () => {
   });
 
   it("mentions approaching limit in detail when at threshold", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 95,
-        max_calls_per_hour: 100,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 95, maxCallsPerHour: 100 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 95,
-      max_calls_per_hour: 100,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -542,16 +481,9 @@ describe("checkApiCalls", () => {
   });
 
   it("suggests waiting for rate limit reset when approaching limit", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 92,
-        max_calls_per_hour: 100,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 92, maxCallsPerHour: 100 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 92,
-      max_calls_per_hour: 100,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -559,16 +491,9 @@ describe("checkApiCalls", () => {
   });
 
   it("passes with unlimited detail when max is zero", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 500,
-        max_calls_per_hour: 0,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 500, maxCallsPerHour: 0 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 500,
-      max_calls_per_hour: 0,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -576,16 +501,9 @@ describe("checkApiCalls", () => {
   });
 
   it("shows unlimited format when max_calls_per_hour is zero", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 500,
-        max_calls_per_hour: 0,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 500, maxCallsPerHour: 0 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 500,
-      max_calls_per_hour: 0,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -593,16 +511,9 @@ describe("checkApiCalls", () => {
   });
 
   it("passes with negative max (treated as unlimited)", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 10,
-        max_calls_per_hour: -1,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 10, maxCallsPerHour: -1 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 10,
-      max_calls_per_hour: -1,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -610,7 +521,10 @@ describe("checkApiCalls", () => {
   });
 
   it("passes with 'not running' when status file is missing", async () => {
-    mockReadFile.mockRejectedValue(enoentError());
+    mockReadRalphRuntimeStatus.mockResolvedValue({
+      kind: "missing",
+      path: "/projects/webapp/.ralph/status.json",
+    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -618,15 +532,22 @@ describe("checkApiCalls", () => {
   });
 
   it("shows 'not running' detail when status file is missing", async () => {
-    mockReadFile.mockRejectedValue(enoentError());
+    mockReadRalphRuntimeStatus.mockResolvedValue({
+      kind: "missing",
+      path: "/projects/webapp/.ralph/status.json",
+    });
 
     const result = await checkApiCalls("/projects/webapp");
 
     expect(result.detail).toBe("not running");
   });
 
-  it("reports corrupt status file for invalid JSON", async () => {
-    mockReadFile.mockResolvedValue("not json at all");
+  it("reports corrupt status file for invalid content", async () => {
+    mockReadRalphRuntimeStatus.mockResolvedValue({
+      kind: "invalid",
+      path: "/projects/webapp/.ralph/status.json",
+      error: new Error("Invalid JSON"),
+    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -634,7 +555,11 @@ describe("checkApiCalls", () => {
   });
 
   it("suggests deleting status.json on corruption", async () => {
-    mockReadFile.mockResolvedValue("{broken json");
+    mockReadRalphRuntimeStatus.mockResolvedValue({
+      kind: "invalid",
+      path: "/projects/webapp/.ralph/status.json",
+      error: new Error("Invalid JSON"),
+    });
 
     const result = await checkApiCalls("/projects/webapp");
 
@@ -642,20 +567,25 @@ describe("checkApiCalls", () => {
   });
 
   it("passes when API usage is at 89% (just below threshold)", async () => {
-    mockReadFile.mockResolvedValue(
-      JSON.stringify({
-        calls_made_this_hour: 89,
-        max_calls_per_hour: 100,
-      })
+    mockReadRalphRuntimeStatus.mockResolvedValue(
+      statusResult({ callsMadeThisHour: 89, maxCallsPerHour: 100 })
     );
-    mockValidateRalphApiStatus.mockReturnValue({
-      calls_made_this_hour: 89,
-      max_calls_per_hour: 100,
-    });
 
     const result = await checkApiCalls("/projects/webapp");
 
     expect(result.passed).toBe(true);
+  });
+
+  it("reports unreadable status files separately", async () => {
+    mockReadRalphRuntimeStatus.mockResolvedValue({
+      kind: "unreadable",
+      path: "/projects/webapp/.ralph/status.json",
+      error: new Error("EISDIR"),
+    });
+
+    const result = await checkApiCalls("/projects/webapp");
+
+    expect(result.detail).toBe("unreadable status file");
   });
 });
 

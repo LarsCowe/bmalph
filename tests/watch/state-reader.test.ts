@@ -52,6 +52,27 @@ describe("state-reader", () => {
   });
 
   describe("readLoopInfo", () => {
+    it("reads camelCase status.json correctly", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loopCount: 4,
+        status: "running",
+        tasksCompleted: 1,
+        tasksTotal: 5,
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.loopCount).toBe(4);
+      expect(info!.status).toBe("running");
+      expect(info!.lastAction).toBe("");
+      expect(info!.callsMadeThisHour).toBe(0);
+      expect(info!.maxCallsPerHour).toBe(0);
+    });
+
     it("reads status.json correctly", async () => {
       testDir = makeTmpDir();
       const ralphDir = join(testDir, ".ralph");
@@ -94,22 +115,103 @@ describe("state-reader", () => {
       expect(info).toBeNull();
     });
 
-    it("defaults missing fields when only loop_count is present", async () => {
+    it("returns null when snake_case payload is missing status", async () => {
       testDir = makeTmpDir();
       const ralphDir = join(testDir, ".ralph");
       await mkdir(ralphDir, { recursive: true });
       await writeJson(join(ralphDir, "status.json"), {
         loop_count: 5,
+        calls_made_this_hour: 10,
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when snake_case loop fields are malformed", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: "oops",
+        status: "running",
+        tasks_completed: 2,
+        tasks_total: 4,
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when snake_case payload only contains metadata", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        calls_made_this_hour: 5,
+        max_calls_per_hour: 100,
+        last_action: "retrying",
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when snake_case status is unrecognized", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: 7,
+        status: "mystery",
+        tasks_completed: 2,
+        tasks_total: 4,
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("normalizes paused snake_case status to blocked", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: 7,
+        status: "paused",
+        calls_made_this_hour: 5,
+        max_calls_per_hour: 100,
+        last_action: "api_limit",
       });
 
       const info = await readLoopInfo(testDir);
 
       expect(info).not.toBeNull();
-      expect(info!.loopCount).toBe(5);
-      expect(info!.status).toBe("unknown");
-      expect(info!.lastAction).toBe("");
-      expect(info!.callsMadeThisHour).toBe(0);
-      expect(info!.maxCallsPerHour).toBe(0);
+      expect(info!.status).toBe("blocked");
+      expect(info!.lastAction).toBe("api_limit");
+    });
+
+    it("normalizes error snake_case status to blocked", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "status.json"), {
+        loop_count: 7,
+        status: "error",
+        calls_made_this_hour: 5,
+        max_calls_per_hour: 100,
+        last_action: "failed",
+      });
+
+      const info = await readLoopInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.status).toBe("blocked");
+      expect(info!.lastAction).toBe("failed");
     });
   });
 
@@ -170,6 +272,39 @@ describe("state-reader", () => {
         state: "INVALID",
         consecutive_no_progress: 3,
         total_opens: 1,
+      });
+
+      const info = await readCircuitBreakerInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("prefers Ralph total_opens over conflicting camelCase mirrors", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".circuit_breaker_state"), {
+        state: "CLOSED",
+        consecutive_no_progress: 1,
+        total_opens: 4,
+        totalOpens: 2,
+      });
+
+      const info = await readCircuitBreakerInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.totalOpens).toBe(4);
+    });
+
+    it("returns null when Ralph total_opens is malformed even if a camelCase mirror exists", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".circuit_breaker_state"), {
+        state: "CLOSED",
+        consecutive_no_progress: 1,
+        total_opens: "oops",
+        totalOpens: 2,
       });
 
       const info = await readCircuitBreakerInfo(testDir);
@@ -394,12 +529,44 @@ describe("state-reader", () => {
       expect(info).toBeNull();
     });
 
+    it("returns null when session file contains a reset payload", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".ralph_session"), {
+        session_id: "",
+        created_at: "",
+        last_used: "",
+        reset_at: "2026-02-25T12:15:00Z",
+        reset_reason: "manual_reset",
+      });
+
+      const info = await readSessionInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
     it("returns null when created_at is missing", async () => {
       testDir = makeTmpDir();
       const ralphDir = join(testDir, ".ralph");
       await mkdir(ralphDir, { recursive: true });
       await writeJson(join(ralphDir, ".ralph_session"), {
         session_id: "abc-123",
+        last_used: "2026-02-25T12:15:00Z",
+      });
+
+      const info = await readSessionInfo(testDir);
+
+      expect(info).toBeNull();
+    });
+
+    it("returns null when created_at cannot be parsed", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".ralph_session"), {
+        session_id: "abc-123",
+        created_at: "not-a-date",
         last_used: "2026-02-25T12:15:00Z",
       });
 

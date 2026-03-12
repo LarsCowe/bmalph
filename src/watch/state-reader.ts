@@ -6,10 +6,10 @@ import { parseFixPlan } from "../transition/fix-plan.js";
 import { debug } from "../utils/logger.js";
 import { formatError } from "../utils/errors.js";
 import {
-  validateCircuitBreakerState,
-  validateRalphSession,
-  normalizeRalphStatus,
-} from "../utils/validate.js";
+  readRalphCircuitBreaker,
+  readRalphRuntimeSession,
+  readRalphRuntimeStatus,
+} from "../utils/ralph-runtime-state.js";
 import type {
   DashboardState,
   LoopInfo,
@@ -55,54 +55,44 @@ export async function readDashboardState(projectDir: string): Promise<DashboardS
 }
 
 export async function readLoopInfo(projectDir: string): Promise<LoopInfo | null> {
-  try {
-    const data = await readJsonFile<Record<string, unknown>>(
-      join(projectDir, RALPH_DIR, "status.json")
-    );
-    if (data === null) return null;
-
-    const normalized = normalizeRalphStatus(data);
-    const lastAction = typeof data.last_action === "string" ? data.last_action : "";
-    const callsMadeThisHour =
-      typeof data.calls_made_this_hour === "number" ? data.calls_made_this_hour : 0;
-    const maxCallsPerHour =
-      typeof data.max_calls_per_hour === "number" ? data.max_calls_per_hour : 0;
-
-    return {
-      loopCount: normalized.loopCount,
-      status: normalized.status,
-      lastAction,
-      callsMadeThisHour,
-      maxCallsPerHour,
-    };
-  } catch (err) {
-    debug(`Failed to read loop info: ${formatError(err)}`);
+  const result = await readRalphRuntimeStatus(projectDir);
+  if (result.kind === "missing") {
     return null;
   }
+
+  if (result.kind !== "ok") {
+    debug(`Failed to read loop info: ${formatError(result.error)}`);
+    return null;
+  }
+
+  return {
+    loopCount: result.value.loopCount,
+    status: result.value.status,
+    lastAction: result.value.lastAction,
+    callsMadeThisHour: result.value.callsMadeThisHour,
+    maxCallsPerHour: result.value.maxCallsPerHour,
+  };
 }
 
 export async function readCircuitBreakerInfo(
   projectDir: string
 ): Promise<CircuitBreakerInfo | null> {
-  try {
-    const data = await readJsonFile<Record<string, unknown>>(
-      join(projectDir, RALPH_DIR, ".circuit_breaker_state")
-    );
-    if (data === null) return null;
-
-    const validated = validateCircuitBreakerState(data);
-    const totalOpens = typeof data.total_opens === "number" ? data.total_opens : 0;
-
-    return {
-      state: validated.state,
-      consecutiveNoProgress: validated.consecutive_no_progress,
-      totalOpens,
-      reason: validated.reason,
-    };
-  } catch (err) {
-    debug(`Failed to read circuit breaker info: ${formatError(err)}`);
+  const result = await readRalphCircuitBreaker(projectDir);
+  if (result.kind === "missing") {
     return null;
   }
+
+  if (result.kind !== "ok") {
+    debug(`Failed to read circuit breaker info: ${formatError(result.error)}`);
+    return null;
+  }
+
+  return {
+    state: result.value.state,
+    consecutiveNoProgress: result.value.consecutiveNoProgress,
+    totalOpens: result.value.totalOpens,
+    reason: result.value.reason,
+  };
 }
 
 export async function readStoryProgress(projectDir: string): Promise<StoryProgress | null> {
@@ -181,22 +171,29 @@ export async function readExecutionProgress(projectDir: string): Promise<Executi
 }
 
 export async function readSessionInfo(projectDir: string): Promise<SessionInfo | null> {
-  try {
-    const data = await readJsonFile<Record<string, unknown>>(
-      join(projectDir, RALPH_DIR, ".ralph_session")
-    );
-    if (data === null) return null;
-
-    const validated = validateRalphSession(data);
-
-    return {
-      createdAt: validated.created_at,
-      lastUsed: validated.last_used,
-    };
-  } catch (err) {
-    debug(`Failed to read session info: ${formatError(err)}`);
+  const result = await readRalphRuntimeSession(projectDir);
+  if (result.kind === "missing") {
     return null;
   }
+
+  if (result.kind !== "ok") {
+    debug(`Failed to read session info: ${formatError(result.error)}`);
+    return null;
+  }
+
+  if (!result.value.session_id || !result.value.created_at) {
+    return null;
+  }
+
+  if (Number.isNaN(new Date(result.value.created_at).getTime())) {
+    debug("Failed to read session info: invalid created_at timestamp");
+    return null;
+  }
+
+  return {
+    createdAt: result.value.created_at,
+    lastUsed: result.value.last_used,
+  };
 }
 
 const LIVE_LOG_MAX_LINES = 5;

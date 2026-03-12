@@ -523,6 +523,12 @@ describe("renderer", () => {
       expect(result).toBe("0m 0s");
     });
 
+    it("returns zero duration when createdAt is invalid", () => {
+      const result = formatSessionAge("not-a-date");
+
+      expect(result).toBe("0m 0s");
+    });
+
     it("formats multi-day duration as hours and minutes", () => {
       const result = formatSessionAge("2026-02-23T14:25:15Z");
 

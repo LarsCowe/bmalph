@@ -78,7 +78,12 @@
       "Bash(find:*)",
       "WebFetch(domain:aider.chat)",
       "WebFetch(domain:developers.openai.com)",
-      "Bash(chmod +x:*)"
+      "Bash(chmod +x:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(gh label:*)",
+      "Bash(cat:*)",
+      "Bash(wmic process:*)",
+      "Bash(mv:*)"
     ]
   }
 }

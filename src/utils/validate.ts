@@ -257,6 +257,8 @@ const BASH_STATUS_MAP: Record<string, RalphLoopStatus["status"]> = {
   graceful_exit: "completed",
 };
 
+// Loose normalization helper for non-runtime consumers and legacy tests.
+// Runtime-file parsing uses the stricter contract in ralph-runtime-state.ts.
 export function normalizeRalphStatus(data: unknown): RalphLoopStatus {
   assertObject(data, "normalizeRalphStatus");
 

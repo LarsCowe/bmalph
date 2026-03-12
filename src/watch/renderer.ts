@@ -56,6 +56,10 @@ export function progressBar(completed: number, total: number, width: number): st
 export function formatSessionAge(createdAt: string): string {
   const now = Date.now();
   const start = new Date(createdAt).getTime();
+  if (Number.isNaN(start)) {
+    return "0m 0s";
+  }
+
   const diffSeconds = Math.max(0, Math.floor((now - start) / 1000));
 
   const hours = Math.floor(diffSeconds / 3600);

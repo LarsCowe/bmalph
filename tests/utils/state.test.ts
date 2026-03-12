@@ -246,20 +246,106 @@ describe("state", () => {
       warnSpy.mockRestore();
     });
 
-    it("normalizes object with invalid camelCase fields via bash fallback", async () => {
+    it("warns and returns defaults when status file has invalid structure", async () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true });
       await writeFile(join(testDir, ".ralph/status.json"), '{"loopCount": "not-a-number"}');
 
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
       const result = await readRalphStatus(testDir);
 
-      // camelCase validation fails, bash normalizer treats it as an object
-      // with no recognized bash fields, so returns safe defaults with unknown status
       expect(result).toEqual({
         loopCount: 0,
-        status: "unknown",
+        status: "not_started",
         tasksCompleted: 0,
         tasksTotal: 0,
       });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Ralph status file is corrupted")
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("warns and returns defaults when snake_case loop fields are malformed", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(
+        join(testDir, ".ralph/status.json"),
+        JSON.stringify({
+          loop_count: "oops",
+          status: "running",
+          tasks_completed: 2,
+          tasks_total: 4,
+        })
+      );
+
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const result = await readRalphStatus(testDir);
+
+      expect(result).toEqual({
+        loopCount: 0,
+        status: "not_started",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Ralph status file is corrupted")
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("warns and returns defaults when snake_case payload only contains metadata", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(
+        join(testDir, ".ralph/status.json"),
+        JSON.stringify({
+          calls_made_this_hour: 5,
+          max_calls_per_hour: 100,
+          last_action: "retrying",
+        })
+      );
+
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const result = await readRalphStatus(testDir);
+
+      expect(result).toEqual({
+        loopCount: 0,
+        status: "not_started",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Ralph status file is corrupted")
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("warns and returns defaults when snake_case payload is missing status", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(
+        join(testDir, ".ralph/status.json"),
+        JSON.stringify({
+          loop_count: 7,
+          calls_made_this_hour: 5,
+          max_calls_per_hour: 100,
+        })
+      );
+
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const result = await readRalphStatus(testDir);
+
+      expect(result).toEqual({
+        loopCount: 0,
+        status: "not_started",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Ralph status file is corrupted")
+      );
+      warnSpy.mockRestore();
     });
 
     it("reads bash snake_case status format", async () => {
@@ -295,6 +381,20 @@ describe("state", () => {
       expect(result.status).toBe("blocked");
     });
 
+    it("maps bash 'paused' status to 'blocked'", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const bashStatus = {
+        loop_count: 3,
+        status: "paused",
+        calls_made_this_hour: 42,
+        max_calls_per_hour: 200,
+      };
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(bashStatus));
+
+      const result = await readRalphStatus(testDir);
+      expect(result.status).toBe("blocked");
+    });
+
     it("maps bash 'success' status to 'completed'", async () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true });
       const bashStatus = {
@@ -307,6 +407,48 @@ describe("state", () => {
       const result = await readRalphStatus(testDir);
       expect(result.status).toBe("completed");
       expect(result.loopCount).toBe(15);
+    });
+
+    it("maps bash 'error' status to 'blocked'", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      const bashStatus = {
+        loop_count: 15,
+        status: "error",
+        last_action: "failed",
+      };
+      await writeFile(join(testDir, ".ralph/status.json"), JSON.stringify(bashStatus));
+
+      const result = await readRalphStatus(testDir);
+      expect(result.status).toBe("blocked");
+      expect(result.loopCount).toBe(15);
+    });
+
+    it("warns and returns defaults when snake_case status is unrecognized", async () => {
+      await mkdir(join(testDir, ".ralph"), { recursive: true });
+      await writeFile(
+        join(testDir, ".ralph/status.json"),
+        JSON.stringify({
+          loop_count: 7,
+          status: "mystery",
+          tasks_completed: 2,
+          tasks_total: 4,
+        })
+      );
+
+      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const result = await readRalphStatus(testDir);
+
+      expect(result).toEqual({
+        loopCount: 0,
+        status: "not_started",
+        tasksCompleted: 0,
+        tasksTotal: 0,
+      });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Ralph status file is corrupted")
+      );
+      warnSpy.mockRestore();
     });
 
     it("prefers camelCase format when file has valid camelCase data", async () => {
