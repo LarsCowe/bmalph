@@ -68,6 +68,15 @@ export function formatSessionAge(createdAt: string): string {
   return `${String(minutes)}m ${String(seconds)}s`;
 }
 
+export function formatElapsed(seconds: number): string {
+  if (seconds < 60) {
+    return `${String(seconds)}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${String(minutes)}m ${String(remaining)}s`;
+}
+
 export function formatCBState(state: string): string {
   switch (state) {
     case "CLOSED":
@@ -149,14 +158,33 @@ export function renderLoopPanel(
   const apiStr = `API: ${String(loop.callsMadeThisHour)}/${String(loop.maxCallsPerHour)} (${String(apiPercent)}%)`;
   const line1 = `${padRight(loopStr, 17)}${padRight(statusStr, 21)}${apiStr}`;
 
-  const actionLabel = execution !== null ? execution.status : loop.lastAction;
-  const actionStr = `Action: ${actionLabel}`;
   const sessionStr = session !== null ? `Session: ${formatSessionAge(session.createdAt)}` : "";
   const innerWidth = cols - 4;
-  const sessionPad = Math.max(0, innerWidth - actionStr.length - sessionStr.length);
-  const line2 = `${actionStr}${" ".repeat(sessionPad)}${sessionStr}`;
 
-  return box("Loop Status", [line1, line2], cols);
+  let line2: string;
+  if (execution !== null) {
+    const elapsedStr = formatElapsed(execution.elapsedSeconds);
+    const executingStr = `${execution.indicator} executing (${elapsedStr})`;
+    const sessionPad = Math.max(0, innerWidth - executingStr.length - sessionStr.length);
+    line2 = `${executingStr}${" ".repeat(sessionPad)}${sessionStr}`;
+  } else {
+    const actionStr = `Action: ${loop.lastAction}`;
+    const sessionPad = Math.max(0, innerWidth - actionStr.length - sessionStr.length);
+    line2 = `${actionStr}${" ".repeat(sessionPad)}${sessionStr}`;
+  }
+
+  const lines = [line1, line2];
+
+  if (execution !== null && execution.lastOutput.length > 0) {
+    const maxOutputLen = Math.max(0, innerWidth - 2);
+    const truncated =
+      execution.lastOutput.length > maxOutputLen
+        ? execution.lastOutput.slice(0, maxOutputLen)
+        : execution.lastOutput;
+    lines.push(chalk.dim(`  ${truncated}`));
+  }
+
+  return box("Loop Status", lines, cols);
 }
 
 export function renderCircuitBreakerPanel(cb: CircuitBreakerInfo | null, cols: number): string {
@@ -258,6 +286,20 @@ export function renderLogsPanel(logs: LogEntry[], cols: number): string {
   return box("Recent Activity", lines, cols);
 }
 
+export function renderLiveLogPanel(liveLog: string[], cols: number): string {
+  if (liveLog.length === 0) {
+    return box("Live Output", [chalk.dim("No live output yet")], cols);
+  }
+
+  const innerWidth = cols - 4;
+  const lines = liveLog.map((line) => {
+    const trimmed = line.length > innerWidth ? line.slice(0, innerWidth) : line;
+    return chalk.dim(trimmed);
+  });
+
+  return box("Live Output", lines, cols);
+}
+
 export function renderFooter(lastUpdated: Date, cols: number): string {
   const left = chalk.dim("q quit");
   const right = `Updated: ${formatTime(lastUpdated)}`;
@@ -273,7 +315,8 @@ function hasAnyData(state: DashboardState): boolean {
     state.analysis !== null ||
     state.execution !== null ||
     state.session !== null ||
-    state.recentLogs.length > 0
+    state.recentLogs.length > 0 ||
+    state.liveLog.length > 0
   );
 }
 
@@ -300,6 +343,11 @@ export function renderDashboard(state: DashboardState, cols?: number): string {
   sections.push(renderSideBySide(leftPanel, rightPanel, width));
 
   sections.push(renderAnalysisPanel(state.analysis, width));
+
+  if (state.execution !== null) {
+    sections.push(renderLiveLogPanel(state.liveLog, width));
+  }
+
   sections.push(renderLogsPanel(state.recentLogs, width));
   sections.push(renderFooter(state.lastUpdated, width));
 

@@ -21,11 +21,13 @@ import {
   renderStoriesPanel,
   renderAnalysisPanel,
   renderLogsPanel,
+  renderLiveLogPanel,
   renderFooter,
   renderSideBySide,
   progressBar,
   formatSessionAge,
   formatCBState,
+  formatElapsed,
 } from "../../src/watch/renderer.js";
 import type {
   DashboardState,
@@ -49,6 +51,7 @@ function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
     execution: null,
     session: null,
     recentLogs: [],
+    liveLog: [],
     ralphCompleted: false,
     lastUpdated: new Date("2026-02-25T14:25:15Z"),
     ...overrides,
@@ -174,7 +177,7 @@ describe("renderer", () => {
       expect(output).toContain("Session: 2h 15m");
     });
 
-    it("renders execution status when execution is present", () => {
+    it("renders execution status with elapsed time and spinner when execution is present", () => {
       const loop: LoopInfo = {
         loopCount: 7,
         status: "running",
@@ -185,10 +188,52 @@ describe("renderer", () => {
       const execution: ExecutionProgress = {
         status: "executing",
         elapsedSeconds: 45,
+        indicator: "⠙",
+        lastOutput: "",
       };
       const output = renderLoopPanel(loop, execution, null, COLS);
 
       expect(output).toContain("executing");
+      expect(output).toContain("45s");
+      expect(output).toContain("⠙");
+    });
+
+    it("renders last output snippet when execution has lastOutput", () => {
+      const loop: LoopInfo = {
+        loopCount: 7,
+        status: "running",
+        lastAction: "analyzing",
+        callsMadeThisHour: 15,
+        maxCallsPerHour: 100,
+      };
+      const execution: ExecutionProgress = {
+        status: "executing",
+        elapsedSeconds: 120,
+        indicator: "⠋",
+        lastOutput: "Reading file src/index.ts",
+      };
+      const output = renderLoopPanel(loop, execution, null, COLS);
+
+      expect(output).toContain("Reading file src/index.ts");
+    });
+
+    it("renders elapsed time in minutes when over 60 seconds", () => {
+      const loop: LoopInfo = {
+        loopCount: 7,
+        status: "running",
+        lastAction: "analyzing",
+        callsMadeThisHour: 15,
+        maxCallsPerHour: 100,
+      };
+      const execution: ExecutionProgress = {
+        status: "executing",
+        elapsedSeconds: 125,
+        indicator: "⠋",
+        lastOutput: "",
+      };
+      const output = renderLoopPanel(loop, execution, null, COLS);
+
+      expect(output).toContain("2m 5s");
     });
 
     it("renders 0% API usage when maxCallsPerHour is zero", () => {
@@ -482,6 +527,86 @@ describe("renderer", () => {
       const result = formatSessionAge("2026-02-23T14:25:15Z");
 
       expect(result).toBe("48h 0m");
+    });
+  });
+
+  describe("renderLiveLogPanel", () => {
+    it("renders live log lines", () => {
+      const lines = ["Analyzing codebase...", "Running tests", "Fixing issue"];
+      const output = renderLiveLogPanel(lines, COLS);
+
+      expect(output).toContain("Live Output");
+      expect(output).toContain("Analyzing codebase...");
+      expect(output).toContain("Fixing issue");
+    });
+
+    it("renders empty state when no live log lines", () => {
+      const output = renderLiveLogPanel([], COLS);
+
+      expect(output).toContain("Live Output");
+      expect(output).toContain("No live output yet");
+    });
+  });
+
+  describe("formatElapsed", () => {
+    it("formats seconds under one minute", () => {
+      expect(formatElapsed(45)).toBe("45s");
+    });
+
+    it("formats exactly zero seconds", () => {
+      expect(formatElapsed(0)).toBe("0s");
+    });
+
+    it("formats exactly 60 seconds as 1m 0s", () => {
+      expect(formatElapsed(60)).toBe("1m 0s");
+    });
+
+    it("formats seconds over one minute", () => {
+      expect(formatElapsed(125)).toBe("2m 5s");
+    });
+  });
+
+  describe("renderDashboard with execution", () => {
+    it("renders live log panel when execution is active", () => {
+      const loop: LoopInfo = {
+        loopCount: 5,
+        status: "running",
+        lastAction: "analyzing",
+        callsMadeThisHour: 10,
+        maxCallsPerHour: 100,
+      };
+      const execution: ExecutionProgress = {
+        status: "executing",
+        elapsedSeconds: 60,
+        indicator: "⠋",
+        lastOutput: "",
+      };
+      const state = makeState({
+        loop,
+        execution,
+        liveLog: ["Running tests", "Test passed"],
+      });
+      const output = renderDashboard(state, COLS);
+
+      expect(output).toContain("Live Output");
+      expect(output).toContain("Running tests");
+    });
+
+    it("does not render live log panel when not executing", () => {
+      const loop: LoopInfo = {
+        loopCount: 5,
+        status: "running",
+        lastAction: "analyzing",
+        callsMadeThisHour: 10,
+        maxCallsPerHour: 100,
+      };
+      const state = makeState({
+        loop,
+        liveLog: ["some content"],
+      });
+      const output = renderDashboard(state, COLS);
+
+      expect(output).not.toContain("Live Output");
     });
   });
 

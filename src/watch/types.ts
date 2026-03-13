@@ -32,6 +32,8 @@ export interface AnalysisInfo {
 export interface ExecutionProgress {
   status: "executing" | "idle";
   elapsedSeconds: number;
+  indicator: string;
+  lastOutput: string;
 }
 
 export interface SessionInfo {
@@ -53,6 +55,7 @@ export interface DashboardState {
   execution: ExecutionProgress | null;
   session: SessionInfo | null;
   recentLogs: LogEntry[];
+  liveLog: string[];
   ralphCompleted: boolean;
   lastUpdated: Date;
 }

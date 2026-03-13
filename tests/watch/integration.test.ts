@@ -133,6 +133,10 @@ describe("watch integration", () => {
     expect(state.execution).not.toBeNull();
     expect(state.execution!.status).toBe("executing");
     expect(state.execution!.elapsedSeconds).toBe(45);
+    expect(state.execution!.indicator).toBe("⠋");
+    expect(state.execution!.lastOutput).toBe("");
+
+    expect(state.liveLog).toEqual([]);
 
     expect(state.stories).not.toBeNull();
     expect(state.stories!.completed).toBe(2);
@@ -165,6 +169,8 @@ describe("watch integration", () => {
     expect(output).toContain("Loop #4 started");
     expect(output).toContain("Tests passing");
     expect(output).toContain("q quit");
+    expect(output).toContain("executing");
+    expect(output).toContain("45s");
   });
 
   it("pipeline renders gracefully with only status.json present", async () => {

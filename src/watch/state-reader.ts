@@ -26,7 +26,7 @@ const DEFAULT_MAX_LOG_LINES = 8;
 const TAIL_BYTES = 4096;
 
 export async function readDashboardState(projectDir: string): Promise<DashboardState> {
-  const [loop, circuitBreaker, stories, analysis, execution, session, recentLogs] =
+  const [loop, circuitBreaker, stories, analysis, execution, session, recentLogs, liveLog] =
     await Promise.all([
       readLoopInfo(projectDir),
       readCircuitBreakerInfo(projectDir),
@@ -35,6 +35,7 @@ export async function readDashboardState(projectDir: string): Promise<DashboardS
       readExecutionProgress(projectDir),
       readSessionInfo(projectDir),
       readRecentLogs(projectDir),
+      readLiveLog(projectDir),
     ]);
 
   const ralphCompleted = loop !== null && loop.status === "completed";
@@ -47,6 +48,7 @@ export async function readDashboardState(projectDir: string): Promise<DashboardS
     execution,
     session,
     recentLogs,
+    liveLog,
     ralphCompleted,
     lastUpdated: new Date(),
   };
@@ -168,8 +170,10 @@ export async function readExecutionProgress(projectDir: string): Promise<Executi
     if (status !== "executing") return null;
 
     const elapsedSeconds = typeof data.elapsed_seconds === "number" ? data.elapsed_seconds : 0;
+    const indicator = typeof data.indicator === "string" ? data.indicator : "⠋";
+    const lastOutput = typeof data.last_output === "string" ? data.last_output : "";
 
-    return { status, elapsedSeconds };
+    return { status, elapsedSeconds, indicator, lastOutput };
   } catch (err) {
     debug(`Failed to read execution progress: ${formatError(err)}`);
     return null;
@@ -193,6 +197,44 @@ export async function readSessionInfo(projectDir: string): Promise<SessionInfo |
     debug(`Failed to read session info: ${formatError(err)}`);
     return null;
   }
+}
+
+const LIVE_LOG_MAX_LINES = 5;
+const LIVE_LOG_TAIL_BYTES = 2048;
+
+export async function readLiveLog(projectDir: string): Promise<string[]> {
+  const logPath = join(projectDir, RALPH_DIR, "live.log");
+  let content: string;
+  try {
+    const fh = await open(logPath, "r");
+    try {
+      const stats = await fh.stat();
+      if (stats.size === 0) {
+        return [];
+      }
+      if (stats.size <= LIVE_LOG_TAIL_BYTES) {
+        content = await fh.readFile("utf-8");
+      } else {
+        const position = stats.size - LIVE_LOG_TAIL_BYTES;
+        const buf = Buffer.alloc(LIVE_LOG_TAIL_BYTES);
+        const { bytesRead } = await fh.read(buf, 0, LIVE_LOG_TAIL_BYTES, position);
+        const raw = buf.toString("utf-8", 0, bytesRead);
+        const newlineIdx = raw.indexOf("\n");
+        content = newlineIdx >= 0 ? raw.slice(newlineIdx + 1) : raw;
+      }
+    } finally {
+      await fh.close();
+    }
+  } catch (err) {
+    debug(`Failed to read live log: ${formatError(err)}`);
+    return [];
+  }
+
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0);
+  return lines.slice(-LIVE_LOG_MAX_LINES);
 }
 
 export async function readRecentLogs(

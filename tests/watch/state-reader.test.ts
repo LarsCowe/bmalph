@@ -11,6 +11,7 @@ import {
   readExecutionProgress,
   readSessionInfo,
   readRecentLogs,
+  readLiveLog,
 } from "../../src/watch/state-reader.js";
 
 function makeTmpDir(): string {
@@ -303,7 +304,28 @@ describe("state-reader", () => {
   });
 
   describe("readExecutionProgress", () => {
-    it("reads execution progress", async () => {
+    it("reads execution progress with all fields", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, "progress.json"), {
+        status: "executing",
+        elapsed_seconds: 45,
+        indicator: "⠙",
+        last_output: "Reading file src/index.ts",
+        timestamp: "2026-03-13 10:00:00",
+      });
+
+      const progress = await readExecutionProgress(testDir);
+
+      expect(progress).not.toBeNull();
+      expect(progress!.status).toBe("executing");
+      expect(progress!.elapsedSeconds).toBe(45);
+      expect(progress!.indicator).toBe("⠙");
+      expect(progress!.lastOutput).toBe("Reading file src/index.ts");
+    });
+
+    it("defaults indicator and lastOutput when fields are missing", async () => {
       testDir = makeTmpDir();
       const ralphDir = join(testDir, ".ralph");
       await mkdir(ralphDir, { recursive: true });
@@ -317,6 +339,8 @@ describe("state-reader", () => {
       expect(progress).not.toBeNull();
       expect(progress!.status).toBe("executing");
       expect(progress!.elapsedSeconds).toBe(45);
+      expect(progress!.indicator).toBe("⠋");
+      expect(progress!.lastOutput).toBe("");
     });
 
     it("returns null when status is idle", async () => {
@@ -532,6 +556,64 @@ describe("state-reader", () => {
       expect(state.execution).toBeNull();
       expect(state.session).toBeNull();
       expect(state.recentLogs).toEqual([]);
+      expect(state.liveLog).toEqual([]);
+    });
+  });
+
+  describe("readLiveLog", () => {
+    it("reads live log lines", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      const lines = [
+        "=== Loop #5 - 2026-03-13 10:00:00 ===",
+        "Analyzing codebase...",
+        "Running tests",
+        "Fixing issue in src/index.ts",
+        "Tests passing",
+        "Writing output",
+      ];
+      await writeFile(join(ralphDir, "live.log"), lines.join("\n"));
+
+      const result = await readLiveLog(testDir);
+
+      expect(result).toHaveLength(5);
+      expect(result[0]).toBe("Analyzing codebase...");
+      expect(result[4]).toBe("Writing output");
+    });
+
+    it("returns empty array when live.log is missing", async () => {
+      testDir = makeTmpDir();
+      await mkdir(testDir, { recursive: true });
+
+      const result = await readLiveLog(testDir);
+
+      expect(result).toEqual([]);
+    });
+
+    it("returns empty array when live.log is empty", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeFile(join(ralphDir, "live.log"), "");
+
+      const result = await readLiveLog(testDir);
+
+      expect(result).toEqual([]);
+    });
+
+    it("handles CRLF line endings in live.log", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      const lines = ["First output line", "Second output line"];
+      await writeFile(join(ralphDir, "live.log"), lines.join("\r\n"));
+
+      const result = await readLiveLog(testDir);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe("First output line");
+      expect(result[1]).toBe("Second output line");
     });
   });
 
