@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.6](https://github.com/LarsCowe/bmalph/compare/v2.7.5...v2.7.6) (2026-03-14)
+
+
+### Bug Fixes
+
+* display execution progress in monitor dashboard (closes [#101](https://github.com/LarsCowe/bmalph/issues/101)) ([#103](https://github.com/LarsCowe/bmalph/issues/103)) ([0751b06](https://github.com/LarsCowe/bmalph/commit/0751b06021274b05db2e726a20eb7819fea347b5))
+* handle permission denials in current loop ([8b1d967](https://github.com/LarsCowe/bmalph/commit/8b1d96710a5dfe3350f15123f78aec04a147d443))
+* harden Ralph runtime state parsing ([16f53f4](https://github.com/LarsCowe/bmalph/commit/16f53f4a454bf8c9d21a38288e02c2db729d408f))
+* harden Ralph session state recovery ([5a77d86](https://github.com/LarsCowe/bmalph/commit/5a77d861ea0e6e058853af3fdf507affe338b6ed))
+* stabilize Claude permission mode for unattended loops ([e64d010](https://github.com/LarsCowe/bmalph/commit/e64d01077e2249242a4e39d1c63437485609d6e8))
+
+
+### Code Quality
+
+* split installer into smaller modules ([2f5e3b1](https://github.com/LarsCowe/bmalph/commit/2f5e3b18bef2624e1a921570dbf980e237cbc748))
+* split transition orchestration pipeline ([989dc50](https://github.com/LarsCowe/bmalph/commit/989dc50f613e6ffc5a3307c37611d89f1f1d6fc6))
+
 ## [2.7.5](https://github.com/LarsCowe/bmalph/compare/v2.7.4...v2.7.5) (2026-03-09)
 
 
