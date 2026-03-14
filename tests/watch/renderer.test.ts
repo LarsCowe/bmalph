@@ -358,6 +358,9 @@ describe("renderer", () => {
         isTestOnly: false,
         isStuck: false,
         exitSignal: false,
+        tasksCompletedThisLoop: 1,
+        fixPlanCompletedDelta: 1,
+        hasProgressTrackingMismatch: false,
         hasPermissionDenials: false,
         permissionDenialCount: 0,
       };
@@ -375,6 +378,9 @@ describe("renderer", () => {
         isTestOnly: true,
         isStuck: true,
         exitSignal: true,
+        tasksCompletedThisLoop: 0,
+        fixPlanCompletedDelta: 0,
+        hasProgressTrackingMismatch: false,
         hasPermissionDenials: true,
         permissionDenialCount: 2,
       };
@@ -384,6 +390,27 @@ describe("renderer", () => {
       expect(output).toContain("Permission denials: 2");
       expect(output).toContain("Test-only: yes");
       expect(output).toContain("Stuck: yes");
+    });
+
+    it("renders progress tracking counts and mismatch state", () => {
+      const analysis: AnalysisInfo = {
+        filesModified: 1,
+        confidenceScore: 65,
+        isTestOnly: false,
+        isStuck: false,
+        exitSignal: false,
+        tasksCompletedThisLoop: 1,
+        fixPlanCompletedDelta: 0,
+        hasProgressTrackingMismatch: true,
+        hasPermissionDenials: false,
+        permissionDenialCount: 0,
+      };
+
+      const output = renderAnalysisPanel(analysis, COLS);
+
+      expect(output).toContain("Claimed tasks: 1");
+      expect(output).toContain("Checkbox delta: 0");
+      expect(output).toContain("Progress mismatch: yes");
     });
 
     it("renders N/A when analysis is null", () => {

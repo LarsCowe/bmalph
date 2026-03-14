@@ -396,6 +396,68 @@ trim_shell_whitespace() {
     printf '%s' "$value"
 }
 
+extract_ralph_status_block_json() {
+    local text=$1
+    local normalized="${text//$'\r'/}"
+
+    if [[ "$normalized" != *"---RALPH_STATUS---"* ]]; then
+        return 1
+    fi
+
+    local block="${normalized#*---RALPH_STATUS---}"
+    if [[ "$block" == "$normalized" ]]; then
+        return 1
+    fi
+
+    if [[ "$block" == *"---END_RALPH_STATUS---"* ]]; then
+        block="${block%%---END_RALPH_STATUS---*}"
+    fi
+
+    local status=""
+    local exit_signal="false"
+    local exit_signal_found="false"
+    local tasks_completed_this_loop=0
+    local line=""
+    local trimmed=""
+    local value=""
+
+    while IFS= read -r line; do
+        trimmed=$(trim_shell_whitespace "$line")
+
+        case "$trimmed" in
+            STATUS:*)
+                value=$(trim_shell_whitespace "${trimmed#STATUS:}")
+                [[ -n "$value" ]] && status="$value"
+                ;;
+            EXIT_SIGNAL:*)
+                value=$(trim_shell_whitespace "${trimmed#EXIT_SIGNAL:}")
+                if [[ "$value" == "true" || "$value" == "false" ]]; then
+                    exit_signal="$value"
+                    exit_signal_found="true"
+                fi
+                ;;
+            TASKS_COMPLETED_THIS_LOOP:*)
+                value=$(trim_shell_whitespace "${trimmed#TASKS_COMPLETED_THIS_LOOP:}")
+                if [[ "$value" =~ ^-?[0-9]+$ ]]; then
+                    tasks_completed_this_loop=$value
+                fi
+                ;;
+        esac
+    done <<< "$block"
+
+    jq -n \
+        --arg status "$status" \
+        --argjson exit_signal_found "$exit_signal_found" \
+        --argjson exit_signal "$exit_signal" \
+        --argjson tasks_completed_this_loop "$tasks_completed_this_loop" \
+        '{
+            status: $status,
+            exit_signal_found: $exit_signal_found,
+            exit_signal: $exit_signal,
+            tasks_completed_this_loop: $tasks_completed_this_loop
+        }'
+}
+
 # Parse JSON response and extract structured fields
 # Creates .ralph/.json_parse_result with normalized analysis data
 # Supports FIVE JSON formats:
@@ -466,35 +528,38 @@ parse_json_response() {
     # Track whether EXIT_SIGNAL was explicitly provided (vs inferred from STATUS)
     local exit_signal=$(jq -r -j '.exit_signal // false' "$output_file" 2>/dev/null)
     local explicit_exit_signal_found=$(jq -r -j 'has("exit_signal")' "$output_file" 2>/dev/null)
+    local tasks_completed_this_loop=$(jq -r -j '.tasks_completed_this_loop // 0' "$output_file" 2>/dev/null)
+    if [[ ! "$tasks_completed_this_loop" =~ ^-?[0-9]+$ ]]; then
+        tasks_completed_this_loop=0
+    fi
 
-    # Bug #1 Fix: If exit_signal is still false, check for RALPH_STATUS block in .result field
-    # Claude CLI JSON format embeds the RALPH_STATUS block within the .result text field
-    if [[ "$exit_signal" == "false" && "$has_result_field" == "true" ]]; then
-        local result_text=$(jq -r -j '.result // ""' "$output_file" 2>/dev/null)
-        if [[ -n "$result_text" ]] && echo "$result_text" | grep -q -- "---RALPH_STATUS---"; then
-            # Extract EXIT_SIGNAL value from RALPH_STATUS block within result text
-            local embedded_exit_sig
-            embedded_exit_sig=$(trim_shell_whitespace "$(printf '%s\n' "$result_text" | grep "EXIT_SIGNAL:" | cut -d: -f2)")
-            if [[ -n "$embedded_exit_sig" ]]; then
-                # Explicit EXIT_SIGNAL found in RALPH_STATUS block
-                explicit_exit_signal_found="true"
-                if [[ "$embedded_exit_sig" == "true" ]]; then
-                    exit_signal="true"
-                    [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Extracted EXIT_SIGNAL=true from .result RALPH_STATUS block" >&2
-                else
-                    exit_signal="false"
-                    [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Extracted EXIT_SIGNAL=false from .result RALPH_STATUS block (respecting explicit intent)" >&2
-                fi
-            fi
-            # Also check STATUS field as fallback ONLY when EXIT_SIGNAL was not specified
-            # This respects explicit EXIT_SIGNAL: false which means "task complete, continue working"
-            local embedded_status
-            embedded_status=$(trim_shell_whitespace "$(printf '%s\n' "$result_text" | grep "STATUS:" | cut -d: -f2)")
-            if [[ "$embedded_status" == "COMPLETE" && "$explicit_exit_signal_found" != "true" ]]; then
-                # STATUS: COMPLETE without any EXIT_SIGNAL field implies completion
-                exit_signal="true"
-                [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Inferred EXIT_SIGNAL=true from .result STATUS=COMPLETE (no explicit EXIT_SIGNAL found)" >&2
-            fi
+    local result_text=""
+    if [[ "$has_result_field" == "true" ]]; then
+        result_text=$(jq -r -j '.result // ""' "$output_file" 2>/dev/null)
+    fi
+
+    local ralph_status_json=""
+    if [[ -n "$result_text" ]] && ralph_status_json=$(extract_ralph_status_block_json "$result_text" 2>/dev/null); then
+        local embedded_exit_signal_found
+        embedded_exit_signal_found=$(printf '%s' "$ralph_status_json" | jq -r -j '.exit_signal_found' 2>/dev/null)
+        local embedded_exit_sig
+        embedded_exit_sig=$(printf '%s' "$ralph_status_json" | jq -r -j '.exit_signal' 2>/dev/null)
+        local embedded_status
+        embedded_status=$(printf '%s' "$ralph_status_json" | jq -r -j '.status' 2>/dev/null)
+        local embedded_tasks_completed
+        embedded_tasks_completed=$(printf '%s' "$ralph_status_json" | jq -r -j '.tasks_completed_this_loop' 2>/dev/null)
+
+        if [[ "$embedded_tasks_completed" =~ ^-?[0-9]+$ ]]; then
+            tasks_completed_this_loop=$embedded_tasks_completed
+        fi
+
+        if [[ "$embedded_exit_signal_found" == "true" ]]; then
+            explicit_exit_signal_found="true"
+            exit_signal="$embedded_exit_sig"
+            [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Extracted EXIT_SIGNAL=$embedded_exit_sig from .result RALPH_STATUS block" >&2
+        elif [[ "$embedded_status" == "COMPLETE" && "$explicit_exit_signal_found" != "true" ]]; then
+            exit_signal="true"
+            [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Inferred EXIT_SIGNAL=true from .result STATUS=COMPLETE (no explicit EXIT_SIGNAL found)" >&2
         fi
     fi
 
@@ -640,6 +705,7 @@ parse_json_response() {
         --argjson loop_number "$loop_number" \
         --arg session_id "$session_id" \
         --argjson confidence "$confidence" \
+        --argjson tasks_completed_this_loop "$tasks_completed_this_loop" \
         --argjson has_permission_denials "$has_permission_denials" \
         --argjson permission_denial_count "$permission_denial_count" \
         --argjson denied_commands "$denied_commands_json" \
@@ -655,6 +721,7 @@ parse_json_response() {
             loop_number: $loop_number,
             session_id: $session_id,
             confidence: $confidence,
+            tasks_completed_this_loop: $tasks_completed_this_loop,
             has_permission_denials: $has_permission_denials,
             permission_denial_count: $permission_denial_count,
             denied_commands: $denied_commands,
@@ -687,6 +754,7 @@ analyze_response() {
     local exit_signal=false
     local work_summary=""
     local files_modified=0
+    local tasks_completed_this_loop=0
 
     # Read output file
     if [[ ! -f "$output_file" ]]; then
@@ -712,6 +780,7 @@ analyze_response() {
             is_stuck=$(jq -r -j '.is_stuck' "$json_parse_result_file" 2>/dev/null || echo "false")
             work_summary=$(jq -r -j '.summary' "$json_parse_result_file" 2>/dev/null || echo "")
             files_modified=$(jq -r -j '.files_modified' "$json_parse_result_file" 2>/dev/null || echo "0")
+            tasks_completed_this_loop=$(jq -r -j '.tasks_completed_this_loop // 0' "$json_parse_result_file" 2>/dev/null || echo "0")
             local json_confidence=$(jq -r -j '.confidence' "$json_parse_result_file" 2>/dev/null || echo "0")
             local session_id=$(jq -r -j '.session_id' "$json_parse_result_file" 2>/dev/null || echo "")
 
@@ -731,6 +800,10 @@ analyze_response() {
                 confidence_score=100
             else
                 confidence_score=$((json_confidence + 50))
+            fi
+
+            if [[ ! "$tasks_completed_this_loop" =~ ^-?[0-9]+$ ]]; then
+                tasks_completed_this_loop=0
             fi
 
             # Check for file changes via git (supplements JSON data)
@@ -784,6 +857,7 @@ analyze_response() {
                 --argjson files_modified "$files_modified" \
                 --argjson confidence_score "$confidence_score" \
                 --argjson exit_signal "$exit_signal" \
+                --argjson tasks_completed_this_loop "$tasks_completed_this_loop" \
                 --arg work_summary "$work_summary" \
                 --argjson output_length "$output_length" \
                 --argjson has_permission_denials "$has_permission_denials" \
@@ -802,6 +876,9 @@ analyze_response() {
                         files_modified: $files_modified,
                         confidence_score: $confidence_score,
                         exit_signal: $exit_signal,
+                        tasks_completed_this_loop: $tasks_completed_this_loop,
+                        fix_plan_completed_delta: 0,
+                        has_progress_tracking_mismatch: false,
                         work_summary: $work_summary,
                         output_length: $output_length,
                         has_permission_denials: $has_permission_denials,
@@ -823,13 +900,23 @@ analyze_response() {
     local explicit_exit_signal_found=false
 
     # 1. Check for explicit structured output (if Claude follows schema)
-    if grep -q -- "---RALPH_STATUS---" "$output_file"; then
-        # Parse structured output
-        local status=$(trim_shell_whitespace "$(grep "STATUS:" "$output_file" | cut -d: -f2)")
-        local exit_sig=$(trim_shell_whitespace "$(grep "EXIT_SIGNAL:" "$output_file" | cut -d: -f2)")
+    local ralph_status_json=""
+    if ralph_status_json=$(extract_ralph_status_block_json "$output_content" 2>/dev/null); then
+        local status
+        status=$(printf '%s' "$ralph_status_json" | jq -r -j '.status' 2>/dev/null)
+        local exit_sig_found
+        exit_sig_found=$(printf '%s' "$ralph_status_json" | jq -r -j '.exit_signal_found' 2>/dev/null)
+        local exit_sig
+        exit_sig=$(printf '%s' "$ralph_status_json" | jq -r -j '.exit_signal' 2>/dev/null)
+        local parsed_tasks_completed
+        parsed_tasks_completed=$(printf '%s' "$ralph_status_json" | jq -r -j '.tasks_completed_this_loop' 2>/dev/null)
+
+        if [[ "$parsed_tasks_completed" =~ ^-?[0-9]+$ ]]; then
+            tasks_completed_this_loop=$parsed_tasks_completed
+        fi
 
         # If EXIT_SIGNAL is explicitly provided, respect it
-        if [[ -n "$exit_sig" ]]; then
+        if [[ "$exit_sig_found" == "true" ]]; then
             explicit_exit_signal_found=true
             if [[ "$exit_sig" == "true" ]]; then
                 has_completion_signal=true
@@ -1002,6 +1089,7 @@ analyze_response() {
         --argjson files_modified "$files_modified" \
         --argjson confidence_score "$confidence_score" \
         --argjson exit_signal "$exit_signal" \
+        --argjson tasks_completed_this_loop "$tasks_completed_this_loop" \
         --arg work_summary "$work_summary" \
         --argjson output_length "$output_length" \
         --argjson has_permission_denials "$has_permission_denials" \
@@ -1020,6 +1108,9 @@ analyze_response() {
                 files_modified: $files_modified,
                 confidence_score: $confidence_score,
                 exit_signal: $exit_signal,
+                tasks_completed_this_loop: $tasks_completed_this_loop,
+                fix_plan_completed_delta: 0,
+                has_progress_tracking_mismatch: false,
                 work_summary: $work_summary,
                 output_length: $output_length,
                 has_permission_denials: $has_permission_denials,
@@ -1049,6 +1140,7 @@ update_exit_signals() {
     local loop_number=$(jq -r -j '.loop_number' "$analysis_file")
     local has_progress=$(jq -r -j '.analysis.has_progress' "$analysis_file")
     local has_permission_denials=$(jq -r -j '.analysis.has_permission_denials // false' "$analysis_file")
+    local has_progress_tracking_mismatch=$(jq -r -j '.analysis.has_progress_tracking_mismatch // false' "$analysis_file")
 
     # Read current exit signals
     local signals=$(cat "$exit_signals_file" 2>/dev/null || echo '{"test_only_loops": [], "done_signals": [], "completion_indicators": []}')
@@ -1065,7 +1157,7 @@ update_exit_signals() {
 
     # Permission denials are handled in the same loop, so they must not become
     # completion state that can halt the next loop.
-    if [[ "$has_permission_denials" != "true" && "$has_completion_signal" == "true" ]]; then
+    if [[ "$has_permission_denials" != "true" && "$has_progress_tracking_mismatch" != "true" && "$has_completion_signal" == "true" ]]; then
         signals=$(echo "$signals" | jq ".done_signals += [$loop_number]")
     fi
 
@@ -1074,7 +1166,7 @@ update_exit_signals() {
     # due to deterministic scoring (+50 for JSON format, +20 for result field).
     # This caused premature exits after 5 loops. Now we respect Claude's explicit intent.
     local exit_signal=$(jq -r -j '.analysis.exit_signal // false' "$analysis_file")
-    if [[ "$has_permission_denials" != "true" && "$exit_signal" == "true" ]]; then
+    if [[ "$has_permission_denials" != "true" && "$has_progress_tracking_mismatch" != "true" && "$exit_signal" == "true" ]]; then
         signals=$(echo "$signals" | jq ".completion_indicators += [$loop_number]")
     fi
 

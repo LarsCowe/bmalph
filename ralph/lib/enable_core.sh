@@ -527,8 +527,16 @@ ${objectives_section}
 - ONE task per loop - focus on the most important thing
 - Search the codebase before assuming something isn't implemented
 - Write comprehensive tests with clear documentation
-- Update @fix_plan.md with your learnings
+- Toggle completed story checkboxes in @fix_plan.md without rewriting story lines
 - Commit working changes with descriptive messages
+
+## Progress Tracking (CRITICAL)
+- Ralph tracks progress by counting story checkboxes in @fix_plan.md
+- When you complete a story, change \`- [ ]\` to \`- [x]\` on that exact story line
+- Do NOT remove, rewrite, or reorder story lines in @fix_plan.md
+- Update the checkbox before committing so the monitor updates immediately
+- Set \`TASKS_COMPLETED_THIS_LOOP\` to the exact number of story checkboxes toggled this loop
+- Only valid values: 0 or 1
 
 ## Testing Guidelines
 - LIMIT testing to ~20% of your total effort per loop
@@ -545,7 +553,7 @@ At the end of your response, ALWAYS include this status block:
 \`\`\`
 ---RALPH_STATUS---
 STATUS: IN_PROGRESS | COMPLETE | BLOCKED
-TASKS_COMPLETED_THIS_LOOP: <number>
+TASKS_COMPLETED_THIS_LOOP: 0 | 1
 FILES_MODIFIED: <number>
 TESTS_STATUS: PASSING | FAILING | NOT_RUN
 WORK_TYPE: IMPLEMENTATION | TESTING | DOCUMENTATION | REFACTORING

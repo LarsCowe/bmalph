@@ -1026,6 +1026,36 @@ describe("installer", () => {
       expect(content).toContain("status block");
     });
 
+    it("PROMPT.md template includes the fix-plan progress tracking contract", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+
+      expect(content).toContain("## Progress Tracking (CRITICAL)");
+      expect(content).toContain("change `- [ ]` to `- [x]`");
+      expect(content).toContain("Do NOT remove, rewrite, or reorder story lines");
+      expect(content).toContain("Only valid values: 0 or 1");
+      expect(content).toContain("TASKS_COMPLETED_THIS_LOOP: 0 | 1");
+      expect(content).not.toContain("TASKS_COMPLETED_THIS_LOOP: <number>");
+      expect(content).not.toContain("with your learnings");
+    });
+
+    it("PROMPT.md template examples never claim multiple completed tasks in one loop", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
+
+      expect(content).not.toContain("TASKS_COMPLETED_THIS_LOOP: 2");
+      expect(content).not.toContain("TASKS_COMPLETED_THIS_LOOP: 3");
+    });
+
+    it("legacy enable_core prompt template constrains TASKS_COMPLETED_THIS_LOOP to 0 or 1", async () => {
+      await installProject(testDir);
+      const content = await readFile(join(testDir, ".ralph/lib/enable_core.sh"), "utf-8");
+
+      expect(content).toContain("Only valid values: 0 or 1");
+      expect(content).toContain("TASKS_COMPLETED_THIS_LOOP: 0 | 1");
+      expect(content).not.toContain("TASKS_COMPLETED_THIS_LOOP: <number>");
+    });
+
     it("PROMPT.md references docs/ for project knowledge", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");

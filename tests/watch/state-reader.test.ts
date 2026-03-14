@@ -398,6 +398,9 @@ describe("state-reader", () => {
           is_test_only: false,
           is_stuck: false,
           exit_signal: false,
+          tasks_completed_this_loop: 1,
+          fix_plan_completed_delta: 1,
+          has_progress_tracking_mismatch: false,
           has_permission_denials: false,
           permission_denial_count: 0,
         },
@@ -411,8 +414,33 @@ describe("state-reader", () => {
       expect(info!.isTestOnly).toBe(false);
       expect(info!.isStuck).toBe(false);
       expect(info!.exitSignal).toBe(false);
+      expect(info!.tasksCompletedThisLoop).toBe(1);
+      expect(info!.fixPlanCompletedDelta).toBe(1);
+      expect(info!.hasProgressTrackingMismatch).toBe(false);
       expect(info!.hasPermissionDenials).toBe(false);
       expect(info!.permissionDenialCount).toBe(0);
+    });
+
+    it("defaults missing progress tracking fields to safe values", async () => {
+      testDir = makeTmpDir();
+      const ralphDir = join(testDir, ".ralph");
+      await mkdir(ralphDir, { recursive: true });
+      await writeJson(join(ralphDir, ".response_analysis"), {
+        analysis: {
+          files_modified: 2,
+          confidence_score: 50,
+          is_test_only: false,
+          is_stuck: false,
+          exit_signal: false,
+        },
+      });
+
+      const info = await readAnalysisInfo(testDir);
+
+      expect(info).not.toBeNull();
+      expect(info!.tasksCompletedThisLoop).toBe(0);
+      expect(info!.fixPlanCompletedDelta).toBe(0);
+      expect(info!.hasProgressTrackingMismatch).toBe(false);
     });
 
     it("returns null when response analysis is missing", async () => {

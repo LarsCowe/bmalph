@@ -269,7 +269,13 @@ export function renderAnalysisPanel(analysis: AnalysisInfo | null, cols: number)
     `Permission denials: ${String(analysis.permissionDenialCount)}`,
   ].join("    ");
 
-  return box("Last Analysis", [line1, line2], cols);
+  const line3 = [
+    `Claimed tasks: ${String(analysis.tasksCompletedThisLoop)}`,
+    `Checkbox delta: ${String(analysis.fixPlanCompletedDelta)}`,
+    `Progress mismatch: ${yesNo(analysis.hasProgressTrackingMismatch)}`,
+  ].join("    ");
+
+  return box("Last Analysis", [line1, line2, line3], cols);
 }
 
 export function renderLogsPanel(logs: LogEntry[], cols: number): string {

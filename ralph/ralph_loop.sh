@@ -728,6 +728,74 @@ wait_for_reset() {
     log_status "SUCCESS" "Rate limit reset! Ready for new calls."
 }
 
+count_fix_plan_checkboxes() {
+    local fix_plan_file="${1:-$RALPH_DIR/@fix_plan.md}"
+    local completed_items=0
+    local uncompleted_items=0
+    local total_items=0
+
+    if [[ -f "$fix_plan_file" ]]; then
+        uncompleted_items=$(grep -cE "^[[:space:]]*- \[ \]" "$fix_plan_file" 2>/dev/null || true)
+        [[ -z "$uncompleted_items" ]] && uncompleted_items=0
+        completed_items=$(grep -cE "^[[:space:]]*- \[[xX]\]" "$fix_plan_file" 2>/dev/null || true)
+        [[ -z "$completed_items" ]] && completed_items=0
+    fi
+
+    total_items=$((completed_items + uncompleted_items))
+    printf '%s %s %s\n' "$completed_items" "$uncompleted_items" "$total_items"
+}
+
+enforce_fix_plan_progress_tracking() {
+    local analysis_file=$1
+    local completed_before=$2
+    local completed_after=$3
+
+    if [[ ! -f "$analysis_file" ]]; then
+        return 0
+    fi
+
+    local claimed_tasks
+    claimed_tasks=$(jq -r '.analysis.tasks_completed_this_loop // 0' "$analysis_file" 2>/dev/null || echo "0")
+    if [[ ! "$claimed_tasks" =~ ^-?[0-9]+$ ]]; then
+        claimed_tasks=0
+    fi
+
+    local fix_plan_completed_delta=$((completed_after - completed_before))
+    local has_progress_tracking_mismatch=false
+    if [[ $claimed_tasks -ne $fix_plan_completed_delta || $claimed_tasks -gt 1 || $fix_plan_completed_delta -gt 1 || $fix_plan_completed_delta -lt 0 ]]; then
+        has_progress_tracking_mismatch=true
+    fi
+
+    local tmp_file="$analysis_file.tmp"
+    if jq \
+        --argjson claimed_tasks "$claimed_tasks" \
+        --argjson fix_plan_completed_delta "$fix_plan_completed_delta" \
+        --argjson has_progress_tracking_mismatch "$has_progress_tracking_mismatch" \
+        '
+            (.analysis //= {}) |
+            .analysis.tasks_completed_this_loop = $claimed_tasks |
+            .analysis.fix_plan_completed_delta = $fix_plan_completed_delta |
+            .analysis.has_progress_tracking_mismatch = $has_progress_tracking_mismatch |
+            if $has_progress_tracking_mismatch then
+                .analysis.has_completion_signal = false |
+                .analysis.exit_signal = false
+            else
+                .
+            end
+        ' "$analysis_file" > "$tmp_file" 2>/dev/null; then
+        mv "$tmp_file" "$analysis_file"
+    else
+        rm -f "$tmp_file" 2>/dev/null
+        return 0
+    fi
+
+    if [[ "$has_progress_tracking_mismatch" == "true" ]]; then
+        log_status "WARN" "Progress tracking mismatch: claimed $claimed_tasks completed task(s) but checkbox delta was $fix_plan_completed_delta. Completion signals suppressed for this loop."
+    fi
+
+    return 0
+}
+
 # Check if we should gracefully exit
 should_exit_gracefully() {
     
@@ -794,11 +862,10 @@ should_exit_gracefully() {
     # Fix #144: Only match valid markdown checkboxes, not date entries like [2026-01-29]
     # Valid patterns: "- [ ]" (uncompleted) and "- [x]" or "- [X]" (completed)
     if [[ -f "$RALPH_DIR/@fix_plan.md" ]]; then
-        local uncompleted_items=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || true)
-        [[ -z "$uncompleted_items" ]] && uncompleted_items=0
-        local completed_items=$(grep -cE "^[[:space:]]*- \[[xX]\]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || true)
-        [[ -z "$completed_items" ]] && completed_items=0
-        local total_items=$((uncompleted_items + completed_items))
+        local completed_items=0
+        local uncompleted_items=0
+        local total_items=0
+        read -r completed_items uncompleted_items total_items < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
 
         if [[ $total_items -gt 0 ]] && [[ $completed_items -eq $total_items ]]; then
             log_status "WARN" "Exit condition: All @fix_plan.md items completed ($completed_items/$total_items)" >&2
@@ -903,8 +970,10 @@ build_loop_context() {
     # Extract incomplete tasks from @fix_plan.md
     # Bug #3 Fix: Support indented markdown checkboxes with [[:space:]]* pattern
     if [[ -f "$RALPH_DIR/@fix_plan.md" ]]; then
-        local incomplete_tasks=$(grep -cE "^[[:space:]]*- \[ \]" "$RALPH_DIR/@fix_plan.md" 2>/dev/null || true)
-        [[ -z "$incomplete_tasks" ]] && incomplete_tasks=0
+        local completed_tasks=0
+        local incomplete_tasks=0
+        local total_tasks=0
+        read -r completed_tasks incomplete_tasks total_tasks < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
         context+="Remaining tasks: ${incomplete_tasks}. "
     fi
 
@@ -1412,6 +1481,8 @@ execute_claude_code() {
     local loop_count=$1
     local calls_made=$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")
     calls_made=$((calls_made + 1))
+    local fix_plan_completed_before=0
+    read -r fix_plan_completed_before _ _ < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
 
     # Fix #141: Capture git HEAD SHA at loop start to detect commits as progress
     # Store in file for access by progress detection after Claude execution
@@ -1665,6 +1736,10 @@ EOF
         log_status "INFO" "🔍 Analyzing $DRIVER_DISPLAY_NAME response..."
         analyze_response "$output_file" "$loop_count"
         local analysis_exit_code=$?
+
+        local fix_plan_completed_after=0
+        read -r fix_plan_completed_after _ _ < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
+        enforce_fix_plan_progress_tracking "$RESPONSE_ANALYSIS_FILE" "$fix_plan_completed_before" "$fix_plan_completed_after"
 
         # Update exit signals based on analysis
         update_exit_signals

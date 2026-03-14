@@ -290,7 +290,7 @@ For each story in @fix_plan.md:
 2. Write failing tests first (RED)
 3. Implement minimum code to pass tests (GREEN)
 4. Refactor while keeping tests green (REFACTOR)
-5. Mark story as complete in @fix_plan.md
+5. Toggle the completed story checkbox in @fix_plan.md from \`- [ ]\` to \`- [x]\`
 6. Commit with descriptive conventional commit message
 
 ## Specs Reading Strategy
@@ -313,7 +313,15 @@ For each story in @fix_plan.md:
 8. Review .ralph/@fix_plan.md for current priorities
 9. Implement the highest priority story using TDD
 10. Run tests after each implementation
-11. Update @fix_plan.md with your progress
+11. Update the completed story checkbox in @fix_plan.md before committing
+
+## Progress Tracking (CRITICAL)
+- Ralph tracks progress by counting story checkboxes in @fix_plan.md
+- When you complete a story, change \`- [ ]\` to \`- [x]\` on that exact story line
+- Do NOT remove, rewrite, or reorder story lines in @fix_plan.md
+- Update the checkbox before committing so the monitor updates immediately
+- Set \`TASKS_COMPLETED_THIS_LOOP\` to the exact number of story checkboxes toggled this loop
+- Only valid values: 0 or 1
 
 ## Key Principles
 - ONE story per loop - focus completely on it
@@ -335,7 +343,7 @@ At the end of your response, ALWAYS include this status block:
 \`\`\`
 ---RALPH_STATUS---
 STATUS: IN_PROGRESS | COMPLETE | BLOCKED
-TASKS_COMPLETED_THIS_LOOP: <number>
+TASKS_COMPLETED_THIS_LOOP: 0 | 1
 FILES_MODIFIED: <number>
 TESTS_STATUS: PASSING | FAILING | NOT_RUN
 WORK_TYPE: IMPLEMENTATION | TESTING | DOCUMENTATION | REFACTORING

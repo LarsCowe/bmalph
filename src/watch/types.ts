@@ -25,6 +25,9 @@ export interface AnalysisInfo {
   isTestOnly: boolean;
   isStuck: boolean;
   exitSignal: boolean;
+  tasksCompletedThisLoop: number;
+  fixPlanCompletedDelta: number;
+  hasProgressTrackingMismatch: boolean;
   hasPermissionDenials: boolean;
   permissionDenialCount: number;
 }

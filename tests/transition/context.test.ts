@@ -637,6 +637,19 @@ ${longContent}
       expect(prompt).toContain("EXIT_SIGNAL:");
     });
 
+    it("includes the fix-plan progress tracking contract", () => {
+      const prompt = generatePrompt("Test");
+
+      expect(prompt).toContain("## Progress Tracking (CRITICAL)");
+      expect(prompt).toContain("change `- [ ]` to `- [x]`");
+      expect(prompt).toContain("Do NOT remove, rewrite, or reorder story lines");
+      expect(prompt).toContain("before committing");
+      expect(prompt).toContain("Only valid values: 0 or 1");
+      expect(prompt).toContain("TASKS_COMPLETED_THIS_LOOP: 0 | 1");
+      expect(prompt).not.toContain("TASKS_COMPLETED_THIS_LOOP: <number>");
+      expect(prompt).not.toContain("Update @fix_plan.md with your progress");
+    });
+
     it("includes specs reading strategy", () => {
       const prompt = generatePrompt("Test");
       expect(prompt).toContain("SPECS_INDEX.md");

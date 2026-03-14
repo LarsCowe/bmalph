@@ -205,6 +205,28 @@ EXIT_SIGNAL: false
     assert_output "false"
 }
 
+@test "parse_json_response extracts TASKS_COMPLETED_THIS_LOOP from embedded RALPH_STATUS JSON" {
+    _skip_if_jq_missing
+    local output_file="$RALPH_DIR/tasks_completed.json"
+    cat > "$output_file" <<'EOF'
+{
+  "result": "Implemented Story 2.1.\n\n---RALPH_STATUS---\nSTATUS: IN_PROGRESS\nTASKS_COMPLETED_THIS_LOOP: 1\nEXIT_SIGNAL: false\n---END_RALPH_STATUS---",
+  "sessionId": "session-progress-1",
+  "metadata": {
+    "files_changed": 2
+  }
+}
+EOF
+
+    local result="$RALPH_DIR/result.json"
+    run parse_json_response "$output_file" "$result"
+    assert_success
+
+    run jq -r '.tasks_completed_this_loop' "$result"
+    assert_success
+    assert_output "1"
+}
+
 # ===========================================================================
 # parse_json_response — CLI array format
 # ===========================================================================
@@ -646,6 +668,58 @@ EOF
     assert_output "false"
 }
 
+@test "analyze_response persists TASKS_COMPLETED_THIS_LOOP from JSON output" {
+    _skip_if_jq_missing
+    local output_file="$RALPH_DIR/tasks_completed.json"
+    cat > "$output_file" <<'EOF'
+{
+  "result": "Implemented Story 2.1.\n\n---RALPH_STATUS---\nSTATUS: IN_PROGRESS\nTASKS_COMPLETED_THIS_LOOP: 1\nEXIT_SIGNAL: false\n---END_RALPH_STATUS---",
+  "sessionId": "session-progress-2",
+  "metadata": {
+    "files_changed": 2
+  }
+}
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$output_file" 9 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.tasks_completed_this_loop' "$analysis"
+    assert_success
+    assert_output "1"
+
+    run jq -r '.analysis.fix_plan_completed_delta' "$analysis"
+    assert_success
+    assert_output "0"
+
+    run jq -r '.analysis.has_progress_tracking_mismatch' "$analysis"
+    assert_success
+    assert_output "false"
+}
+
+@test "analyze_response persists TASKS_COMPLETED_THIS_LOOP from text output" {
+    _skip_if_jq_missing
+    local status_file="$RALPH_DIR/tasks_completed.txt"
+    cat > "$status_file" <<'EOF'
+Implemented Story 2.1 and updated the application code.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+TASKS_COMPLETED_THIS_LOOP: 1
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 10 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.tasks_completed_this_loop' "$analysis"
+    assert_success
+    assert_output "1"
+}
+
 @test "analyze_response tracks output length" {
     local analysis="$RALPH_DIR/.response_analysis"
     run analyze_response "$FIXTURES_DIR/text_response_complete.txt" 1 "$analysis"
@@ -823,6 +897,32 @@ EOF
     assert_success
 
     run jq -c '{done_signals, completion_indicators}' "$signals"
+    assert_output '{"done_signals":[2],"completion_indicators":[2,4]}'
+}
+
+@test "update_exit_signals ignores completion state from progress tracking mismatches" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+    local signals="$RALPH_DIR/.exit_signals"
+
+    echo '{"test_only_loops": [], "done_signals": [2], "completion_indicators": [2,4]}' > "$signals"
+    jq -n \
+        '{
+            loop_number: 6,
+            analysis: {
+                is_test_only: false,
+                has_completion_signal: true,
+                has_progress: true,
+                exit_signal: true,
+                has_progress_tracking_mismatch: true
+            }
+        }' > "$analysis"
+
+    run update_exit_signals "$analysis" "$signals"
+    assert_success
+
+    run jq -c '{done_signals, completion_indicators}' "$signals"
+    assert_success
     assert_output '{"done_signals":[2],"completion_indicators":[2,4]}'
 }
 

@@ -129,6 +129,14 @@ export async function readAnalysisInfo(projectDir: string): Promise<AnalysisInfo
     const isTestOnly = typeof a.is_test_only === "boolean" ? a.is_test_only : false;
     const isStuck = typeof a.is_stuck === "boolean" ? a.is_stuck : false;
     const exitSignal = typeof a.exit_signal === "boolean" ? a.exit_signal : false;
+    const tasksCompletedThisLoop =
+      typeof a.tasks_completed_this_loop === "number" ? a.tasks_completed_this_loop : 0;
+    const fixPlanCompletedDelta =
+      typeof a.fix_plan_completed_delta === "number" ? a.fix_plan_completed_delta : 0;
+    const hasProgressTrackingMismatch =
+      typeof a.has_progress_tracking_mismatch === "boolean"
+        ? a.has_progress_tracking_mismatch
+        : false;
     const hasPermissionDenials =
       typeof a.has_permission_denials === "boolean" ? a.has_permission_denials : false;
     const permissionDenialCount =
@@ -140,6 +148,9 @@ export async function readAnalysisInfo(projectDir: string): Promise<AnalysisInfo
       isTestOnly,
       isStuck,
       exitSignal,
+      tasksCompletedThisLoop,
+      fixPlanCompletedDelta,
+      hasProgressTrackingMismatch,
       hasPermissionDenials,
       permissionDenialCount,
     };

@@ -68,6 +68,12 @@ _skip_if_xargs_broken() {
     fi
 }
 
+_skip_if_jq_missing() {
+    if ! command -v jq >/dev/null 2>&1; then
+        skip "jq unavailable in bash PATH"
+    fi
+}
+
 # Create a mock CLI command in $RALPH_DIR/bin and prepend to PATH.
 # The mock script outputs $stdout (if given) and exits with $exit_code.
 # For argument-aware mocks, write a custom script to $RALPH_DIR/bin/$cmd instead.

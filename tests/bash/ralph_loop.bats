@@ -546,6 +546,106 @@ EOF
 }
 
 # ===========================================================================
+# fix-plan progress tracking enforcement
+# ===========================================================================
+
+@test "enforce_fix_plan_progress_tracking preserves matching checkbox delta" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+    jq -n \
+        '{
+            analysis: {
+                tasks_completed_this_loop: 1,
+                has_completion_signal: true,
+                exit_signal: true
+            }
+        }' > "$analysis"
+
+    run enforce_fix_plan_progress_tracking "$analysis" 0 1
+    assert_success
+
+    run jq -r '.analysis.fix_plan_completed_delta' "$analysis"
+    assert_success
+    assert_output "1"
+
+    run jq -r '.analysis.has_progress_tracking_mismatch' "$analysis"
+    assert_success
+    assert_output "false"
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_success
+    assert_output "true"
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_success
+    assert_output "true"
+}
+
+@test "enforce_fix_plan_progress_tracking suppresses completion when claimed work has zero checkbox delta" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+    jq -n \
+        '{
+            analysis: {
+                tasks_completed_this_loop: 1,
+                has_completion_signal: true,
+                exit_signal: true
+            }
+        }' > "$analysis"
+
+    run enforce_fix_plan_progress_tracking "$analysis" 0 0
+    assert_success
+
+    run jq -r '.analysis.fix_plan_completed_delta' "$analysis"
+    assert_success
+    assert_output "0"
+
+    run jq -r '.analysis.has_progress_tracking_mismatch' "$analysis"
+    assert_success
+    assert_output "true"
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_success
+    assert_output "false"
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_success
+    assert_output "false"
+}
+
+@test "enforce_fix_plan_progress_tracking flags inflated claimed task counts" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+    jq -n \
+        '{
+            analysis: {
+                tasks_completed_this_loop: 2,
+                has_completion_signal: true,
+                exit_signal: true
+            }
+        }' > "$analysis"
+
+    run enforce_fix_plan_progress_tracking "$analysis" 0 2
+    assert_success
+
+    run jq -r '.analysis.fix_plan_completed_delta' "$analysis"
+    assert_success
+    assert_output "2"
+
+    run jq -r '.analysis.has_progress_tracking_mismatch' "$analysis"
+    assert_success
+    assert_output "true"
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_success
+    assert_output "false"
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_success
+    assert_output "false"
+}
+
+# ===========================================================================
 # generate_session_id
 # ===========================================================================
 
