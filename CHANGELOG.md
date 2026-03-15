@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.7](https://github.com/LarsCowe/bmalph/compare/v2.7.6...v2.7.7) (2026-03-15)
+
+
+### Bug Fixes
+
+* enforce fix-plan progress tracking ([941aabb](https://github.com/LarsCowe/bmalph/commit/941aabb9e046373884f3831174d635b6f688d48a))
+* harden autonomous Claude loop defaults ([5f56e02](https://github.com/LarsCowe/bmalph/commit/5f56e02b3603474060cfcddd184dc74de68f78c8))
+* harden Ralph terminal dashboard ([8204435](https://github.com/LarsCowe/bmalph/commit/8204435e03018cf3bb33d0fd44bf9e8503301174))
+
 ## [2.7.6](https://github.com/LarsCowe/bmalph/compare/v2.7.5...v2.7.6) (2026-03-14)
 
 
