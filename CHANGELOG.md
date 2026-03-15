@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.8](https://github.com/LarsCowe/bmalph/compare/v2.7.7...v2.7.8) (2026-03-15)
+
+
+### Bug Fixes
+
+* render a single footer in run dashboard ([5cd1aea](https://github.com/LarsCowe/bmalph/commit/5cd1aea6280bd9dd068137979c32e10764a5dfa9))
+
 ## [2.7.7](https://github.com/LarsCowe/bmalph/compare/v2.7.6...v2.7.7) (2026-03-15)
 
 
