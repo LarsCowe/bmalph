@@ -32,8 +32,8 @@ This step will generate content and present choices:
 
 ## PROTOCOL INTEGRATION:
 
-- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml
-- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md
+- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md
+- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md
 - PROTOCOLS always return to display this step's A/P/C menu after the A or P have completed
 - User accepts/rejects protocol changes before proceeding
 
@@ -305,7 +305,7 @@ Show the validation results and present choices:
 
 #### If 'A' (Advanced Elicitation):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml with validation issues
+- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md with validation issues
 - Process enhanced solutions for complex concerns
 - Ask user: "Accept these architectural improvements? (y/n)"
 - If yes: Update content, then return to A/P/C menu
@@ -313,7 +313,7 @@ Show the validation results and present choices:
 
 #### If 'P' (Party Mode):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md with validation context
+- Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md with validation context
 - Process collaborative insights on implementation readiness
 - Ask user: "Accept these changes to the validation results? (y/n)"
 - If yes: Update content, then return to A/P/C menu
@@ -323,7 +323,7 @@ Show the validation results and present choices:
 
 - Append the final content to `{planning_artifacts}/architecture.md`
 - Update frontmatter: `stepsCompleted: [1, 2, 3, 4, 5, 6, 7]`
-- Load `./step-08-complete.md`
+- Load `{project-root}/_bmad/bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md`
 
 ## APPEND TO DOCUMENT:
 
@@ -354,6 +354,6 @@ When user selects 'C', append the content directly to the document using the str
 
 ## NEXT STEP:
 
-After user selects 'C' and content is saved to document, load `./step-08-complete.md` to complete the workflow and provide implementation guidance.
+After user selects 'C' and content is saved to document, load `{project-root}/_bmad/bmm/workflows/3-solutioning/create-architecture/steps/step-08-complete.md` to complete the workflow and provide implementation guidance.
 
 Remember: Do NOT proceed to step-08 until user explicitly selects 'C' from the A/P/C menu and content is saved!

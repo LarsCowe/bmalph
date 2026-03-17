@@ -32,8 +32,8 @@ This step will generate content and present choices for each decision category:
 
 ## PROTOCOL INTEGRATION:
 
-- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml
-- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md
+- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md
+- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md
 - PROTOCOLS always return to display this step's A/P/C menu after the A or P have completed
 - User accepts/rejects protocol changes before proceeding
 
@@ -264,7 +264,7 @@ Show the generated decisions content and present choices:
 
 #### If 'A' (Advanced Elicitation):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml with specific decision categories
+- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md with specific decision categories
 - Process enhanced insights about particular decisions
 - Ask user: "Accept these enhancements to the architectural decisions? (y/n)"
 - If yes: Update content, then return to A/P/C menu
@@ -272,7 +272,7 @@ Show the generated decisions content and present choices:
 
 #### If 'P' (Party Mode):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md with architectural decisions context
+- Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md with architectural decisions context
 - Process collaborative insights about decision trade-offs
 - Ask user: "Accept these changes to the architectural decisions? (y/n)"
 - If yes: Update content, then return to A/P/C menu
@@ -282,7 +282,7 @@ Show the generated decisions content and present choices:
 
 - Append the final content to `{planning_artifacts}/architecture.md`
 - Update frontmatter: `stepsCompleted: [1, 2, 3, 4]`
-- Load `./step-05-patterns.md`
+- Load `{project-root}/_bmad/bmm/workflows/3-solutioning/create-architecture/steps/step-05-patterns.md`
 
 ## APPEND TO DOCUMENT:
 
@@ -313,6 +313,6 @@ When user selects 'C', append the content directly to the document using the str
 
 ## NEXT STEP:
 
-After user selects 'C' and content is saved to document, load `./step-05-patterns.md` to define implementation patterns that ensure consistency across AI agents.
+After user selects 'C' and content is saved to document, load `{project-root}/_bmad/bmm/workflows/3-solutioning/create-architecture/steps/step-05-patterns.md` to define implementation patterns that ensure consistency across AI agents.
 
 Remember: Do NOT proceed to step-05 until user explicitly selects 'C' from the A/P/C menu and content is saved!

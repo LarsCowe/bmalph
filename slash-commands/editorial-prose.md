@@ -1,1 +1,1 @@
-Read and execute the workflow/task at `_bmad/core/tasks/editorial-review-prose.xml`.
+Read and execute the workflow/task at `_bmad/core/tasks/bmad-editorial-review-prose/workflow.md`.

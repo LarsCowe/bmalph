@@ -208,17 +208,29 @@ export async function classifyCommands(
     }
 
     // Classify: workflow/task commands (matched via CSV)
-    if (workflowRef && workflowLookup.has(workflowRef)) {
-      const csv = workflowLookup.get(workflowRef)!;
-      results.push({
-        name,
-        description: csv.description,
-        invocation: firstLine,
-        body,
-        kind: "workflow",
-        phase: csv.phase,
-      });
-      continue;
+    if (workflowRef) {
+      // Try direct file-path lookup first
+      let csv = workflowLookup.get(workflowRef);
+
+      // Fallback: resolve _bmad/.../skill-name/workflow.md → skill:skill-name
+      if (!csv) {
+        const match = workflowRef.match(/\/([^/]+)\/workflow\.md$/);
+        if (match) {
+          csv = workflowLookup.get(`skill:${match[1]}`);
+        }
+      }
+
+      if (csv) {
+        results.push({
+          name,
+          description: csv.description,
+          invocation: firstLine,
+          body,
+          kind: "workflow",
+          phase: csv.phase,
+        });
+        continue;
+      }
     }
 
     // Classify: pure agent commands

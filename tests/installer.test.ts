@@ -473,7 +473,7 @@ describe("installer", () => {
     it("core slash commands execute directly without agent role", async () => {
       await installProject(testDir);
       const content = await readFile(join(testDir, ".claude/commands/brainstorming.md"), "utf-8");
-      expect(content).toContain("_bmad/core/workflows/brainstorming/workflow.md");
+      expect(content).toContain("_bmad/core/workflows/bmad-brainstorming/workflow.md");
       expect(content).not.toContain("agent");
     });
   });

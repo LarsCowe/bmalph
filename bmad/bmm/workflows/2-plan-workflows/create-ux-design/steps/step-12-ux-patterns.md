@@ -30,8 +30,8 @@ This step will generate content and present choices:
 
 ## PROTOCOL INTEGRATION:
 
-- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml
-- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md
+- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md
+- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md
 - PROTOCOLS always return to this step's A/P/C menu
 - User accepts/rejects protocol changes before proceeding
 
@@ -182,7 +182,7 @@ Show the generated UX patterns content and present choices:
 
 #### If 'A' (Advanced Elicitation):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml with the current UX patterns content
+- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md with the current UX patterns content
 - Process the enhanced pattern insights that come back
 - Ask user: "Accept these improvements to the UX patterns? (y/n)"
 - If yes: Update content with improvements, then return to A/P/C menu
@@ -190,7 +190,7 @@ Show the generated UX patterns content and present choices:
 
 #### If 'P' (Party Mode):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md with the current UX patterns
+- Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md with the current UX patterns
 - Process the collaborative pattern insights that come back
 - Ask user: "Accept these changes to the UX patterns? (y/n)"
 - If yes: Update content with improvements, then return to A/P/C menu
@@ -200,7 +200,7 @@ Show the generated UX patterns content and present choices:
 
 - Append the final content to `{planning_artifacts}/ux-design-specification.md`
 - Update frontmatter: append step to end of stepsCompleted array
-- Load `./step-13-responsive-accessibility.md`
+- Load `{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-ux-design/steps/step-13-responsive-accessibility.md`
 
 ## APPEND TO DOCUMENT:
 
@@ -232,6 +232,6 @@ When user selects 'C', append the content directly to the document using the str
 
 ## NEXT STEP:
 
-After user selects 'C' and content is saved to document, load `./step-13-responsive-accessibility.md` to define responsive design and accessibility strategy.
+After user selects 'C' and content is saved to document, load `{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-ux-design/steps/step-13-responsive-accessibility.md` to define responsive design and accessibility strategy.
 
 Remember: Do NOT proceed to step-13 until user explicitly selects 'C' from the A/P/C menu and content is saved!

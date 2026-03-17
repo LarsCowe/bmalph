@@ -32,8 +32,8 @@ This step will generate content and present choices:
 
 ## PROTOCOL INTEGRATION:
 
-- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml
-- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md
+- When 'A' selected: Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md
+- When 'P' selected: Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md
 - PROTOCOLS always return to display this step's A/P/C menu after the A or P have completed
 - User accepts/rejects protocol changes before proceeding
 
@@ -325,7 +325,7 @@ Show the generated project structure content and present choices:
 
 #### If 'A' (Advanced Elicitation):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml with current project structure
+- Read fully and follow: {project-root}/_bmad/core/workflows/advanced-elicitation/workflow.md with current project structure
 - Process enhanced organizational insights that come back
 - Ask user: "Accept these changes to the project structure? (y/n)"
 - If yes: Update content, then return to A/P/C menu
@@ -333,7 +333,7 @@ Show the generated project structure content and present choices:
 
 #### If 'P' (Party Mode):
 
-- Read fully and follow: {project-root}/_bmad/core/workflows/party-mode/workflow.md with project structure context
+- Read fully and follow: {project-root}/_bmad/core/workflows/bmad-party-mode/workflow.md with project structure context
 - Process collaborative insights about organization trade-offs
 - Ask user: "Accept these changes to the project structure? (y/n)"
 - If yes: Update content, then return to A/P/C menu
@@ -343,7 +343,7 @@ Show the generated project structure content and present choices:
 
 - Append the final content to `{planning_artifacts}/architecture.md`
 - Update frontmatter: `stepsCompleted: [1, 2, 3, 4, 5, 6]`
-- Load `./step-07-validation.md`
+- Load `{project-root}/_bmad/bmm/workflows/3-solutioning/create-architecture/steps/step-07-validation.md`
 
 ## APPEND TO DOCUMENT:
 
@@ -374,6 +374,6 @@ When user selects 'C', append the content directly to the document using the str
 
 ## NEXT STEP:
 
-After user selects 'C' and content is saved to document, load `./step-07-validation.md` to validate architectural coherence and completeness.
+After user selects 'C' and content is saved to document, load `{project-root}/_bmad/bmm/workflows/3-solutioning/create-architecture/steps/step-07-validation.md` to validate architectural coherence and completeness.
 
 Remember: Do NOT proceed to step-07 until user explicitly selects 'C' from the A/P/C menu and content is saved!
