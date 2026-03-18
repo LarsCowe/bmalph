@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0](https://github.com/LarsCowe/bmalph/compare/v2.7.7...v2.8.0) (2026-03-17)
+
+
+### Features
+
+* add OpenCode platform support and harden quality gates ([738de2b](https://github.com/LarsCowe/bmalph/commit/738de2b6438d66c38587bde6727a562085946e26))
+* upgrade bundled BMAD to v6.1.0 ([53fcd96](https://github.com/LarsCowe/bmalph/commit/53fcd963ab8c62a4a6524f67a097977f4e772218))
+* upgrade bundled BMAD to v6.2.0 ([508250e](https://github.com/LarsCowe/bmalph/commit/508250eb6e6adef6a7c5c4112f2ba602c424063b))
+
+
+### Bug Fixes
+
+* render a single footer in run dashboard ([5cd1aea](https://github.com/LarsCowe/bmalph/commit/5cd1aea6280bd9dd068137979c32e10764a5dfa9))
+* replace Bash 4+ syntax for macOS 3.2 compatibility ([#110](https://github.com/LarsCowe/bmalph/issues/110)) ([1029d48](https://github.com/LarsCowe/bmalph/commit/1029d48758ba0397226b185d019cf0b75c06132f))
+* stabilize doctor sequential test on Windows CI ([204f813](https://github.com/LarsCowe/bmalph/commit/204f81327b1aa1fe84900df2c047c03ad548d18b))
+
+
+### Code Quality
+
+* harden detectBashVersion and add missing test ([e4d49e8](https://github.com/LarsCowe/bmalph/commit/e4d49e8cf92c5441d1c880672757a7e7b3ce6f1f))
+
 ## [2.7.7](https://github.com/LarsCowe/bmalph/compare/v2.7.6...v2.7.7) (2026-03-15)
 
 
