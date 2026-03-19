@@ -51,6 +51,7 @@ function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
     analysis: null,
     execution: null,
     session: null,
+    review: null,
     recentLogs: [],
     liveLog: [],
     ralphCompleted: false,
