@@ -169,14 +169,25 @@ export async function validateRalphLoop(projectDir: string): Promise<void> {
   }
 }
 
+export interface SpawnOptions {
+  inheritStdio: boolean;
+  reviewEnabled?: boolean;
+}
+
 export function spawnRalphLoop(
   projectDir: string,
   platformId: string,
-  options: { inheritStdio: boolean }
+  options: SpawnOptions
 ): RalphProcess {
+  const env: NodeJS.ProcessEnv = { ...process.env, PLATFORM_DRIVER: platformId };
+  if (options.reviewEnabled) {
+    env.REVIEW_ENABLED = "true";
+    env.REVIEW_INTERVAL = "5";
+  }
+
   const child = spawn(cachedBashCommand ?? "bash", [BASH_RALPH_LOOP_PATH], {
     cwd: projectDir,
-    env: { ...process.env, PLATFORM_DRIVER: platformId },
+    env,
     stdio: options.inheritStdio ? "inherit" : ["ignore", "pipe", "pipe"],
     detached: process.platform !== "win32",
     windowsHide: true,

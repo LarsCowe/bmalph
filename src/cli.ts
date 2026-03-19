@@ -138,8 +138,10 @@ program
   )
   .option("--interval <ms>", "Dashboard refresh interval in milliseconds (default: 2000)")
   .option("--no-dashboard", "Run Ralph without the dashboard overlay")
-  .action(async (opts: { driver?: string; interval?: string; dashboard: boolean }) =>
-    runCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
+  .option("--review", "Enable periodic code review loop (~10-14% more tokens)")
+  .action(
+    async (opts: { driver?: string; interval?: string; dashboard: boolean; review?: boolean }) =>
+      runCommand({ ...opts, projectDir: await resolveAndValidateProjectDir() })
   );
 
 void program.parseAsync();

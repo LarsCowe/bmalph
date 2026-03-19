@@ -50,6 +50,12 @@ export interface LogEntry {
   message: string;
 }
 
+export interface ReviewInfo {
+  issuesFound: number;
+  severity: string;
+  summary: string;
+}
+
 export interface DashboardState {
   loop: LoopInfo | null;
   circuitBreaker: CircuitBreakerInfo | null;
@@ -57,6 +63,7 @@ export interface DashboardState {
   analysis: AnalysisInfo | null;
   execution: ExecutionProgress | null;
   session: SessionInfo | null;
+  review: ReviewInfo | null;
   recentLogs: LogEntry[];
   liveLog: string[];
   ralphCompleted: boolean;

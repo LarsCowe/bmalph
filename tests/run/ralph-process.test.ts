@@ -533,6 +533,49 @@ describe("spawnRalphLoop", () => {
     expect(exitCallback).toHaveBeenCalledWith(null);
   });
 
+  it("passes REVIEW_ENABLED and REVIEW_INTERVAL env vars when reviewEnabled is true", async () => {
+    const mockChild = createMockChild();
+    mockSpawn.mockReturnValue(mockChild);
+
+    const { spawnRalphLoop } = await import("../../src/run/ralph-process.js");
+    spawnRalphLoop("/project", "claude-code", { inheritStdio: false, reviewEnabled: true });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "bash",
+      ["./.ralph/ralph_loop.sh"],
+      expect.objectContaining({
+        env: expect.objectContaining({
+          PLATFORM_DRIVER: "claude-code",
+          REVIEW_ENABLED: "true",
+          REVIEW_INTERVAL: "5",
+        }),
+      })
+    );
+  });
+
+  it("does not set review env vars when reviewEnabled is false", async () => {
+    const mockChild = createMockChild();
+    mockSpawn.mockReturnValue(mockChild);
+
+    const { spawnRalphLoop } = await import("../../src/run/ralph-process.js");
+    spawnRalphLoop("/project", "claude-code", { inheritStdio: false, reviewEnabled: false });
+
+    const spawnEnv = mockSpawn.mock.calls[0][2].env;
+    expect(spawnEnv.REVIEW_ENABLED).toBeUndefined();
+    expect(spawnEnv.REVIEW_INTERVAL).toBeUndefined();
+  });
+
+  it("does not set review env vars when reviewEnabled is omitted", async () => {
+    const mockChild = createMockChild();
+    mockSpawn.mockReturnValue(mockChild);
+
+    const { spawnRalphLoop } = await import("../../src/run/ralph-process.js");
+    spawnRalphLoop("/project", "claude-code", { inheritStdio: false });
+
+    const spawnEnv = mockSpawn.mock.calls[0][2].env;
+    expect(spawnEnv.REVIEW_ENABLED).toBeUndefined();
+  });
+
   it("uses taskkill to terminate the process tree on win32 platform", async () => {
     const originalPlatform = process.platform;
     Object.defineProperty(process, "platform", { value: "win32", configurable: true });

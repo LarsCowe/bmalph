@@ -64,6 +64,34 @@ describe("renderStatusBar", () => {
 
     expect(result).toContain("detached");
   });
+
+  it("shows [review] badge when reviewEnabled is true", async () => {
+    const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
+    const ralph = { state: "running", exitCode: null, child: { pid: 12345 } } as RalphProcess;
+
+    const result = renderStatusBar(ralph, true);
+
+    expect(result).toContain("[review]");
+    expect(result).toContain("running");
+  });
+
+  it("omits [review] badge when reviewEnabled is false", async () => {
+    const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
+    const ralph = { state: "running", exitCode: null, child: { pid: 12345 } } as RalphProcess;
+
+    const result = renderStatusBar(ralph, false);
+
+    expect(result).not.toContain("[review]");
+  });
+
+  it("omits [review] badge when reviewEnabled is undefined", async () => {
+    const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
+    const ralph = { state: "running", exitCode: null, child: { pid: 12345 } } as RalphProcess;
+
+    const result = renderStatusBar(ralph);
+
+    expect(result).not.toContain("[review]");
+  });
 });
 
 describe("renderQuitPrompt", () => {

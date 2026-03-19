@@ -6,6 +6,7 @@ import { getBundledRalphDir } from "./metadata.js";
 const TEMPLATE_PLACEHOLDERS: Record<string, string> = {
   "PROMPT.md": "[YOUR PROJECT NAME]",
   "AGENT.md": "pip install -r requirements.txt",
+  "REVIEW_PROMPT.md": "[YOUR PROJECT NAME]",
 };
 
 const RALPHRC_TEMPLATE_NAME = "RALPHRC";
@@ -56,6 +57,20 @@ QUALITY_GATE_TIMEOUT="\${QUALITY_GATE_TIMEOUT:-120}"
 
 # Only run gates when the agent signals completion (EXIT_SIGNAL=true)
 QUALITY_GATE_ON_COMPLETION_ONLY="\${QUALITY_GATE_ON_COMPLETION_ONLY:-false}"
+
+`;
+const REVIEW_TEMPLATE_BLOCK = `# =============================================================================
+# PERIODIC CODE REVIEW
+# =============================================================================
+
+# Enable periodic code review loops (set via 'bmalph run --review' or manually)
+# When enabled, Ralph runs a read-only review session every REVIEW_INTERVAL loops.
+# The review agent analyzes git diffs and outputs findings for the next implementation loop.
+# Currently supported on Claude Code only.
+REVIEW_ENABLED="\${REVIEW_ENABLED:-false}"
+
+# Number of implementation loops between review sessions (default: 5)
+REVIEW_INTERVAL="\${REVIEW_INTERVAL:-5}"
 
 `;
 
@@ -243,6 +258,18 @@ async function isRalphrcCustomized(filePath: string, platformId: string): Promis
   // Check variants without quality gates block (pre-quality-gates installs)
   const templateWithoutQG = currentTemplate.replace(QUALITY_GATES_TEMPLATE_BLOCK, "");
   if (matchesManagedPermissionVariants(content, templateWithoutQG)) {
+    return false;
+  }
+
+  // Check variants without review block (pre-review installs)
+  const templateWithoutReview = currentTemplate.replace(REVIEW_TEMPLATE_BLOCK, "");
+  if (matchesManagedPermissionVariants(content, templateWithoutReview)) {
+    return false;
+  }
+
+  // Check variants without both quality gates and review blocks
+  const templateWithoutQGAndReview = templateWithoutQG.replace(REVIEW_TEMPLATE_BLOCK, "");
+  if (matchesManagedPermissionVariants(content, templateWithoutQGAndReview)) {
     return false;
   }
 

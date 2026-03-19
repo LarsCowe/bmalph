@@ -18,6 +18,7 @@ import type {
   AnalysisInfo,
   ExecutionProgress,
   SessionInfo,
+  ReviewInfo,
   LogEntry,
 } from "./types.js";
 
@@ -26,7 +27,7 @@ const DEFAULT_MAX_LOG_LINES = 8;
 const TAIL_BYTES = 4096;
 
 export async function readDashboardState(projectDir: string): Promise<DashboardState> {
-  const [loop, circuitBreaker, stories, analysis, execution, session, recentLogs, liveLog] =
+  const [loop, circuitBreaker, stories, analysis, execution, session, review, recentLogs, liveLog] =
     await Promise.all([
       readLoopInfo(projectDir),
       readCircuitBreakerInfo(projectDir),
@@ -34,6 +35,7 @@ export async function readDashboardState(projectDir: string): Promise<DashboardS
       readAnalysisInfo(projectDir),
       readExecutionProgress(projectDir),
       readSessionInfo(projectDir),
+      readReviewInfo(projectDir),
       readRecentLogs(projectDir),
       readLiveLog(projectDir),
     ]);
@@ -47,6 +49,7 @@ export async function readDashboardState(projectDir: string): Promise<DashboardS
     analysis,
     execution,
     session,
+    review,
     recentLogs,
     liveLog,
     ralphCompleted,
@@ -200,6 +203,26 @@ export async function readSessionInfo(projectDir: string): Promise<SessionInfo |
     createdAt: result.value.created_at,
     lastUsed: result.value.last_used,
   };
+}
+
+export async function readReviewInfo(projectDir: string): Promise<ReviewInfo | null> {
+  try {
+    const data = await readJsonFile<Record<string, unknown>>(
+      join(projectDir, RALPH_DIR, ".review_findings.json")
+    );
+    if (data === null) return null;
+
+    const issuesFound = typeof data.issues_found === "number" ? data.issues_found : 0;
+    if (issuesFound === 0) return null;
+
+    const severity = typeof data.severity === "string" ? data.severity : "LOW";
+    const summary = typeof data.summary === "string" ? data.summary : "";
+
+    return { issuesFound, severity, summary };
+  } catch (err) {
+    debug(`Failed to read review info: ${formatError(err)}`);
+    return null;
+  }
 }
 
 const LIVE_LOG_MAX_LINES = 5;

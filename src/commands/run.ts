@@ -14,6 +14,7 @@ interface RunCommandOptions {
   driver?: string;
   interval?: string;
   dashboard: boolean;
+  review?: boolean;
 }
 
 export async function runCommand(options: RunCommandOptions): Promise<void> {
@@ -40,6 +41,11 @@ async function executeRun(options: RunCommandOptions): Promise<void> {
     console.log(chalk.yellow(`Warning: ${platform.displayName} support is experimental`));
   }
 
+  const reviewEnabled = await resolveReviewMode(options.review, platform);
+  if (reviewEnabled) {
+    console.log(chalk.cyan("Enhanced mode: code review every 5 implementation loops"));
+  }
+
   const interval = parseInterval(options.interval);
   let useDashboard = dashboard;
   if (useDashboard) {
@@ -57,10 +63,11 @@ async function executeRun(options: RunCommandOptions): Promise<void> {
 
   const ralph = spawnRalphLoop(projectDir, platform.id, {
     inheritStdio: !useDashboard,
+    ...(reviewEnabled && { reviewEnabled }),
   });
 
   if (useDashboard) {
-    await startRunDashboard({ projectDir, interval, ralph });
+    await startRunDashboard({ projectDir, interval, ralph, reviewEnabled });
     if (ralph.state === "stopped") {
       applyRalphExitCode(ralph.exitCode);
     }
@@ -87,4 +94,42 @@ function resolvePlatform(
     throw new Error(`Unknown platform: ${id}`);
   }
   return getPlatform(id);
+}
+
+async function resolveReviewMode(
+  reviewFlag: boolean | undefined,
+  platform: Platform
+): Promise<boolean> {
+  if (reviewFlag === true) {
+    if (platform.id !== "claude-code") {
+      throw new Error("--review requires Claude Code (other drivers lack read-only enforcement)");
+    }
+    return true;
+  }
+
+  if (reviewFlag === false) {
+    return false;
+  }
+
+  if (platform.id !== "claude-code") {
+    return false;
+  }
+
+  if (!process.stdin.isTTY) {
+    return false;
+  }
+
+  const { default: select } = await import("@inquirer/select");
+  const mode = await select({
+    message: "Quality mode:",
+    choices: [
+      { name: "Standard — current behavior (no extra cost)", value: "standard" },
+      {
+        name: "Enhanced — periodic code review every 5 loops (~10-14% more tokens)",
+        value: "enhanced",
+      },
+    ],
+    default: "standard",
+  });
+  return mode === "enhanced";
 }

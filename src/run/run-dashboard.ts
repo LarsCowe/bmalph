@@ -8,13 +8,15 @@ export interface RunDashboardOptions {
   projectDir: string;
   interval: number;
   ralph: RalphProcess;
+  reviewEnabled?: boolean;
 }
 
-export function renderStatusBar(ralph: RalphProcess): string {
+export function renderStatusBar(ralph: RalphProcess, reviewEnabled?: boolean): string {
   const pid = ralph.child.pid ?? "?";
+  const badge = reviewEnabled ? " [review]" : "";
   switch (ralph.state) {
     case "running":
-      return `Ralph: running (PID ${pid}) | q: stop/detach`;
+      return `Ralph: running (PID ${pid})${badge} | q: stop/detach`;
     case "stopped":
       return `Ralph: stopped (exit ${ralph.exitCode ?? "?"}) | q: quit`;
     case "detached":
@@ -27,13 +29,13 @@ export function renderQuitPrompt(): string {
 }
 
 export async function startRunDashboard(options: RunDashboardOptions): Promise<void> {
-  const { projectDir, interval, ralph } = options;
+  const { projectDir, interval, ralph, reviewEnabled } = options;
 
   const frameWriter = createTerminalFrameWriter();
   let showingPrompt = false;
   let stopped = false;
   const footerRenderer = (lastUpdated: Date, cols: number): string => {
-    const leftText = showingPrompt ? renderQuitPrompt() : renderStatusBar(ralph);
+    const leftText = showingPrompt ? renderQuitPrompt() : renderStatusBar(ralph, reviewEnabled);
     return renderFooterLine(leftText, `Updated: ${lastUpdated.toISOString().slice(11, 19)}`, cols);
   };
 

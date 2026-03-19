@@ -704,4 +704,151 @@ describe("runCommand", () => {
       expect(process.exitCode).toBeUndefined();
     });
   });
+
+  describe("review mode", () => {
+    it("passes reviewEnabled to spawnRalphLoop when --review is set", async () => {
+      const { readConfig } = await import("../../src/utils/config.js");
+      const { getPlatform } = await import("../../src/platform/registry.js");
+      const { validateBashAvailable, validateRalphLoop, spawnRalphLoop } =
+        await import("../../src/run/ralph-process.js");
+      const { startRunDashboard } = await import("../../src/run/run-dashboard.js");
+
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "test",
+        description: "",
+        createdAt: "2026-02-28",
+        platform: "claude-code",
+      });
+      vi.mocked(getPlatform).mockReturnValue(mockPlatform());
+      vi.mocked(validateBashAvailable).mockResolvedValue(undefined);
+      vi.mocked(validateRalphLoop).mockResolvedValue(undefined);
+      vi.mocked(spawnRalphLoop).mockReturnValue({
+        child: { pid: 123 },
+        state: "running",
+        exitCode: null,
+        kill: vi.fn(),
+        detach: vi.fn(),
+        onExit: vi.fn(),
+      } as never);
+      vi.mocked(startRunDashboard).mockResolvedValue(undefined);
+
+      const { runCommand } = await import("../../src/commands/run.js");
+      await runCommand({
+        projectDir: "/test/project",
+        interval: "2000",
+        dashboard: true,
+        review: true,
+      });
+
+      expect(spawnRalphLoop).toHaveBeenCalledWith("/test/project", "claude-code", {
+        inheritStdio: false,
+        reviewEnabled: true,
+      });
+    });
+
+    it("does not pass reviewEnabled when --no-review is set", async () => {
+      const { readConfig } = await import("../../src/utils/config.js");
+      const { getPlatform } = await import("../../src/platform/registry.js");
+      const { validateBashAvailable, validateRalphLoop, spawnRalphLoop } =
+        await import("../../src/run/ralph-process.js");
+      const { startRunDashboard } = await import("../../src/run/run-dashboard.js");
+
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "test",
+        description: "",
+        createdAt: "2026-02-28",
+        platform: "claude-code",
+      });
+      vi.mocked(getPlatform).mockReturnValue(mockPlatform());
+      vi.mocked(validateBashAvailable).mockResolvedValue(undefined);
+      vi.mocked(validateRalphLoop).mockResolvedValue(undefined);
+      vi.mocked(spawnRalphLoop).mockReturnValue({
+        child: { pid: 123 },
+        state: "running",
+        exitCode: null,
+        kill: vi.fn(),
+        detach: vi.fn(),
+        onExit: vi.fn(),
+      } as never);
+      vi.mocked(startRunDashboard).mockResolvedValue(undefined);
+
+      const { runCommand } = await import("../../src/commands/run.js");
+      await runCommand({
+        projectDir: "/test/project",
+        interval: "2000",
+        dashboard: true,
+        review: false,
+      });
+
+      expect(spawnRalphLoop).toHaveBeenCalledWith("/test/project", "claude-code", {
+        inheritStdio: false,
+      });
+    });
+
+    it("errors when --review is used with a non-claude-code driver", async () => {
+      const { readConfig } = await import("../../src/utils/config.js");
+      const { isPlatformId, getPlatform } = await import("../../src/platform/registry.js");
+
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "test",
+        description: "",
+        createdAt: "2026-02-28",
+        platform: "codex",
+      });
+      vi.mocked(isPlatformId).mockReturnValue(true);
+      vi.mocked(getPlatform).mockReturnValue(
+        mockPlatform({ id: "codex", displayName: "OpenAI Codex", tier: "full" })
+      );
+
+      const { runCommand } = await import("../../src/commands/run.js");
+      await runCommand({
+        projectDir: "/test/project",
+        interval: "2000",
+        dashboard: true,
+        review: true,
+      });
+
+      expect(process.exitCode).toBe(1);
+      const errorOutput = consoleErrorSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(errorOutput).toContain("Claude Code");
+    });
+
+    it("defaults to no review when review flag is not provided", async () => {
+      const { readConfig } = await import("../../src/utils/config.js");
+      const { getPlatform } = await import("../../src/platform/registry.js");
+      const { validateBashAvailable, validateRalphLoop, spawnRalphLoop } =
+        await import("../../src/run/ralph-process.js");
+      const { startRunDashboard } = await import("../../src/run/run-dashboard.js");
+
+      vi.mocked(readConfig).mockResolvedValue({
+        name: "test",
+        description: "",
+        createdAt: "2026-02-28",
+        platform: "claude-code",
+      });
+      vi.mocked(getPlatform).mockReturnValue(mockPlatform());
+      vi.mocked(validateBashAvailable).mockResolvedValue(undefined);
+      vi.mocked(validateRalphLoop).mockResolvedValue(undefined);
+      vi.mocked(spawnRalphLoop).mockReturnValue({
+        child: { pid: 123 },
+        state: "running",
+        exitCode: null,
+        kill: vi.fn(),
+        detach: vi.fn(),
+        onExit: vi.fn(),
+      } as never);
+      vi.mocked(startRunDashboard).mockResolvedValue(undefined);
+
+      const { runCommand } = await import("../../src/commands/run.js");
+      await runCommand({
+        projectDir: "/test/project",
+        interval: "2000",
+        dashboard: true,
+      });
+
+      expect(spawnRalphLoop).toHaveBeenCalledWith("/test/project", "claude-code", {
+        inheritStdio: false,
+      });
+    });
+  });
 });

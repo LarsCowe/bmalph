@@ -20,8 +20,10 @@ export async function installRalphAssets(
 
   const promptPath = join(projectDir, ".ralph/PROMPT.md");
   const agentPath = join(projectDir, ".ralph/@AGENT.md");
+  const reviewPromptPath = join(projectDir, ".ralph/REVIEW_PROMPT.md");
   const promptCustomized = await isTemplateCustomized(promptPath, "PROMPT.md");
   const agentCustomized = await isTemplateCustomized(agentPath, "AGENT.md");
+  const reviewPromptCustomized = await isTemplateCustomized(reviewPromptPath, "REVIEW_PROMPT.md");
 
   if (!promptCustomized) {
     await cp(join(ralphDir, "templates/PROMPT.md"), promptPath, {
@@ -30,6 +32,11 @@ export async function installRalphAssets(
   }
   if (!agentCustomized) {
     await cp(join(ralphDir, "templates/AGENT.md"), agentPath, {
+      dereference: false,
+    });
+  }
+  if (!reviewPromptCustomized) {
+    await cp(join(ralphDir, "templates/REVIEW_PROMPT.md"), reviewPromptPath, {
       dereference: false,
     });
   }
@@ -103,6 +110,7 @@ export async function installRalphAssets(
       ".ralph/lib/",
       ...(!promptCustomized ? [".ralph/PROMPT.md"] : []),
       ...(!agentCustomized ? [".ralph/@AGENT.md"] : []),
+      ...(!reviewPromptCustomized ? [".ralph/REVIEW_PROMPT.md"] : []),
       ...(!ralphrcCustomized && currentRalphrc !== renderedRalphrc ? [".ralph/.ralphrc"] : []),
       ".ralph/RALPH-REFERENCE.md",
     ],

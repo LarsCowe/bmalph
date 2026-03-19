@@ -74,6 +74,8 @@ _env_QUALITY_GATES="${QUALITY_GATES:-}"
 _env_QUALITY_GATE_MODE="${QUALITY_GATE_MODE:-}"
 _env_QUALITY_GATE_TIMEOUT="${QUALITY_GATE_TIMEOUT:-}"
 _env_QUALITY_GATE_ON_COMPLETION_ONLY="${QUALITY_GATE_ON_COMPLETION_ONLY:-}"
+_env_REVIEW_ENABLED="${REVIEW_ENABLED:-}"
+_env_REVIEW_INTERVAL="${REVIEW_INTERVAL:-}"
 
 # Now set defaults (only if not already set by environment)
 MAX_CALLS_PER_HOUR="${MAX_CALLS_PER_HOUR:-100}"
@@ -106,6 +108,13 @@ QUALITY_GATE_MODE="${QUALITY_GATE_MODE:-warn}"
 QUALITY_GATE_TIMEOUT="${QUALITY_GATE_TIMEOUT:-120}"
 QUALITY_GATE_ON_COMPLETION_ONLY="${QUALITY_GATE_ON_COMPLETION_ONLY:-false}"
 QUALITY_GATE_RESULTS_FILE="$RALPH_DIR/.quality_gate_results"
+
+# Periodic code review configuration
+REVIEW_ENABLED="${REVIEW_ENABLED:-false}"
+REVIEW_INTERVAL="${REVIEW_INTERVAL:-5}"
+REVIEW_FINDINGS_FILE="$RALPH_DIR/.review_findings.json"
+REVIEW_PROMPT_FILE="$RALPH_DIR/REVIEW_PROMPT.md"
+REVIEW_LAST_SHA_FILE="$RALPH_DIR/.review_last_sha"
 
 # Valid tool patterns for --allowed-tools validation
 # Default: Claude Code tools. Platform driver overwrites via driver_valid_tools() in main().
@@ -256,6 +265,8 @@ load_ralphrc() {
     [[ -n "$_env_QUALITY_GATE_MODE" ]] && QUALITY_GATE_MODE="$_env_QUALITY_GATE_MODE"
     [[ -n "$_env_QUALITY_GATE_TIMEOUT" ]] && QUALITY_GATE_TIMEOUT="$_env_QUALITY_GATE_TIMEOUT"
     [[ -n "$_env_QUALITY_GATE_ON_COMPLETION_ONLY" ]] && QUALITY_GATE_ON_COMPLETION_ONLY="$_env_QUALITY_GATE_ON_COMPLETION_ONLY"
+    [[ -n "$_env_REVIEW_ENABLED" ]] && REVIEW_ENABLED="$_env_REVIEW_ENABLED"
+    [[ -n "$_env_REVIEW_INTERVAL" ]] && REVIEW_INTERVAL="$_env_REVIEW_INTERVAL"
 
     normalize_claude_permission_mode
     RALPHRC_FILE="$config_file"
@@ -1271,6 +1282,151 @@ build_loop_context() {
     echo "${context:0:500}"
 }
 
+# Check if a periodic code review should run this iteration
+# Returns 0 (true) when review is due, 1 (false) otherwise
+should_run_review() {
+    [[ "$REVIEW_ENABLED" != "true" ]] && return 1
+    local loop_count=$1
+    # Never review on first loop (no implementation yet)
+    (( loop_count < 1 )) && return 1
+    (( loop_count % REVIEW_INTERVAL != 0 )) && return 1
+    # Skip if circuit breaker is not CLOSED
+    if [[ -f "$RALPH_DIR/.circuit_breaker_state" ]]; then
+        local cb_state
+        cb_state=$(jq -r '.state // "CLOSED"' "$RALPH_DIR/.circuit_breaker_state" 2>/dev/null)
+        [[ "$cb_state" != "CLOSED" ]] && return 1
+    fi
+    # Skip if no changes since last review (committed or uncommitted)
+    if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null 2>&1; then
+        local current_sha last_sha
+        current_sha=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+        last_sha=""
+        [[ -f "$REVIEW_LAST_SHA_FILE" ]] && last_sha=$(cat "$REVIEW_LAST_SHA_FILE" 2>/dev/null)
+        # Check for new commits OR uncommitted workspace changes
+        local has_uncommitted
+        has_uncommitted=$(git status --porcelain 2>/dev/null | head -1)
+        if [[ "$current_sha" == "$last_sha" && -z "$has_uncommitted" ]]; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Build review findings context for injection into the next implementation loop
+# Returns a compact string (max 500 chars) with unresolved findings
+build_review_context() {
+    if [[ ! -f "$REVIEW_FINDINGS_FILE" ]]; then
+        echo ""
+        return
+    fi
+
+    local severity issues_found summary
+    severity=$(jq -r '.severity // ""' "$REVIEW_FINDINGS_FILE" 2>/dev/null)
+    issues_found=$(jq -r '.issues_found // 0' "$REVIEW_FINDINGS_FILE" 2>/dev/null)
+    summary=$(jq -r '.summary // ""' "$REVIEW_FINDINGS_FILE" 2>/dev/null | head -c 300)
+
+    if [[ "$issues_found" == "0" || -z "$severity" || "$severity" == "null" ]]; then
+        echo ""
+        return
+    fi
+
+    local context="REVIEW FINDINGS ($severity, $issues_found issues): $summary"
+    # Include top details if space allows
+    local top_details
+    top_details=$(jq -r '(.details[:2] // []) | map("- [\(.severity)] \(.file): \(.issue)") | join("; ")' "$REVIEW_FINDINGS_FILE" 2>/dev/null | head -c 150)
+    if [[ -n "$top_details" && "$top_details" != "null" ]]; then
+        context+=" Details: $top_details"
+    fi
+
+    echo "${context:0:500}"
+}
+
+# Execute a periodic code review loop (read-only, no file modifications)
+# Uses a fresh ephemeral session with restricted tool permissions
+run_review_loop() {
+    local loop_count=$1
+
+    log_status "INFO" "Starting periodic code review (loop #$loop_count)"
+
+    # Get diff context (committed + uncommitted changes)
+    local last_sha=""
+    [[ -f "$REVIEW_LAST_SHA_FILE" ]] && last_sha=$(cat "$REVIEW_LAST_SHA_FILE" 2>/dev/null)
+    local diff_context=""
+    if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null 2>&1; then
+        local committed_diff="" uncommitted_diff=""
+        if [[ -n "$last_sha" ]]; then
+            committed_diff=$(git diff "$last_sha"..HEAD --stat 2>/dev/null | head -20 || true)
+        else
+            committed_diff=$(git diff HEAD~5..HEAD --stat 2>/dev/null | head -20 || true)
+        fi
+        uncommitted_diff=$(git diff --stat 2>/dev/null | head -10 || true)
+        diff_context="${committed_diff}"
+        if [[ -n "$uncommitted_diff" ]]; then
+            diff_context+=$'\nUncommitted:\n'"${uncommitted_diff}"
+        fi
+        [[ -z "$diff_context" ]] && diff_context="No recent changes"
+    fi
+
+    # Check review prompt exists
+    if [[ ! -f "$REVIEW_PROMPT_FILE" ]]; then
+        log_status "WARN" "Review prompt file not found: $REVIEW_PROMPT_FILE — skipping review"
+        return 0
+    fi
+
+    # Build review-specific context
+    local review_context="CODE REVIEW LOOP (read-only). Analyze changes since last review. Recent changes: $diff_context"
+
+    # Save and override CLAUDE_ALLOWED_TOOLS for read-only mode
+    local saved_tools="$CLAUDE_ALLOWED_TOOLS"
+    CLAUDE_ALLOWED_TOOLS="Read,Glob,Grep"
+
+    local timeout_seconds=$((CLAUDE_TIMEOUT_MINUTES * 60))
+    local review_output_file="$LOG_DIR/review_loop_${loop_count}.log"
+
+    # Build command with review prompt and NO session resume (ephemeral)
+    if driver_build_command "$REVIEW_PROMPT_FILE" "$review_context" ""; then
+        # Execute review (capture output)
+        portable_timeout "${timeout_seconds}s" "${CLAUDE_CMD_ARGS[@]}" \
+            < /dev/null > "$review_output_file" 2>&1 || true
+    fi
+
+    # Restore CLAUDE_ALLOWED_TOOLS
+    CLAUDE_ALLOWED_TOOLS="$saved_tools"
+
+    # Parse review findings from output
+    if [[ -f "$review_output_file" ]]; then
+        # Review ran successfully — save SHA so we don't re-review the same state
+        git rev-parse HEAD > "$REVIEW_LAST_SHA_FILE" 2>/dev/null || true
+
+        local findings_json=""
+        # Extract JSON between ---REVIEW_FINDINGS--- and ---END_REVIEW_FINDINGS--- markers
+        findings_json=$(sed -n '/---REVIEW_FINDINGS---/,/---END_REVIEW_FINDINGS---/{//!p;}' "$review_output_file" 2>/dev/null | tr -d '\n' | head -c 5000)
+
+        # If output is JSON format, try extracting from result field first
+        if [[ -z "$findings_json" ]]; then
+            local raw_text
+            raw_text=$(jq -r '.result // .content // ""' "$review_output_file" 2>/dev/null || cat "$review_output_file" 2>/dev/null)
+            findings_json=$(echo "$raw_text" | sed -n '/---REVIEW_FINDINGS---/,/---END_REVIEW_FINDINGS---/{//!p;}' 2>/dev/null | tr -d '\n' | head -c 5000)
+        fi
+
+        if [[ -n "$findings_json" ]]; then
+            # Validate it's valid JSON before writing
+            if echo "$findings_json" | jq . > /dev/null 2>&1; then
+                local tmp_findings="$REVIEW_FINDINGS_FILE.tmp"
+                echo "$findings_json" > "$tmp_findings"
+                mv "$tmp_findings" "$REVIEW_FINDINGS_FILE"
+                local issue_count
+                issue_count=$(echo "$findings_json" | jq -r '.issues_found // 0' 2>/dev/null)
+                log_status "INFO" "Code review complete. $issue_count issue(s) found."
+            else
+                log_status "WARN" "Review findings JSON is malformed — skipping"
+            fi
+        else
+            log_status "INFO" "Code review complete. No structured findings extracted."
+        fi
+    fi
+}
+
 # Get session file age in seconds (cross-platform)
 # Returns: age in seconds on stdout, or -1 if stat fails
 get_session_file_age_seconds() {
@@ -1805,6 +1961,13 @@ execute_claude_code() {
     if build_claude_command "$PROMPT_FILE" "$loop_context" "$session_id"; then
         use_modern_cli=true
         log_status "INFO" "Using modern CLI mode (${CLAUDE_OUTPUT_FORMAT} output)"
+
+        # Build review findings context (separate from loop context)
+        local review_context=""
+        review_context=$(build_review_context)
+        if [[ -n "$review_context" ]]; then
+            CLAUDE_CMD_ARGS+=("--append-system-prompt" "$review_context")
+        fi
     else
         log_status "WARN" "Failed to build modern CLI command, falling back to legacy mode"
         if [[ "$LIVE_OUTPUT" == "true" ]]; then
@@ -2335,6 +2498,11 @@ main() {
             fi
 
             update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "completed" "success"
+
+            # Periodic code review check
+            if should_run_review "$loop_count"; then
+                run_review_loop "$loop_count"
+            fi
 
             # Brief pause between successful executions
             sleep 5

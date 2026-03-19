@@ -6,6 +6,7 @@ import type {
   CircuitBreakerInfo,
   StoryProgress,
   AnalysisInfo,
+  ReviewInfo,
   LogEntry,
   ExecutionProgress,
   SessionInfo,
@@ -419,6 +420,28 @@ export function renderAnalysisPanel(analysis: AnalysisInfo | null, cols: number)
   return box("Last Analysis", lines, cols);
 }
 
+export function renderReviewPanel(review: ReviewInfo | null | undefined, cols: number): string {
+  if (!review) {
+    return "";
+  }
+
+  const safeSeverity = sanitizeExternalText(review.severity);
+  const severityColor =
+    safeSeverity === "CRITICAL" || safeSeverity === "HIGH"
+      ? chalk.red
+      : safeSeverity === "MEDIUM"
+        ? chalk.yellow
+        : chalk.green;
+
+  const safeSummary = sanitizeExternalText(review.summary);
+  const lines = [
+    `Severity: ${severityColor(safeSeverity)}    Issues: ${String(review.issuesFound)}`,
+    safeSummary ? chalk.dim(safeSummary.slice(0, 70)) : "",
+  ].filter(Boolean);
+
+  return box("Review Findings", lines, cols);
+}
+
 export function renderLogsPanel(logs: LogEntry[], cols: number): string {
   if (logs.length === 0) {
     return box("Recent Activity", [chalk.dim("No activity yet")], cols);
@@ -477,6 +500,7 @@ function hasAnyData(state: DashboardState): boolean {
     state.analysis !== null ||
     state.execution !== null ||
     state.session !== null ||
+    state.review != null ||
     state.recentLogs.length > 0 ||
     state.liveLog.length > 0
   );
@@ -512,6 +536,11 @@ export function renderDashboard(
   sections.push(renderSideBySide(leftPanel, rightPanel, width));
 
   sections.push(renderAnalysisPanel(state.analysis, width));
+
+  const reviewPanel = renderReviewPanel(state.review, width);
+  if (reviewPanel) {
+    sections.push(reviewPanel);
+  }
 
   if (state.execution !== null) {
     sections.push(renderLiveLogPanel(state.liveLog, width));
