@@ -279,11 +279,12 @@ BMAD (add Epic 2) → bmalph implement → Ralph sees changes + picks up Epic 2
 
 ### run options
 
-| Flag                  | Description                                                              |
-| --------------------- | ------------------------------------------------------------------------ |
-| `--driver <platform>` | Override platform driver (claude-code, codex, opencode, copilot, cursor) |
-| `--interval <ms>`     | Dashboard refresh interval in milliseconds (default: 2000)               |
-| `--no-dashboard`      | Run Ralph without the dashboard overlay                                  |
+| Flag                   | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `--driver <platform>`  | Override platform driver (claude-code, codex, opencode, copilot, cursor)    |
+| `--review/--no-review` | Enable/disable periodic code review (Claude Code only, prompted by default) |
+| `--interval <ms>`      | Dashboard refresh interval in milliseconds (default: 2000)                  |
+| `--no-dashboard`       | Run Ralph without the dashboard overlay                                     |
 
 ### watch options
 
@@ -415,6 +416,7 @@ Safety mechanisms:
 
 - **Circuit breaker** — prevents infinite loops on failing stories
 - **Response analyzer** — detects stuck or repeating outputs
+- **Code review** — optional periodic review every 5 loops (`--review`, Claude Code only). A read-only session analyzes git diffs and feeds structured findings into the next implementation loop
 - **Completion** — loop exits when all `@fix_plan.md` items are checked off
 
 Cursor-specific runtime checks:
