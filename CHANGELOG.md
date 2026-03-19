@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0](https://github.com/LarsCowe/bmalph/compare/v2.8.0...v2.9.0) (2026-03-19)
+
+
+### Features
+
+* **run:** add periodic code review loop for Ralph ([#102](https://github.com/LarsCowe/bmalph/issues/102)) ([4bab0ef](https://github.com/LarsCowe/bmalph/commit/4bab0ef94436f40f482750e113af155a15fd92d2))
+
+
+### Bug Fixes
+
+* use strict equality in renderer hasAnyData check ([6660539](https://github.com/LarsCowe/bmalph/commit/6660539c2f9c1976b1fa60ace2a5dcc90ffe8af0))
+
+
+### Code Quality
+
+* strengthen type safety and deduplicate constants ([1f154a0](https://github.com/LarsCowe/bmalph/commit/1f154a09f5f64acd234da5f30fac7f456c4ec629))
+
 ## [2.8.0](https://github.com/LarsCowe/bmalph/compare/v2.7.7...v2.8.0) (2026-03-17)
 
 
