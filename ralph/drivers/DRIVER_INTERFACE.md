@@ -118,7 +118,16 @@ passed via `--append-system-prompt`, depending on the driver's CLI flags.
 ## Optional Functions
 
 Drivers may implement these functions to enable additional capabilities.
-The orchestrator checks for their existence before calling.
+The orchestrator checks for their existence (via `declare -F`) before calling.
+
+**Defaults when omitted:**
+
+- `driver_supports_sessions` → assumed **true** (returns 0)
+- `driver_supports_live_output` → assumed **true** (returns 0)
+- `driver_prepare_live_command` → copies `CLAUDE_CMD_ARGS` to `LIVE_CMD_ARGS` unchanged
+- `driver_stream_filter` → returns `"empty"` (no output)
+- `driver_extract_session_id_from_output` → skipped, falls through to default extraction
+- `driver_fallback_session_id` → skipped
 
 ### `driver_supports_sessions()`
 
@@ -203,12 +212,17 @@ The orchestrator (`ralph_loop.sh`) calls driver functions in this order:
 
 1. **Load** — `source drivers/${PLATFORM_DRIVER}.sh`
 2. **Initialize** — call `driver_valid_tools`, `driver_cli_binary`, `driver_display_name` to populate globals
-3. **Preflight** — call `driver_check_available`, `driver_supports_tool_allowlist` for validation
+3. **Preflight** — call `driver_supports_tool_allowlist` to decide whether to validate `ALLOWED_TOOLS`
 4. **Session setup** — if `driver_supports_sessions` returns 0, initialize session state
 5. **Build command** — call `driver_build_command(prompt_file, loop_context, session_id)` → populates `CLAUDE_CMD_ARGS`
 6. **Live mode** _(optional)_ — if `--live` flag and `driver_supports_live_output` returns 0, call `driver_prepare_live_command` and `driver_stream_filter`
 7. **Execute** — run `"${CLAUDE_CMD_ARGS[@]}"` (or `"${LIVE_CMD_ARGS[@]}"` in live mode)
-8. **Session save** — try `driver_extract_session_id_from_output`, fall back to `driver_fallback_session_id`
+8. **Session save** — try `driver_extract_session_id_from_output`, fall back to default extraction, then `driver_fallback_session_id`
+
+> **Note:** `driver_check_available` and `driver_min_version` are part of the
+> interface contract and tested in the driver test suite, but are not currently
+> called by `ralph_loop.sh`. External tooling (e.g. `bmalph doctor`) may use
+> them for preflight validation.
 
 ---
 
