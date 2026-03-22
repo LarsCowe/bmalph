@@ -530,6 +530,41 @@ EOF
     assert_output "true"
 }
 
+@test "analyze_response does not false-positive on substring matches in text" {
+    local test_file="$RALPH_DIR/substring_test.txt"
+    printf 'The migration was abandoned but the incomplete feature is unfinished.\n' > "$test_file"
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$test_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "false"
+}
+
+@test "JSONL summary with substring matches does not trigger completion" {
+    local result="$RALPH_DIR/result.json"
+    parse_json_response "$FIXTURES_DIR/codex_jsonl_substring_false_positive.jsonl" "$result"
+
+    run jq -r '.exit_signal' "$result"
+    assert_output "false"
+
+    run jq -r '.has_completion_signal' "$result"
+    assert_output "false"
+}
+
+@test "analyze_response still detects whole-word multi-word completion phrases" {
+    local test_file="$RALPH_DIR/multiword_test.txt"
+    printf 'All tasks complete and the project is ready for review.\n' > "$test_file"
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$test_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "true"
+}
+
 @test "analyze_response detects test-only loop in text" {
     local analysis="$RALPH_DIR/.response_analysis"
 

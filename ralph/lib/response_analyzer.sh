@@ -762,14 +762,14 @@ parse_json_response() {
     local summary_has_no_work_pattern="false"
     if [[ "$response_shape" == "codex_jsonl" || "$response_shape" == "opencode_jsonl" || "$response_shape" == "cursor_stream_jsonl" ]] && [[ "$explicit_exit_signal_found" != "true" && -n "$summary" ]]; then
         for keyword in "${COMPLETION_KEYWORDS[@]}"; do
-            if echo "$summary" | grep -qi "$keyword"; then
+            if echo "$summary" | grep -qiw "$keyword"; then
                 summary_has_completion_keyword="true"
                 break
             fi
         done
 
         for pattern in "${NO_WORK_PATTERNS[@]}"; do
-            if echo "$summary" | grep -qi "$pattern"; then
+            if echo "$summary" | grep -qiw "$pattern"; then
                 summary_has_no_work_pattern="true"
                 break
             fi
@@ -1081,7 +1081,7 @@ analyze_response() {
 
     # 2. Detect completion keywords in natural language output
     for keyword in "${COMPLETION_KEYWORDS[@]}"; do
-        if grep -qi "$keyword" "$output_file"; then
+        if grep -qiw "$keyword" "$output_file"; then
             has_completion_signal=true
             ((confidence_score+=10))
             break
@@ -1129,7 +1129,7 @@ analyze_response() {
 
     # 5. Detect "nothing to do" patterns
     for pattern in "${NO_WORK_PATTERNS[@]}"; do
-        if grep -qi "$pattern" "$output_file"; then
+        if grep -qiw "$pattern" "$output_file"; then
             has_completion_signal=true
             ((confidence_score+=15))
             work_summary="No work remaining"

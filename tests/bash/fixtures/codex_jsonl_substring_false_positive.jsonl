@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"codex-thread-789"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"type":"agent_message","content":[{"type":"output_text","text":"The migration was abandoned and the incomplete feature remains unfinished. Working on the next task."}]}}
