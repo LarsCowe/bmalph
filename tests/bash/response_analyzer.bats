@@ -739,6 +739,280 @@ EOF
     assert_output "false"
 }
 
+# === Status block trusts structured fields (skips heuristics) ===
+
+@test "analyze_response status block skips completion keyword heuristic" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/skip_keywords.txt"
+    cat > "$status_file" << 'EOF'
+All tasks complete and ready for review.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "false"
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response status block skips test-only heuristic" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/skip_test_only.txt"
+    cat > "$status_file" << 'EOF'
+Running tests for the authentication module.
+npm test
+jest --coverage
+pytest -v
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+TASKS_COMPLETED_THIS_LOOP: 1
+TESTS_STATUS: PASSING
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.is_test_only' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response status block skips stuck heuristic" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/skip_stuck.txt"
+    cat > "$status_file" << 'EOF'
+Error: Cannot find module 'express'
+ERROR: Build failed with exit code 1
+Error: ENOENT: no such file or directory
+Exception: TypeError at line 42
+Fatal error: Maximum call stack size exceeded
+ERROR: Compilation failed
+Error: Module not found
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.is_stuck' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response status block skips no-work pattern heuristic" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/skip_no_work.txt"
+    cat > "$status_file" << 'EOF'
+There is nothing to do for the old module, but I implemented the new feature.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+TASKS_COMPLETED_THIS_LOOP: 1
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_output "false"
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response status block EXIT_SIGNAL false sets confidence >= 80" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/confidence_80.txt"
+    cat > "$status_file" << 'EOF'
+Working on story implementation.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    # Base confidence is 80 from structured signal; git state may add +20
+    local score
+    score=$(jq -r '.analysis.confidence_score' "$analysis")
+    [[ "$score" -ge 80 ]]
+}
+
+@test "analyze_response status block defaults is_test_only false" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/default_test_only.txt"
+    cat > "$status_file" << 'EOF'
+Ran the test suite to verify stability.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+TASKS_COMPLETED_THIS_LOOP: 0
+TESTS_STATUS: PASSING
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    # is_test_only defaults to false when status block is present
+    # (not derived from tasks=0 + tests_status)
+    run jq -r '.analysis.is_test_only' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response status block still extracts work summary" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/summary_with_block.txt"
+    cat > "$status_file" << 'EOF'
+Summary: Implemented authentication module with OAuth2 support.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+TASKS_COMPLETED_THIS_LOOP: 1
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    local summary
+    summary=$(jq -r '.analysis.work_summary' "$analysis")
+    [[ "$summary" == *"authentication"* ]]
+}
+
+@test "analyze_response status block without EXIT_SIGNAL skips heuristics" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/no_exit_signal.txt"
+    cat > "$status_file" << 'EOF'
+The feature is complete and all tests pass.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    # "complete" keyword in text should NOT trigger completion heuristic
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "false"
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response empty status block skips heuristics" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/empty_block.txt"
+    cat > "$status_file" << 'EOF'
+All tasks complete and ready for review.
+Error: Cannot find module
+ERROR: Build failed
+Error: ENOENT
+Exception: TypeError
+Fatal error: stack overflow
+ERROR: Compilation failed
+
+---RALPH_STATUS---
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    # Empty but structurally valid block: defaults apply, heuristics skipped
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_output "false"
+
+    run jq -r '.analysis.is_stuck' "$analysis"
+    assert_output "false"
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "false"
+}
+
+@test "analyze_response status block writes last_output_length" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/output_length_block.txt"
+    cat > "$status_file" << 'EOF'
+Working on implementation.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    # .last_output_length must be written even when status block is present
+    [[ -f "$RALPH_DIR/.last_output_length" ]]
+    local length
+    length=$(cat "$RALPH_DIR/.last_output_length")
+    [[ "$length" -gt 0 ]]
+}
+
+@test "analyze_response status block EXIT_SIGNAL true regression" {
+    _skip_if_xargs_broken
+    local status_file="$RALPH_DIR/exit_true_regression.txt"
+    cat > "$status_file" << 'EOF'
+All work is done.
+
+---RALPH_STATUS---
+STATUS: COMPLETE
+EXIT_SIGNAL: true
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    run jq -r '.analysis.exit_signal' "$analysis"
+    assert_output "true"
+
+    run jq -r '.analysis.has_completion_signal' "$analysis"
+    assert_output "true"
+
+    local score
+    score=$(jq -r '.analysis.confidence_score' "$analysis")
+    [[ "$score" -ge 100 ]]
+}
+
+# === End status block trusts structured fields ===
+
 @test "analyze_response persists TASKS_COMPLETED_THIS_LOOP from JSON output" {
     _skip_if_jq_missing
     local output_file="$RALPH_DIR/tasks_completed.json"
