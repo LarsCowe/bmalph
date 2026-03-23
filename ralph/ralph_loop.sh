@@ -372,7 +372,7 @@ get_tmux_base_index() {
 # Setup tmux session with monitor
 setup_tmux_session() {
     local session_name="ralph-$(date +%s)"
-    local ralph_home="${RALPH_HOME:-$HOME/.ralph}"
+    local ralph_home="${RALPH_HOME:-$SCRIPT_DIR}"
     local project_dir="$(pwd)"
 
     initialize_runtime_context

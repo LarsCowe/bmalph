@@ -67,7 +67,7 @@ driver_build_command() {
 
     # Session resume — gated on CLAUDE_USE_CONTINUE to respect --no-continue flag
     if [[ "$CLAUDE_USE_CONTINUE" == "true" && -n "$session_id" ]]; then
-        CLAUDE_CMD_ARGS+=("--resume" "$session_id")
+        CLAUDE_CMD_ARGS+=("resume" "$session_id")
     fi
 
     # Build prompt with context
