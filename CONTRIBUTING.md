@@ -91,9 +91,13 @@ npm run test:coverage
 
 Bundled shell assets are covered by Bats tests under `tests/bash/`.
 
-**Prerequisites:** [bats-core](https://github.com/bats-core/bats-core) must be installed
-(`brew install bats-core` on macOS, `sudo apt-get install bats` on Ubuntu). Test helpers
-(`bats-support`, `bats-assert`) are installed automatically by the script below.
+**Prerequisites:** 
+
+- [bats-core](https://github.com/bats-core/bats-core) must be installed
+(`brew install bats-core` on macOS, `sudo apt-get install bats` on Ubuntu).
+
+Test helpers (`bats-support`, `bats-assert`) are installed automatically by
+the script below.
 
 ```bash
 # Install bats-core test helpers (one-time setup)
