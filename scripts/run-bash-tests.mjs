@@ -56,6 +56,24 @@ function isToolAvailableInBash(command) {
   });
 }
 
+function getBatsCommand() {
+  return new Promise(async (resolve) => {
+    if (await isToolAvailableInBash("bats")) {
+      resolve("bats");
+      return;
+    }
+    const child = spawnInBash(`npx bats --version >/dev/null 2>&1`, { stdio: "ignore" });
+    child.on("error", () => resolve(null));
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve("npx bats");
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
 async function listBatsFiles(projectDir) {
   const batsFiles = [];
 
@@ -124,9 +142,9 @@ async function restoreOriginalLineEndings() {
   originalContents.clear();
 }
 
-function runBats(files) {
+function runBats(batsCmd, files) {
   return new Promise((resolve, reject) => {
-    const child = spawnInBash(`bats ${files.map((file) => quoteForBash(file)).join(" ")}`, {
+    const child = spawnInBash(`${batsCmd} ${files.map((file) => quoteForBash(file)).join(" ")}`, {
       stdio: "inherit",
     });
 
@@ -153,8 +171,11 @@ async function main() {
       }
     }
 
-    if (!(await isToolAvailableInBash("bats"))) {
-      process.stdout.write("[skip] bats not installed\n");
+    const batsCmd = await getBatsCommand();
+    if (!batsCmd) {
+      process.stdout.write(
+        "[skip] bats not installed (install bats-core or ensure npx is available)\n"
+      );
       return 0;
     }
 
@@ -169,7 +190,7 @@ async function main() {
       return 0;
     }
 
-    return runBats(batsFiles);
+    return runBats(batsCmd, batsFiles);
   } finally {
     await restoreOriginalLineEndings();
   }

@@ -1125,6 +1125,38 @@ TMUX
     assert_output --partial "Cursor CLI Output"
 }
 
+@test "setup_tmux_session uses SCRIPT_DIR not HOME/.ralph for ralph_home fallback" {
+    SCRIPT_DIR="$PROJECT_ROOT/ralph"
+    PLATFORM_DRIVER="claude-code"
+    DRIVER_DISPLAY_NAME="Claude Code"
+    CLAUDE_CODE_CMD="claude"
+
+    mkdir -p "$RALPH_DIR/bin"
+    cat > "$RALPH_DIR/bin/tmux" <<'TMUX'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$RALPH_DIR/tmux.log"
+if [[ "$1" == "show-options" ]]; then
+    echo "0"
+fi
+exit 0
+TMUX
+    chmod +x "$RALPH_DIR/bin/tmux"
+    export PATH="$RALPH_DIR/bin:$PATH"
+
+    exit() {
+        return "${1:-0}"
+    }
+
+    setup_tmux_session
+
+    assert_file_exist "$RALPH_DIR/tmux.log"
+    run grep "ralph_loop.sh" "$RALPH_DIR/tmux.log"
+    assert_success
+    run grep -- "ralph_loop.sh" "$RALPH_DIR/tmux.log"
+    refute_output --partial "$HOME/.ralph"
+    assert_output --partial "$SCRIPT_DIR/ralph_loop.sh"
+}
+
 @test "load_platform_driver: fails for non-existent driver" {
     PLATFORM_DRIVER="nonexistent-platform"
     SCRIPT_DIR="$PROJECT_ROOT/ralph"
