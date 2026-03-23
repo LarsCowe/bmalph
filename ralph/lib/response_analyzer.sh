@@ -1035,13 +1035,15 @@ analyze_response() {
 
     # Text parsing fallback (original logic)
 
-    # Track whether an explicit EXIT_SIGNAL was found in RALPH_STATUS block
-    # If explicit signal found, heuristics should NOT override Claude's intent
-    local explicit_exit_signal_found=false
-
-    # 1. Check for explicit structured output (if Claude follows schema)
+    # 1. Check for explicit structured output (RALPH_STATUS block)
+    # When a status block is present, it is authoritative — skip all heuristics.
+    # A structurally valid but field-empty block results in exit_signal=false,
+    # confidence=0 by design (AI produced a block but provided no signal).
+    local ralph_status_block_found=false
     local ralph_status_json=""
     if ralph_status_json=$(extract_ralph_status_block_json "$output_content" 2>/dev/null); then
+        ralph_status_block_found=true
+
         local status
         status=$(printf '%s' "$ralph_status_json" | jq -r -j '.status' 2>/dev/null)
         local exit_sig_found
@@ -1062,14 +1064,14 @@ analyze_response() {
 
         # If EXIT_SIGNAL is explicitly provided, respect it
         if [[ "$exit_sig_found" == "true" ]]; then
-            explicit_exit_signal_found=true
             if [[ "$exit_sig" == "true" ]]; then
                 has_completion_signal=true
                 exit_signal=true
                 confidence_score=100
             else
-                # Explicit EXIT_SIGNAL: false - Claude says to continue
+                # Explicit EXIT_SIGNAL: false — Claude says to continue
                 exit_signal=false
+                confidence_score=80
             fi
         elif [[ "$status" == "COMPLETE" ]]; then
             # No explicit EXIT_SIGNAL but STATUS is COMPLETE
@@ -1077,68 +1079,93 @@ analyze_response() {
             exit_signal=true
             confidence_score=100
         fi
+        # is_test_only and is_stuck stay false (defaults) — status block is authoritative
     fi
 
-    # 2. Detect completion keywords in natural language output
-    for keyword in "${COMPLETION_KEYWORDS[@]}"; do
-        if grep -qiw "$keyword" "$output_file"; then
-            has_completion_signal=true
-            ((confidence_score+=10))
-            break
+    if [[ "$ralph_status_block_found" != "true" ]]; then
+        # No status block found — fall back to heuristic analysis
+
+        # 2. Detect completion keywords in natural language output
+        for keyword in "${COMPLETION_KEYWORDS[@]}"; do
+            if grep -qiw "$keyword" "$output_file"; then
+                has_completion_signal=true
+                ((confidence_score+=10))
+                break
+            fi
+        done
+
+        # 3. Detect test-only loops
+        local test_command_count=0
+        local implementation_count=0
+        local error_count=0
+
+        test_command_count=$(grep -c -i "running tests\|npm test\|bats\|pytest\|jest" "$output_file" 2>/dev/null | head -1 || echo "0")
+        implementation_count=$(grep -c -i "implementing\|creating\|writing\|adding\|function\|class" "$output_file" 2>/dev/null | head -1 || echo "0")
+
+        # Strip whitespace and ensure it's a number
+        test_command_count=$(echo "$test_command_count" | tr -d '[:space:]')
+        implementation_count=$(echo "$implementation_count" | tr -d '[:space:]')
+
+        # Convert to integers with default fallback
+        test_command_count=${test_command_count:-0}
+        implementation_count=${implementation_count:-0}
+        test_command_count=$((test_command_count + 0))
+        implementation_count=$((implementation_count + 0))
+
+        if [[ $test_command_count -gt 0 ]] && [[ $implementation_count -eq 0 ]]; then
+            is_test_only=true
+            work_summary="Test execution only, no implementation"
         fi
-    done
 
-    # 3. Detect test-only loops
-    local test_command_count=0
-    local implementation_count=0
-    local error_count=0
+        # 4. Detect stuck/error loops
+        # Use two-stage filtering to avoid counting JSON field names as errors
+        # Stage 1: Filter out JSON field patterns like "is_error": false
+        # Stage 2: Count actual error messages in specific contexts
+        # Pattern aligned with ralph_loop.sh to ensure consistent behavior
+        error_count=$(grep -v '"[^"]*error[^"]*":' "$output_file" 2>/dev/null | \
+                      grep -cE '(^Error:|^ERROR:|^error:|\]: error|Link: error|Error occurred|failed with error|[Ee]xception|Fatal|FATAL)' \
+                      2>/dev/null || echo "0")
+        error_count=$(echo "$error_count" | tr -d '[:space:]')
+        error_count=${error_count:-0}
+        error_count=$((error_count + 0))
 
-    test_command_count=$(grep -c -i "running tests\|npm test\|bats\|pytest\|jest" "$output_file" 2>/dev/null | head -1 || echo "0")
-    implementation_count=$(grep -c -i "implementing\|creating\|writing\|adding\|function\|class" "$output_file" 2>/dev/null | head -1 || echo "0")
-
-    # Strip whitespace and ensure it's a number
-    test_command_count=$(echo "$test_command_count" | tr -d '[:space:]')
-    implementation_count=$(echo "$implementation_count" | tr -d '[:space:]')
-
-    # Convert to integers with default fallback
-    test_command_count=${test_command_count:-0}
-    implementation_count=${implementation_count:-0}
-    test_command_count=$((test_command_count + 0))
-    implementation_count=$((implementation_count + 0))
-
-    if [[ $test_command_count -gt 0 ]] && [[ $implementation_count -eq 0 ]]; then
-        is_test_only=true
-        work_summary="Test execution only, no implementation"
-    fi
-
-    # 4. Detect stuck/error loops
-    # Use two-stage filtering to avoid counting JSON field names as errors
-    # Stage 1: Filter out JSON field patterns like "is_error": false
-    # Stage 2: Count actual error messages in specific contexts
-    # Pattern aligned with ralph_loop.sh to ensure consistent behavior
-    error_count=$(grep -v '"[^"]*error[^"]*":' "$output_file" 2>/dev/null | \
-                  grep -cE '(^Error:|^ERROR:|^error:|\]: error|Link: error|Error occurred|failed with error|[Ee]xception|Fatal|FATAL)' \
-                  2>/dev/null || echo "0")
-    error_count=$(echo "$error_count" | tr -d '[:space:]')
-    error_count=${error_count:-0}
-    error_count=$((error_count + 0))
-
-    if [[ $error_count -gt 5 ]]; then
-        is_stuck=true
-    fi
-
-    # 5. Detect "nothing to do" patterns
-    for pattern in "${NO_WORK_PATTERNS[@]}"; do
-        if grep -qiw "$pattern" "$output_file"; then
-            has_completion_signal=true
-            ((confidence_score+=15))
-            work_summary="No work remaining"
-            break
+        if [[ $error_count -gt 5 ]]; then
+            is_stuck=true
         fi
-    done
 
-    # 6. Check for file changes (git integration)
-    # Fix #141: Detect both uncommitted changes AND committed changes
+        # 5. Detect "nothing to do" patterns
+        for pattern in "${NO_WORK_PATTERNS[@]}"; do
+            if grep -qiw "$pattern" "$output_file"; then
+                has_completion_signal=true
+                ((confidence_score+=15))
+                work_summary="No work remaining"
+                break
+            fi
+        done
+
+        # 7. Analyze output length trends (detect declining engagement)
+        if [[ -f "$RALPH_DIR/.last_output_length" ]]; then
+            local last_length
+            last_length=$(cat "$RALPH_DIR/.last_output_length")
+            if [[ "$last_length" -gt 0 ]]; then
+                local length_ratio=$((output_length * 100 / last_length))
+                if [[ $length_ratio -lt 50 ]]; then
+                    # Output is less than 50% of previous - possible completion
+                    ((confidence_score+=10))
+                fi
+            fi
+        fi
+
+        # 9. Determine exit signal based on confidence (heuristic)
+        if [[ $confidence_score -ge 40 || "$has_completion_signal" == "true" ]]; then
+            exit_signal=true
+        fi
+    fi
+
+    # Always persist output length for next iteration (both paths)
+    echo "$output_length" > "$RALPH_DIR/.last_output_length"
+
+    # 6. Check for file changes (git integration) — always runs
     if command -v git &>/dev/null && git rev-parse --git-dir >/dev/null 2>&1; then
         local loop_start_sha=""
         local current_sha=""
@@ -1174,39 +1201,12 @@ analyze_response() {
         fi
     fi
 
-    # 7. Analyze output length trends (detect declining engagement)
-    if [[ -f "$RALPH_DIR/.last_output_length" ]]; then
-        local last_length=$(cat "$RALPH_DIR/.last_output_length")
-        local length_ratio=$((output_length * 100 / last_length))
-
-        if [[ $length_ratio -lt 50 ]]; then
-            # Output is less than 50% of previous - possible completion
-            ((confidence_score+=10))
-        fi
-    fi
-    echo "$output_length" > "$RALPH_DIR/.last_output_length"
-
-    # 8. Extract work summary from output
+    # 8. Extract work summary from output — always runs
     if [[ -z "$work_summary" ]]; then
         # Try to find summary in output
         work_summary=$(grep -i "summary\|completed\|implemented" "$output_file" | head -1 | cut -c 1-100)
         if [[ -z "$work_summary" ]]; then
             work_summary="Output analyzed, no explicit summary found"
-        fi
-    fi
-
-    # Explicit EXIT_SIGNAL=false means "continue working", so completion
-    # heuristics must not register a done signal.
-    if [[ "$explicit_exit_signal_found" == "true" && "$exit_signal" == "false" ]]; then
-        has_completion_signal=false
-    fi
-
-    # 9. Determine exit signal based on confidence (heuristic)
-    # IMPORTANT: Only apply heuristics if no explicit EXIT_SIGNAL was found in RALPH_STATUS
-    # Claude's explicit intent takes precedence over natural language pattern matching
-    if [[ "$explicit_exit_signal_found" != "true" ]]; then
-        if [[ $confidence_score -ge 40 || "$has_completion_signal" == "true" ]]; then
-            exit_signal=true
         fi
     fi
 
