@@ -56,21 +56,14 @@ function isToolAvailableInBash(command) {
   });
 }
 
-function getBatsCommand() {
-  return new Promise(async (resolve) => {
-    if (await isToolAvailableInBash("bats")) {
-      resolve("bats");
-      return;
-    }
-    const child = spawnInBash(`npx bats --version >/dev/null 2>&1`, { stdio: "ignore" });
-    child.on("error", () => resolve(null));
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve("npx bats");
-      } else {
-        resolve(null);
-      }
+async function getBatsCommand() {
+  if (await isToolAvailableInBash("bats")) return "bats";
+  return new Promise((resolve) => {
+    const child = spawnInBash("npx --no-install bats --version >/dev/null 2>&1", {
+      stdio: "ignore",
     });
+    child.on("error", () => resolve(null));
+    child.on("close", (code) => resolve(code === 0 ? "npx bats" : null));
   });
 }
 

@@ -46,7 +46,7 @@ driver_permission_denial_help() {
 }
 
 # Build Codex CLI command
-# Codex uses: codex exec [--resume <id>] --json "prompt"
+# Codex uses: codex exec [resume <id>] --json "prompt"
 driver_build_command() {
     local prompt_file=$1
     local loop_context=$2
