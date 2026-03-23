@@ -1,15 +1,30 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parse } from "yaml";
 import { readJsonFile } from "./json.js";
 import { validateConfig } from "./validate.js";
-import { CONFIG_FILE } from "./constants.js";
+import { CONFIG_FILE, BMAD_CONFIG_FILE } from "./constants.js";
 import { atomicWriteFile } from "./file-system.js";
-import { warn } from "./logger.js";
-import { formatError } from "./errors.js";
+import { warn, debug } from "./logger.js";
+import { formatError, isEnoent } from "./errors.js";
 import type { PlatformId } from "../platform/types.js";
 
 export interface UpstreamVersions {
   bmadCommit: string;
+}
+
+export interface BmadConfig {
+  platform?: string;
+  project_name?: string;
+  output_folder?: string;
+  user_name?: string;
+  communication_language?: string;
+  document_output_language?: string;
+  user_skill_level?: string;
+  planning_artifacts?: string;
+  implementation_artifacts?: string;
+  project_knowledge?: string;
+  modules?: string[];
 }
 
 export interface BmalphConfig {
@@ -34,4 +49,21 @@ export async function readConfig(projectDir: string): Promise<BmalphConfig | nul
 export async function writeConfig(projectDir: string, config: BmalphConfig): Promise<void> {
   await mkdir(join(projectDir, "bmalph"), { recursive: true });
   await atomicWriteFile(join(projectDir, CONFIG_FILE), JSON.stringify(config, null, 2) + "\n");
+}
+
+export async function readBmadConfig(projectDir: string): Promise<BmadConfig | null> {
+  const configPath = join(projectDir, BMAD_CONFIG_FILE);
+  try {
+    const content = await readFile(configPath, "utf-8");
+    const config = parse(content) as BmadConfig;
+    debug(`Read BMAD config from: ${configPath}`);
+    return config;
+  } catch (err) {
+    if (isEnoent(err)) {
+      debug(`BMAD config not found at: ${configPath}`);
+      return null;
+    }
+    warn(`Error reading BMAD config: ${formatError(err)}`);
+    return null;
+  }
 }

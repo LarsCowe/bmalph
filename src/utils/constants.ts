@@ -71,6 +71,9 @@ export const STATE_DIR = "bmalph/state";
 /** bmalph config file path */
 export const CONFIG_FILE = "bmalph/config.json";
 
+/** BMAD config file path */
+export const BMAD_CONFIG_FILE = "_bmad/config.yaml";
+
 /** Ralph status file path */
 export const RALPH_STATUS_FILE = ".ralph/status.json";
 
