@@ -89,10 +89,10 @@ npm run test:coverage
 
 ### Bash Tests
 
-**Prerequisites:** 
+**Prerequisites:**
 
 - [bats-core](https://github.com/bats-core/bats-core) must be installed
-(`brew install bats-core` on macOS, `sudo apt-get install bats` on Ubuntu).
+  (`brew install bats-core` on macOS, `sudo apt-get install bats` on Ubuntu).
 
 Bundled shell assets are covered by Bats tests under `tests/bash/`.
 
