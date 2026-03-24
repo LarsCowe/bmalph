@@ -531,6 +531,20 @@ log_status() {
     echo "[$timestamp] [$level] $message" >> "$LOG_DIR/ralph.log"
 }
 
+# Human-readable label for a process exit code
+describe_exit_code() {
+    local code=$1
+    case "$code" in
+        0)   echo "completed" ;;
+        1)   echo "error" ;;
+        124) echo "timed out" ;;
+        130) echo "interrupted (SIGINT)" ;;
+        137) echo "killed (OOM or SIGKILL)" ;;
+        143) echo "terminated (SIGTERM)" ;;
+        *)   echo "error (exit $code)" ;;
+    esac
+}
+
 # Update status JSON for external monitoring
 update_status() {
     local loop_count=$1
@@ -538,6 +552,7 @@ update_status() {
     local last_action=$3
     local status=$4
     local exit_reason=${5:-""}
+    local driver_exit_code=${6:-""}
 
     jq -n \
         --arg timestamp "$(get_iso_timestamp)" \
@@ -548,6 +563,7 @@ update_status() {
         --arg status "$status" \
         --arg exit_reason "$exit_reason" \
         --arg next_reset "$(get_next_hour_time)" \
+        --arg driver_exit_code "$driver_exit_code" \
         '{
             timestamp: $timestamp,
             loop_count: $loop_count,
@@ -556,7 +572,8 @@ update_status() {
             last_action: $last_action,
             status: $status,
             exit_reason: $exit_reason,
-            next_reset: $next_reset
+            next_reset: $next_reset,
+            driver_exit_code: (if $driver_exit_code != "" then ($driver_exit_code | tonumber) else null end)
         }' > "$STATUS_FILE"
 
     # Merge quality gate status if results exist
@@ -2028,6 +2045,7 @@ get_live_stream_filter() {
 execute_claude_code() {
     local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
     local output_file="$LOG_DIR/claude_output_${timestamp}.log"
+    local stderr_file="$LOG_DIR/claude_stderr_${timestamp}.log"
     local loop_count=$1
     local calls_made=$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")
     calls_made=$((calls_made + 1))
@@ -2152,7 +2170,7 @@ execute_claude_code() {
         # read from stdin even in -p (print) mode, causing the process to hang
         set -o pipefail
         portable_timeout ${timeout_seconds}s stdbuf -oL "${LIVE_CMD_ARGS[@]}" \
-            < /dev/null 2>&1 | stdbuf -oL tee "$output_file" | stdbuf -oL jq --unbuffered -j "$jq_filter" 2>/dev/null | tee "$LIVE_LOG_FILE"
+            < /dev/null 2>"$stderr_file" | stdbuf -oL tee "$output_file" | stdbuf -oL jq --unbuffered -j "$jq_filter" 2>/dev/null | tee "$LIVE_LOG_FILE"
 
         # Capture exit codes from pipeline
         local -a pipe_status=("${PIPESTATUS[@]}")
@@ -2204,7 +2222,7 @@ execute_claude_code() {
             # stdin must be redirected from /dev/null because newer Claude CLI versions
             # read from stdin even in -p (print) mode, causing SIGTTIN suspension
             # when the process is backgrounded
-            if portable_timeout ${timeout_seconds}s "${CLAUDE_CMD_ARGS[@]}" < /dev/null > "$output_file" 2>&1 &
+            if portable_timeout ${timeout_seconds}s "${CLAUDE_CMD_ARGS[@]}" < /dev/null > "$output_file" 2>"$stderr_file" &
             then
                 :  # Continue to wait loop
             else
@@ -2219,7 +2237,7 @@ execute_claude_code() {
         # Note: Legacy mode doesn't use --allowedTools, so tool permissions
         # will be handled by Claude Code's default permission system
         if [[ "$use_modern_cli" == "false" ]]; then
-            if portable_timeout ${timeout_seconds}s $CLAUDE_CODE_CMD < "$PROMPT_FILE" > "$output_file" 2>&1 &
+            if portable_timeout ${timeout_seconds}s $CLAUDE_CODE_CMD < "$PROMPT_FILE" > "$output_file" 2>"$stderr_file" &
             then
                 :  # Continue to wait loop
             else
@@ -2277,6 +2295,9 @@ EOF
         wait $claude_pid
         exit_code=$?
     fi
+
+    # Expose the raw driver exit code to the main loop for status reporting
+    LAST_DRIVER_EXIT_CODE=$exit_code
 
     if [ $exit_code -eq 0 ]; then
         # Only increment counter on successful execution
@@ -2416,24 +2437,50 @@ EOF
             log_status "ERROR" "🚫 Claude API 5-hour usage limit reached"
             return 2  # Special return code for API limit
         else
-            log_status "ERROR" "❌ $DRIVER_DISPLAY_NAME execution failed, check: $output_file"
+            local exit_desc
+            exit_desc=$(describe_exit_code "$exit_code")
+            log_status "ERROR" "❌ $DRIVER_DISPLAY_NAME exited: $exit_desc (code $exit_code)"
+            if [[ -f "$stderr_file" && -s "$stderr_file" ]]; then
+                log_status "ERROR" "  stderr (last 3 lines): $(tail -3 "$stderr_file")"
+                log_status "ERROR" "  full stderr log: $stderr_file"
+            fi
             return 1
         fi
     fi
 }
 
-# Cleanup function
-cleanup() {
-    log_status "INFO" "Ralph loop interrupted. Cleaning up..."
-    reset_session "manual_interrupt"
-    update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "interrupted" "stopped"
-    exit 0
+# Guard against double cleanup (EXIT fires after signal handler exits)
+_CLEANUP_DONE=false
+
+# EXIT trap — catches set -e failures and other unexpected exits
+_on_exit() {
+    local code=$?
+    [[ "$_CLEANUP_DONE" == "true" ]] && return
+    _CLEANUP_DONE=true
+    if [[ "$code" -ne 0 ]]; then
+        local desc
+        desc=$(describe_exit_code "$code")
+        log_status "ERROR" "Ralph loop exiting unexpectedly: $desc (code $code)"
+        update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "unexpected_exit" "stopped" "$desc" "$code"
+    fi
 }
 
-# Set up signal handlers
-trap cleanup SIGINT SIGTERM
+# Signal handler — preserves signal identity in exit code
+_on_signal() {
+    local sig=$1
+    log_status "INFO" "Ralph loop interrupted by $sig. Cleaning up..."
+    reset_session "manual_interrupt"
+    update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "interrupted" "stopped" "$sig"
+    _CLEANUP_DONE=true
+    [[ "$sig" == "SIGINT" ]] && exit 130
+    exit 143
+}
 
-# Global variable for loop count (needed by cleanup function)
+trap _on_exit EXIT
+trap '_on_signal SIGINT' SIGINT
+trap '_on_signal SIGTERM' SIGTERM
+
+# Global variable for loop count (needed by trap handlers)
 loop_count=0
 
 # Main loop
@@ -2679,7 +2726,12 @@ main() {
                 printf "\n"
             fi
         else
-            update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "failed" "error"
+            # Infrastructure failures (timeout, crash, OOM) intentionally bypass
+            # record_loop_result to avoid counting as agent stagnation. The circuit
+            # breaker only tracks progress during successful executions. (Issue #145)
+            local exit_desc
+            exit_desc=$(describe_exit_code "${LAST_DRIVER_EXIT_CODE:-1}")
+            update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "failed" "error" "$exit_desc" "${LAST_DRIVER_EXIT_CODE:-}"
             log_status "WARN" "Execution failed, waiting 30 seconds before retry..."
             sleep 30
         fi

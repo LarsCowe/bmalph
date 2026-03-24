@@ -35,25 +35,55 @@ describe("renderStatusBar", () => {
     expect(result).toContain("q");
   });
 
-  it("shows stopped state with exit code 0", async () => {
+  it("shows stopped state with completed label for exit 0", async () => {
     const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
     const ralph = { state: "stopped", exitCode: 0, child: { pid: 12345 } } as RalphProcess;
 
     const result = renderStatusBar(ralph);
 
     expect(result).toContain("stopped");
-    expect(result).toContain("exit 0");
+    expect(result).toContain("completed");
     expect(result).toContain("q");
   });
 
-  it("shows stopped state with non-zero exit code", async () => {
+  it("shows stopped state with error label for exit 1", async () => {
     const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
     const ralph = { state: "stopped", exitCode: 1, child: { pid: 12345 } } as RalphProcess;
 
     const result = renderStatusBar(ralph);
 
     expect(result).toContain("stopped");
-    expect(result).toContain("exit 1");
+    expect(result).toContain("error");
+  });
+
+  it("shows timed out label for exit 124", async () => {
+    const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
+    const ralph = { state: "stopped", exitCode: 124, child: { pid: 12345 } } as RalphProcess;
+
+    const result = renderStatusBar(ralph);
+
+    expect(result).toContain("stopped");
+    expect(result).toContain("timed out");
+  });
+
+  it("shows killed label for exit 137", async () => {
+    const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
+    const ralph = { state: "stopped", exitCode: 137, child: { pid: 12345 } } as RalphProcess;
+
+    const result = renderStatusBar(ralph);
+
+    expect(result).toContain("stopped");
+    expect(result).toContain("killed (OOM or SIGKILL)");
+  });
+
+  it("shows unknown label for null exit code", async () => {
+    const { renderStatusBar } = await import("../../src/run/run-dashboard.js");
+    const ralph = { state: "stopped", exitCode: null, child: { pid: 12345 } } as RalphProcess;
+
+    const result = renderStatusBar(ralph);
+
+    expect(result).toContain("stopped");
+    expect(result).toContain("unknown");
   });
 
   it("shows detached state", async () => {

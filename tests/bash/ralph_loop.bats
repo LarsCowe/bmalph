@@ -2551,3 +2551,78 @@ _setup_diff_test_repo() {
     assert_success
     [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
 }
+
+# ===========================================================================
+# describe_exit_code
+# ===========================================================================
+
+@test "describe_exit_code returns completed for exit 0" {
+    run describe_exit_code 0
+    assert_success
+    assert_output "completed"
+}
+
+@test "describe_exit_code returns error for exit 1" {
+    run describe_exit_code 1
+    assert_success
+    assert_output "error"
+}
+
+@test "describe_exit_code returns timed out for exit 124" {
+    run describe_exit_code 124
+    assert_success
+    assert_output "timed out"
+}
+
+@test "describe_exit_code returns interrupted for exit 130" {
+    run describe_exit_code 130
+    assert_success
+    assert_output "interrupted (SIGINT)"
+}
+
+@test "describe_exit_code returns killed for exit 137" {
+    run describe_exit_code 137
+    assert_success
+    assert_output "killed (OOM or SIGKILL)"
+}
+
+@test "describe_exit_code returns terminated for exit 143" {
+    run describe_exit_code 143
+    assert_success
+    assert_output "terminated (SIGTERM)"
+}
+
+@test "describe_exit_code returns generic label for unknown exit code" {
+    run describe_exit_code 42
+    assert_success
+    assert_output "error (exit 42)"
+}
+
+# ===========================================================================
+# update_status with driver_exit_code (6th param)
+# ===========================================================================
+
+@test "update_status includes driver_exit_code as number when 6th param provided" {
+    update_status 5 10 "failed" "error" "timed out" "124"
+    local actual
+    actual=$(jq '.driver_exit_code' "$STATUS_FILE")
+    # Re-enable set -e for assertion reliability
+    set -e
+    [[ "$actual" == "124" ]]
+}
+
+@test "update_status sets driver_exit_code to null when 6th param omitted" {
+    update_status 5 10 "completed" "success"
+    local actual
+    actual=$(jq '.driver_exit_code' "$STATUS_FILE")
+    set -e
+    [[ "$actual" == "null" ]]
+}
+
+@test "update_status sets driver_exit_code to null when only 5 params given" {
+    update_status 5 10 "failed" "error" "some_reason"
+    local actual
+    actual=$(jq '.driver_exit_code' "$STATUS_FILE")
+    set -e
+    [[ "$actual" == "null" ]]
+}

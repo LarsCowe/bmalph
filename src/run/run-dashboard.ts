@@ -1,3 +1,4 @@
+import { formatExitReason } from "../utils/format-status.js";
 import { createRefreshCallback } from "../watch/dashboard.js";
 import { createTerminalFrameWriter } from "../watch/frame-writer.js";
 import { FileWatcher } from "../watch/file-watcher.js";
@@ -19,7 +20,7 @@ export function renderStatusBar(ralph: RalphProcess, reviewMode?: ReviewMode): s
     case "running":
       return `Ralph: running (PID ${pid})${badge} | q: stop/detach`;
     case "stopped":
-      return `Ralph: stopped (exit ${ralph.exitCode ?? "?"}) | q: quit`;
+      return `Ralph: stopped — ${formatExitReason(ralph.exitCode)} | q: quit`;
     case "detached":
       return `Ralph: detached (PID ${pid})`;
   }
