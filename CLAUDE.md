@@ -201,7 +201,7 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 ## CI Pipeline
 
 - **Triggers:** push to `main`, PRs targeting `main`
-- **Matrix:** ubuntu + windows, Node 20 + 22
+- **Matrix:** ubuntu (Node 20 + 22) + windows (Node 22 only)
 - **Steps:** type-check, lint, fmt:check, build, unit tests, e2e tests, coverage, `npm pack --dry-run`
 - **Coverage:** Codecov upload on Node 22 + ubuntu only
 - **Gate job:** `ci-success` aggregates the matrix — single required check for branch protection
