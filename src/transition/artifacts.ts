@@ -1,16 +1,20 @@
-import { join, relative } from "node:path";
-import { debug } from "../utils/logger.js";
-import { exists } from "../utils/file-system.js";
+import { join, relative, resolve } from "node:path";
+import { debug, warn } from "../utils/logger.js";
+import { isDirectory } from "../utils/file-system.js";
 import { readBmadConfig } from "../utils/config.js";
 
 export async function findArtifactsDir(projectDir: string): Promise<string | null> {
   const bmadConfig = await readBmadConfig(projectDir);
   if (bmadConfig?.planning_artifacts) {
-    const fullPath = join(projectDir, bmadConfig.planning_artifacts.trim());
-    debug(`Checking config-specified artifacts dir: ${fullPath}`);
-    if (await exists(fullPath)) {
-      debug(`Found artifacts at: ${fullPath}`);
-      return fullPath;
+    const trimmed = bmadConfig.planning_artifacts.trim();
+    const resolved = resolve(projectDir, trimmed);
+    debug(`Checking config-specified artifacts dir: ${resolved}`);
+
+    if (!resolved.startsWith(resolve(projectDir))) {
+      warn(`planning_artifacts path escapes project directory, ignoring: ${trimmed}`);
+    } else if (await isDirectory(resolved)) {
+      debug(`Found artifacts at: ${resolved}`);
+      return resolved;
     }
   }
 
@@ -23,7 +27,7 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
   for (const candidate of candidates) {
     const fullPath = join(projectDir, candidate);
     debug(`Checking artifacts dir: ${fullPath}`);
-    if (await exists(fullPath)) {
+    if (await isDirectory(fullPath)) {
       debug(`Found artifacts at: ${fullPath}`);
       return fullPath;
     }

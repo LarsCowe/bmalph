@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { readConfig, writeConfig, type BmalphConfig } from "../../src/utils/config.js";
+import {
+  readConfig,
+  writeConfig,
+  readBmadConfig,
+  type BmalphConfig,
+} from "../../src/utils/config.js";
 import { mkdir, rm, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -74,5 +79,87 @@ describe("config", () => {
     const files = await readdir(join(testDir, "bmalph"));
     const tmpFiles = files.filter((f) => f.endsWith(".tmp"));
     expect(tmpFiles).toHaveLength(0);
+  });
+});
+
+describe("readBmadConfig", () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(tmpdir(), `bmalph-bmad-config-test-${Date.now()}`);
+    await mkdir(testDir, { recursive: true });
+    await mkdir(join(testDir, "_bmad"), { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
+
+  it("returns null when config file does not exist", async () => {
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+  });
+
+  it("returns config when valid YAML with planning_artifacts", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: my-artifacts\n");
+    const result = await readBmadConfig(testDir);
+    expect(result).toEqual({ planning_artifacts: "my-artifacts" });
+  });
+
+  it("returns config when valid YAML with all fields", async () => {
+    const yaml = `
+planning_artifacts: my-artifacts
+project_name: Test Project
+platform: claude-code
+`;
+    await writeFile(join(testDir, "_bmad/config.yaml"), yaml);
+    const result = await readBmadConfig(testDir);
+    expect(result).toEqual({
+      planning_artifacts: "my-artifacts",
+      project_name: "Test Project",
+      platform: "claude-code",
+    });
+  });
+
+  it("returns null and warns for malformed YAML", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: [invalid");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns for non-string planning_artifacts field", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: 123\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("bmadConfig.planning_artifacts must be a string")
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns for boolean planning_artifacts field", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: true\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("bmadConfig.planning_artifacts must be a string")
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns for object planning_artifacts field", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts:\n  foo: bar\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("bmadConfig.planning_artifacts must be a string")
+    );
+    warnSpy.mockRestore();
   });
 });

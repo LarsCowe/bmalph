@@ -1,4 +1,4 @@
-import type { BmalphConfig, UpstreamVersions } from "./config.js";
+import type { BmalphConfig, BmadConfig, UpstreamVersions } from "./config.js";
 import type { BmalphState } from "./state.js";
 import { PLATFORM_IDS, type PlatformId } from "../platform/types.js";
 import {
@@ -92,6 +92,112 @@ export function validateConfig(data: unknown): BmalphConfig {
     createdAt: data.createdAt,
     ...(platform !== undefined && { platform }),
     upstreamVersions,
+  };
+}
+
+export function validateBmadConfig(data: unknown): BmadConfig {
+  assertObject(data, "bmadConfig");
+
+  let platform: string | undefined;
+  if (data.platform !== undefined) {
+    if (typeof data.platform !== "string") {
+      throw new Error("bmadConfig.platform must be a string");
+    }
+    platform = data.platform;
+  }
+
+  let project_name: string | undefined;
+  if (data.project_name !== undefined) {
+    if (typeof data.project_name !== "string") {
+      throw new Error("bmadConfig.project_name must be a string");
+    }
+    project_name = data.project_name;
+  }
+
+  let output_folder: string | undefined;
+  if (data.output_folder !== undefined) {
+    if (typeof data.output_folder !== "string") {
+      throw new Error("bmadConfig.output_folder must be a string");
+    }
+    output_folder = data.output_folder;
+  }
+
+  let user_name: string | undefined;
+  if (data.user_name !== undefined) {
+    if (typeof data.user_name !== "string") {
+      throw new Error("bmadConfig.user_name must be a string");
+    }
+    user_name = data.user_name;
+  }
+
+  let communication_language: string | undefined;
+  if (data.communication_language !== undefined) {
+    if (typeof data.communication_language !== "string") {
+      throw new Error("bmadConfig.communication_language must be a string");
+    }
+    communication_language = data.communication_language;
+  }
+
+  let document_output_language: string | undefined;
+  if (data.document_output_language !== undefined) {
+    if (typeof data.document_output_language !== "string") {
+      throw new Error("bmadConfig.document_output_language must be a string");
+    }
+    document_output_language = data.document_output_language;
+  }
+
+  let user_skill_level: string | undefined;
+  if (data.user_skill_level !== undefined) {
+    if (typeof data.user_skill_level !== "string") {
+      throw new Error("bmadConfig.user_skill_level must be a string");
+    }
+    user_skill_level = data.user_skill_level;
+  }
+
+  let planning_artifacts: string | undefined;
+  if (data.planning_artifacts !== undefined) {
+    if (typeof data.planning_artifacts !== "string") {
+      throw new Error("bmadConfig.planning_artifacts must be a string");
+    }
+    planning_artifacts = data.planning_artifacts;
+  }
+
+  let implementation_artifacts: string | undefined;
+  if (data.implementation_artifacts !== undefined) {
+    if (typeof data.implementation_artifacts !== "string") {
+      throw new Error("bmadConfig.implementation_artifacts must be a string");
+    }
+    implementation_artifacts = data.implementation_artifacts;
+  }
+
+  let project_knowledge: string | undefined;
+  if (data.project_knowledge !== undefined) {
+    if (typeof data.project_knowledge !== "string") {
+      throw new Error("bmadConfig.project_knowledge must be a string");
+    }
+    project_knowledge = data.project_knowledge;
+  }
+
+  let modules: string[] | undefined;
+  if (data.modules !== undefined) {
+    if (!Array.isArray(data.modules)) {
+      throw new Error("bmadConfig.modules must be an array");
+    }
+    modules = data.modules;
+  }
+
+  return {
+    platform,
+    project_name,
+    output_folder,
+    user_name,
+    communication_language,
+    document_output_language,
+    user_skill_level,
+    planning_artifacts,
+    implementation_artifacts,
+    project_knowledge,
+    modules,
   };
 }
 

@@ -2,7 +2,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { readJsonFile } from "./json.js";
-import { validateConfig } from "./validate.js";
+import { validateConfig, validateBmadConfig } from "./validate.js";
 import { CONFIG_FILE, BMAD_CONFIG_FILE } from "./constants.js";
 import { atomicWriteFile } from "./file-system.js";
 import { warn, debug } from "./logger.js";
@@ -55,7 +55,8 @@ export async function readBmadConfig(projectDir: string): Promise<BmadConfig | n
   const configPath = join(projectDir, BMAD_CONFIG_FILE);
   try {
     const content = await readFile(configPath, "utf-8");
-    const config = parse(content) as BmadConfig;
+    const parsed: unknown = parse(content);
+    const config = validateBmadConfig(parsed);
     debug(`Read BMAD config from: ${configPath}`);
     return config;
   } catch (err) {
