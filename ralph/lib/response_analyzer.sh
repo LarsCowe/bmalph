@@ -817,14 +817,6 @@ parse_json_response() {
         has_completion_signal="true"
     fi
 
-    # Boost confidence based on structured data availability
-    if [[ "$has_result_field" == "true" ]]; then
-        confidence=$((confidence + 20))  # Structured response boost
-    fi
-    if [[ $progress_count -gt 0 ]]; then
-        confidence=$((confidence + progress_count * 5))  # Progress indicators boost
-    fi
-
     # Write normalized result using jq for safe JSON construction
     # String fields use --arg (auto-escapes), numeric/boolean use --argjson
     jq -n \
@@ -844,12 +836,14 @@ parse_json_response() {
         --argjson permission_denial_count "$permission_denial_count" \
         --argjson denied_commands "$denied_commands_json" \
         --arg tests_status "$tests_status" \
+        --argjson has_result_field "$has_result_field" \
         '{
             status: $status,
             exit_signal: $exit_signal,
             is_test_only: $is_test_only,
             is_stuck: $is_stuck,
             has_completion_signal: $has_completion_signal,
+            has_result_field: $has_result_field,
             files_modified: $files_modified,
             error_count: $error_count,
             summary: $summary,
@@ -888,6 +882,7 @@ analyze_response() {
     local has_progress=false
     local confidence_score=0
     local exit_signal=false
+    local format_confidence=0
     local work_summary=""
     local files_modified=0
     local tasks_completed_this_loop=0
@@ -920,6 +915,7 @@ analyze_response() {
             tasks_completed_this_loop=$(jq -r -j '.tasks_completed_this_loop // 0' "$json_parse_result_file" 2>/dev/null || echo "0")
             tests_status=$(jq -r -j '.tests_status // "UNKNOWN"' "$json_parse_result_file" 2>/dev/null || echo "UNKNOWN")
             local json_confidence=$(jq -r -j '.confidence' "$json_parse_result_file" 2>/dev/null || echo "0")
+            local json_has_result_field=$(jq -r -j '.has_result_field' "$json_parse_result_file" 2>/dev/null || echo "false")
             local session_id=$(jq -r -j '.session_id' "$json_parse_result_file" 2>/dev/null || echo "")
 
             # Extract permission denial fields (Issue #101)
@@ -933,11 +929,16 @@ analyze_response() {
                 [[ "${VERBOSE_PROGRESS:-}" == "true" ]] && echo "DEBUG: Persisted session ID: $session_id" >&2
             fi
 
-            # JSON parsing provides high confidence
+            # Separate format confidence from completion confidence (Issue #124)
+            if [[ "$json_has_result_field" == "true" ]]; then
+                format_confidence=100
+            else
+                format_confidence=80
+            fi
             if [[ "$exit_signal" == "true" ]]; then
                 confidence_score=100
             else
-                confidence_score=$((json_confidence + 50))
+                confidence_score=$json_confidence
             fi
 
             if [[ ! "$tasks_completed_this_loop" =~ ^-?[0-9]+$ ]]; then
@@ -993,6 +994,7 @@ analyze_response() {
                 --argjson is_stuck "$is_stuck" \
                 --argjson has_progress "$has_progress" \
                 --argjson files_modified "$files_modified" \
+                --argjson format_confidence "$format_confidence" \
                 --argjson confidence_score "$confidence_score" \
                 --argjson exit_signal "$exit_signal" \
                 --argjson tasks_completed_this_loop "$tasks_completed_this_loop" \
@@ -1013,6 +1015,7 @@ analyze_response() {
                         is_stuck: $is_stuck,
                         has_progress: $has_progress,
                         files_modified: $files_modified,
+                        format_confidence: $format_confidence,
                         confidence_score: $confidence_score,
                         exit_signal: $exit_signal,
                         tasks_completed_this_loop: $tasks_completed_this_loop,
@@ -1043,6 +1046,7 @@ analyze_response() {
     local ralph_status_json=""
     if ralph_status_json=$(extract_ralph_status_block_json "$output_content" 2>/dev/null); then
         ralph_status_block_found=true
+        format_confidence=70
 
         local status
         status=$(printf '%s' "$ralph_status_json" | jq -r -j '.status' 2>/dev/null)
@@ -1084,6 +1088,7 @@ analyze_response() {
 
     if [[ "$ralph_status_block_found" != "true" ]]; then
         # No status block found — fall back to heuristic analysis
+        format_confidence=30
 
         # 2. Detect completion keywords in natural language output
         for keyword in "${COMPLETION_KEYWORDS[@]}"; do
@@ -1197,7 +1202,11 @@ analyze_response() {
 
         if [[ $files_modified -gt 0 ]]; then
             has_progress=true
-            ((confidence_score+=20))
+            # Only boost completion confidence in heuristic path (Issue #124)
+            # RALPH_STATUS block is authoritative — git changes shouldn't inflate it
+            if [[ "$ralph_status_block_found" != "true" ]]; then
+                ((confidence_score+=20))
+            fi
         fi
     fi
 
@@ -1232,6 +1241,7 @@ analyze_response() {
         --argjson is_stuck "$is_stuck" \
         --argjson has_progress "$has_progress" \
         --argjson files_modified "$files_modified" \
+        --argjson format_confidence "$format_confidence" \
         --argjson confidence_score "$confidence_score" \
         --argjson exit_signal "$exit_signal" \
         --argjson tasks_completed_this_loop "$tasks_completed_this_loop" \
@@ -1252,6 +1262,7 @@ analyze_response() {
                 is_stuck: $is_stuck,
                 has_progress: $has_progress,
                 files_modified: $files_modified,
+                format_confidence: $format_confidence,
                 confidence_score: $confidence_score,
                 exit_signal: $exit_signal,
                 tasks_completed_this_loop: $tasks_completed_this_loop,
@@ -1309,9 +1320,8 @@ update_exit_signals() {
     fi
 
     # Update completion_indicators array (only when Claude explicitly signals exit)
-    # Note: Previously used confidence >= 60, but JSON mode always has confidence >= 70
-    # due to deterministic scoring (+50 for JSON format, +20 for result field).
-    # This caused premature exits after 5 loops. Now we respect Claude's explicit intent.
+    # Note: Format confidence (parse quality) is separated from completion confidence
+    # since Issue #124. Only exit_signal drives completion indicators, not confidence score.
     local exit_signal=$(jq -r -j '.analysis.exit_signal // false' "$analysis_file")
     if [[ "$has_permission_denials" != "true" && "$has_progress_tracking_mismatch" != "true" && "$exit_signal" == "true" ]]; then
         signals=$(echo "$signals" | jq ".completion_indicators += [$loop_number]")
@@ -1338,6 +1348,7 @@ log_analysis_summary() {
 
     local loop=$(jq -r -j '.loop_number' "$analysis_file")
     local exit_sig=$(jq -r -j '.analysis.exit_signal' "$analysis_file")
+    local format_conf=$(jq -r -j '.analysis.format_confidence // 0' "$analysis_file")
     local confidence=$(jq -r -j '.analysis.confidence_score' "$analysis_file")
     local test_only=$(jq -r -j '.analysis.is_test_only' "$analysis_file")
     local files_changed=$(jq -r -j '.analysis.files_modified' "$analysis_file")
@@ -1347,7 +1358,8 @@ log_analysis_summary() {
     echo -e "${BLUE}║           Response Analysis - Loop #$loop                 ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo -e "${YELLOW}Exit Signal:${NC}      $exit_sig"
-    echo -e "${YELLOW}Confidence:${NC}       $confidence%"
+    echo -e "${YELLOW}Parse quality:${NC}    $format_conf%"
+    echo -e "${YELLOW}Completion:${NC}       $confidence%"
     echo -e "${YELLOW}Test Only:${NC}        $test_only"
     echo -e "${YELLOW}Files Changed:${NC}    $files_changed"
     echo -e "${YELLOW}Summary:${NC}          $summary"

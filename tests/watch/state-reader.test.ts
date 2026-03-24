@@ -394,6 +394,7 @@ describe("state-reader", () => {
       await writeJson(join(ralphDir, ".response_analysis"), {
         analysis: {
           files_modified: 3,
+          format_confidence: 70,
           confidence_score: 72,
           is_test_only: false,
           is_stuck: false,
@@ -410,6 +411,7 @@ describe("state-reader", () => {
 
       expect(info).not.toBeNull();
       expect(info!.filesModified).toBe(3);
+      expect(info!.formatConfidence).toBe(70);
       expect(info!.confidenceScore).toBe(72);
       expect(info!.isTestOnly).toBe(false);
       expect(info!.isStuck).toBe(false);
@@ -438,6 +440,7 @@ describe("state-reader", () => {
       const info = await readAnalysisInfo(testDir);
 
       expect(info).not.toBeNull();
+      expect(info!.formatConfidence).toBe(0);
       expect(info!.tasksCompletedThisLoop).toBe(0);
       expect(info!.fixPlanCompletedDelta).toBe(0);
       expect(info!.hasProgressTrackingMismatch).toBe(false);

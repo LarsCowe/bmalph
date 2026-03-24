@@ -57,6 +57,7 @@ async function writeAllStateFiles(testDir: string): Promise<void> {
   await writeJson(join(ralphDir, ".response_analysis"), {
     analysis: {
       files_modified: 3,
+      format_confidence: 70,
       confidence_score: 72,
       is_test_only: false,
       is_stuck: false,
@@ -126,6 +127,7 @@ describe("watch integration", () => {
 
     expect(state.analysis).not.toBeNull();
     expect(state.analysis!.filesModified).toBe(3);
+    expect(state.analysis!.formatConfidence).toBe(70);
     expect(state.analysis!.confidenceScore).toBe(72);
     expect(state.analysis!.isTestOnly).toBe(false);
     expect(state.analysis!.isStuck).toBe(false);
@@ -165,7 +167,8 @@ describe("watch integration", () => {
     expect(output).toContain("CLOSED");
     expect(output).toContain("2/3");
     expect(output).toContain("Files: 3");
-    expect(output).toContain("Confidence: 72%");
+    expect(output).toContain("Parse: 70%");
+    expect(output).toContain("Completion: 72%");
     expect(output).toContain("Loop #4 started");
     expect(output).toContain("Tests passing");
     expect(output).toContain("q quit");

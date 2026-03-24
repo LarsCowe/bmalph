@@ -403,7 +403,8 @@ export function renderAnalysisPanel(analysis: AnalysisInfo | null, cols: number)
   const lines = [
     [
       `Files: ${String(analysis.filesModified)}`,
-      `Confidence: ${String(analysis.confidenceScore)}%`,
+      `Parse: ${String(analysis.formatConfidence)}%`,
+      `Completion: ${String(analysis.confidenceScore)}%`,
     ].join("    "),
     [`Test-only: ${yesNo(analysis.isTestOnly)}`, `Stuck: ${yesNo(analysis.isStuck)}`].join("    "),
     [

@@ -128,6 +128,7 @@ export async function readAnalysisInfo(projectDir: string): Promise<AnalysisInfo
 
     const a = analysis as Record<string, unknown>;
     const filesModified = typeof a.files_modified === "number" ? a.files_modified : 0;
+    const formatConfidence = typeof a.format_confidence === "number" ? a.format_confidence : 0;
     const confidenceScore = typeof a.confidence_score === "number" ? a.confidence_score : 0;
     const isTestOnly = typeof a.is_test_only === "boolean" ? a.is_test_only : false;
     const isStuck = typeof a.is_stuck === "boolean" ? a.is_stuck : false;
@@ -147,6 +148,7 @@ export async function readAnalysisInfo(projectDir: string): Promise<AnalysisInfo
 
     return {
       filesModified,
+      formatConfidence,
       confidenceScore,
       isTestOnly,
       isStuck,
