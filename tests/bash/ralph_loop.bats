@@ -589,6 +589,71 @@ teardown() {
 }
 
 # ===========================================================================
+# extract_next_fix_plan_task
+# ===========================================================================
+
+@test "extract_next_fix_plan_task returns first unchecked line" {
+    cat > "$RALPH_DIR/@fix_plan.md" << 'EOF'
+- [x] Story 1.1: Setup project scaffolding
+- [ ] Story 1.2: Implement user authentication
+- [ ] Story 2.1: Build dashboard layout
+EOF
+    run extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md"
+
+    assert_success
+    assert_output "- [ ] Story 1.2: Implement user authentication"
+}
+
+@test "extract_next_fix_plan_task returns empty when all completed" {
+    cat > "$RALPH_DIR/@fix_plan.md" << 'EOF'
+- [x] Story 1.1: Setup project scaffolding
+- [X] Story 1.2: Implement user authentication
+EOF
+    run extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md"
+
+    assert_success
+    assert_output ""
+}
+
+@test "extract_next_fix_plan_task returns empty when file missing" {
+    rm -f "$RALPH_DIR/@fix_plan.md"
+    run extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md"
+
+    assert_success
+    assert_output ""
+}
+
+@test "extract_next_fix_plan_task returns empty when file is empty" {
+    : > "$RALPH_DIR/@fix_plan.md"
+    run extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md"
+
+    assert_success
+    assert_output ""
+}
+
+@test "extract_next_fix_plan_task trims leading whitespace from indented items" {
+    cat > "$RALPH_DIR/@fix_plan.md" << 'EOF'
+- [x] Story 1.1: Setup project scaffolding
+  - [ ] Sub-task: Configure database
+EOF
+    run extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md"
+
+    assert_success
+    assert_output "- [ ] Sub-task: Configure database"
+}
+
+@test "extract_next_fix_plan_task truncates lines over 100 chars" {
+    local long_title
+    long_title="Story 9.1: $(printf 'x%.0s' {1..120})"
+    echo "- [ ] ${long_title}" > "$RALPH_DIR/@fix_plan.md"
+    run extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md"
+
+    assert_success
+    local len=${#output}
+    [[ $len -le 100 ]]
+}
+
+# ===========================================================================
 # build_loop_context
 # ===========================================================================
 
@@ -607,6 +672,37 @@ EOF
     run build_loop_context 3
     assert_success
     assert_output --partial "Remaining tasks: 2"
+}
+
+@test "build_loop_context includes next task from fix plan" {
+    cat > "$RALPH_DIR/@fix_plan.md" << 'EOF'
+- [x] Story 1.1: Setup project scaffolding
+- [ ] Story 2.1: Build dashboard layout
+- [ ] Story 3.1: Add API endpoints
+EOF
+    run build_loop_context 3
+
+    assert_success
+    assert_output --partial "Next: - [ ] Story 2.1: Build dashboard layout."
+}
+
+@test "build_loop_context omits next task when all completed" {
+    cat > "$RALPH_DIR/@fix_plan.md" << 'EOF'
+- [x] Story 1.1: Setup project scaffolding
+- [X] Story 2.1: Build dashboard layout
+EOF
+    run build_loop_context 3
+
+    assert_success
+    refute_output --partial "Next:"
+}
+
+@test "build_loop_context omits next task when fix plan missing" {
+    rm -f "$RALPH_DIR/@fix_plan.md"
+    run build_loop_context 3
+
+    assert_success
+    refute_output --partial "Next:"
 }
 
 @test "build_loop_context truncates to 500 characters" {

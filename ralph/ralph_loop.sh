@@ -881,6 +881,22 @@ count_fix_plan_checkboxes() {
     printf '%s %s %s\n' "$completed_items" "$uncompleted_items" "$total_items"
 }
 
+# Extract the first unchecked task line from @fix_plan.md.
+# Returns the raw checkbox line trimmed of leading whitespace, capped at 100 chars.
+# Outputs empty string if no unchecked tasks exist or file is missing.
+# Args: $1 = path to @fix_plan.md (optional, defaults to $RALPH_DIR/@fix_plan.md)
+extract_next_fix_plan_task() {
+    local fix_plan_file="${1:-$RALPH_DIR/@fix_plan.md}"
+    [[ -f "$fix_plan_file" ]] || return 0
+    local line
+    line=$(grep -m 1 -E "^[[:space:]]*- \[ \]" "$fix_plan_file" 2>/dev/null || true)
+    # Trim leading whitespace
+    line="${line#"${line%%[![:space:]]*}"}"
+    # Trim trailing whitespace
+    line="${line%"${line##*[![:space:]]}"}"
+    printf '%s' "${line:0:100}"
+}
+
 # Collapse completed story detail lines in @fix_plan.md.
 # For each [x]/[X] story line, strips subsequent indented blockquote lines (  > ...).
 # Incomplete stories keep their detail lines intact.
@@ -1344,6 +1360,13 @@ build_loop_context() {
         local total_tasks=0
         read -r completed_tasks incomplete_tasks total_tasks < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
         context+="Remaining tasks: ${incomplete_tasks}. "
+
+        # Inject the next unchecked task to give the AI a clear directive
+        local next_task
+        next_task=$(extract_next_fix_plan_task "$RALPH_DIR/@fix_plan.md")
+        if [[ -n "$next_task" ]]; then
+            context+="Next: ${next_task}. "
+        fi
     fi
 
     # Add circuit breaker state
