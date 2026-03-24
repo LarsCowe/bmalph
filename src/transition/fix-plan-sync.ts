@@ -7,6 +7,7 @@ import {
   generateFixPlan,
   parseFixPlan,
   mergeFixPlanProgress,
+  collapseCompletedStories,
   detectOrphanedCompletedStories,
   detectRenumberedStories,
   buildCompletedTitleMap,
@@ -119,7 +120,8 @@ export async function syncFixPlan(
     useTitleBasedMerge ? newTitleMap : undefined,
     useTitleBasedMerge ? completedTitles : undefined
   );
-  await atomicWriteFile(fixPlanPath, mergedFixPlan);
+  const compactedFixPlan = collapseCompletedStories(mergedFixPlan);
+  await atomicWriteFile(fixPlanPath, compactedFixPlan);
 
   return {
     warnings: [...completionWarnings, ...orphanWarnings, ...renumberWarnings],

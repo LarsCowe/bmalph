@@ -527,7 +527,8 @@ development_status:
     expect(fixPlan).toContain("- [ ] Story 2.1: Database migration");
     expect(fixPlan).toContain("- [ ] Story 2.2: API endpoint");
     expect(fixPlan).toContain("- [ ] Story 2.3: Full login flow");
-    expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-1.md#story-1-1");
+    // Spec links are present on incomplete stories (completed stories have detail lines collapsed)
+    expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-1.md#story-1-2");
     expect(fixPlan).toContain("specs/planning-artifacts/epics/epic-2.md#story-2-1");
     expect(completed).toHaveLength(1);
   });

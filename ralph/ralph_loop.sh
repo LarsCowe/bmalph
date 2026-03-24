@@ -881,6 +881,35 @@ count_fix_plan_checkboxes() {
     printf '%s %s %s\n' "$completed_items" "$uncompleted_items" "$total_items"
 }
 
+# Collapse completed story detail lines in @fix_plan.md.
+# For each [x]/[X] story line, strips subsequent indented blockquote lines (  > ...).
+# Incomplete stories keep their detail lines intact.
+# Args: $1 = path to @fix_plan.md (modifies in place via atomic write)
+collapse_completed_stories() {
+    local fix_plan_file="${1:-$RALPH_DIR/@fix_plan.md}"
+    [[ -f "$fix_plan_file" ]] || return 0
+
+    local tmp_file="${fix_plan_file}.collapse_tmp"
+    local skipping=false
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*\[[xX]\][[:space:]]*Story[[:space:]]+[0-9] ]]; then
+            skipping=true
+            printf '%s\n' "$line"
+            continue
+        fi
+
+        if $skipping && [[ "$line" =~ ^[[:space:]]+\> ]]; then
+            continue
+        fi
+
+        skipping=false
+        printf '%s\n' "$line"
+    done < "$fix_plan_file" > "$tmp_file"
+
+    mv "$tmp_file" "$fix_plan_file"
+}
+
 enforce_fix_plan_progress_tracking() {
     local analysis_file=$1
     local completed_before=$2
@@ -1296,10 +1325,16 @@ validate_allowed_tools() {
 # Provides loop-specific context via --append-system-prompt
 build_loop_context() {
     local loop_count=$1
+    local session_id="${2:-}"
     local context=""
 
     # Add loop number
     context="Loop #${loop_count}. "
+
+    # Signal session continuity when resuming a valid session
+    if [[ -n "$session_id" ]]; then
+        context+="Session continued — do NOT re-read spec files. Resume implementation. "
+    fi
 
     # Extract incomplete tasks from @fix_plan.md
     # Bug #3 Fix: Support indented markdown checkboxes with [[:space:]]* pattern
@@ -2105,19 +2140,20 @@ execute_claude_code() {
     local timeout_seconds=$((CLAUDE_TIMEOUT_MINUTES * 60))
     log_status "INFO" "⏳ Starting $DRIVER_DISPLAY_NAME execution... (timeout: ${CLAUDE_TIMEOUT_MINUTES}m)"
 
-    # Build loop context for session continuity
-    local loop_context=""
-    if [[ "$CLAUDE_USE_CONTINUE" == "true" ]]; then
-        loop_context=$(build_loop_context "$loop_count")
-        if [[ -n "$loop_context" && "$VERBOSE_PROGRESS" == "true" ]]; then
-            log_status "INFO" "Loop context: $loop_context"
-        fi
-    fi
-
-    # Initialize or resume session
+    # Initialize or resume session (must happen before build_loop_context
+    # so the session_id can gate the "session continued" signal)
     local session_id=""
     if [[ "$CLAUDE_USE_CONTINUE" == "true" ]] && supports_driver_sessions; then
         session_id=$(init_claude_session)
+    fi
+
+    # Build loop context for session continuity
+    local loop_context=""
+    if [[ "$CLAUDE_USE_CONTINUE" == "true" ]]; then
+        loop_context=$(build_loop_context "$loop_count" "$session_id")
+        if [[ -n "$loop_context" && "$VERBOSE_PROGRESS" == "true" ]]; then
+            log_status "INFO" "Loop context: $loop_context"
+        fi
     fi
 
     # Live mode requires JSON output (stream-json) — override text format
@@ -2359,6 +2395,11 @@ EOF
         local fix_plan_completed_after=0
         read -r fix_plan_completed_after _ _ < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
         enforce_fix_plan_progress_tracking "$RESPONSE_ANALYSIS_FILE" "$fix_plan_completed_before" "$fix_plan_completed_after"
+
+        # Collapse completed story details so the agent doesn't re-read them
+        if [[ $fix_plan_completed_after -gt $fix_plan_completed_before ]]; then
+            collapse_completed_stories "$RALPH_DIR/@fix_plan.md"
+        fi
 
         # Run quality gates
         local exit_signal_for_gates

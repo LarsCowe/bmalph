@@ -650,121 +650,55 @@ ${longContent}
       expect(prompt).not.toContain("Update @fix_plan.md with your progress");
     });
 
-    it("includes specs reading strategy", () => {
+    it("lists @fix_plan.md as first objective", () => {
       const prompt = generatePrompt("Test");
-      expect(prompt).toContain("SPECS_INDEX.md");
-      expect(prompt).toContain("Critical");
-      expect(prompt).toContain("High");
-      expect(prompt).toContain("Medium");
-      expect(prompt).toContain("Low");
+      const objectives = prompt.match(/## Current Objectives\n([\s\S]*?)(?=\n##)/);
+      expect(objectives).toBeTruthy();
+      const firstStep = objectives![1].match(/^1\..*/m);
+      expect(firstStep).toBeTruthy();
+      expect(firstStep![0]).toContain("@fix_plan.md");
     });
 
-    it("uses SPECS_INDEX.md instead of hardcoded planning subdirectories", () => {
-      const prompt = generatePrompt("Test");
-
-      expect(prompt).toContain("Use the exact spec paths listed in SPECS_INDEX.md");
-      expect(prompt).not.toContain("planning-artifacts/:");
-      expect(prompt).not.toContain("implementation-artifacts/:");
-    });
-
-    it("embeds project context when provided", () => {
-      const context = {
-        projectGoals: "Build a CLI tool for developers",
-        successMetrics: "95% test coverage, <100ms response",
-        architectureConstraints: "Must use TypeScript, Node.js 20+",
-        technicalRisks: "",
-        scopeBoundaries: "MVP: core features only",
-        targetUsers: "",
-        nonFunctionalRequirements: "",
-      };
-      const prompt = generatePrompt("TestProject", context);
-
-      expect(prompt).toContain("### Project Goals");
-      expect(prompt).toContain("Build a CLI tool for developers");
-      expect(prompt).toContain("### Success Metrics");
-      expect(prompt).toContain("95% test coverage");
-      expect(prompt).toContain("### Architecture Constraints");
-      expect(prompt).toContain("Must use TypeScript");
-      expect(prompt).toContain("### Scope");
-      expect(prompt).toContain("MVP: core features only");
-    });
-
-    it("omits empty context sections from prompt", () => {
-      const context = {
-        projectGoals: "Only goals are set",
-        successMetrics: "",
-        architectureConstraints: "",
-        technicalRisks: "",
-        scopeBoundaries: "",
-        targetUsers: "",
-        nonFunctionalRequirements: "",
-      };
-      const prompt = generatePrompt("TestProject", context);
-
-      expect(prompt).toContain("### Project Goals");
-      expect(prompt).toContain("Only goals are set");
+    it("does not embed PROJECT_CONTEXT sections", () => {
+      const prompt = generatePrompt("TestProject");
+      expect(prompt).not.toContain("### Project Goals");
       expect(prompt).not.toContain("### Success Metrics");
       expect(prompt).not.toContain("### Architecture Constraints");
-      expect(prompt).not.toContain("### Scope");
-    });
-
-    it("works without context parameter (backwards compatible)", () => {
-      const prompt = generatePrompt("TestProject");
-      expect(prompt).toContain("TestProject project");
-      expect(prompt).toContain("RALPH_STATUS");
-      expect(prompt).not.toContain("### Project Goals");
-    });
-
-    it("embeds design guidelines in prompt when provided", () => {
-      const context = {
-        projectGoals: "Build a CLI",
-        successMetrics: "",
-        architectureConstraints: "",
-        technicalRisks: "",
-        scopeBoundaries: "",
-        targetUsers: "",
-        nonFunctionalRequirements: "",
-        designGuidelines: "Mobile-first responsive layout",
-      };
-      const prompt = generatePrompt("TestProject", context);
-
-      expect(prompt).toContain("### Design Guidelines");
-      expect(prompt).toContain("Mobile-first responsive layout");
-    });
-
-    it("embeds research insights in prompt when provided", () => {
-      const context = {
-        projectGoals: "Build a CLI",
-        successMetrics: "",
-        architectureConstraints: "",
-        technicalRisks: "",
-        scopeBoundaries: "",
-        targetUsers: "",
-        nonFunctionalRequirements: "",
-        researchInsights: "Market analysis shows 70% CLI preference",
-      };
-      const prompt = generatePrompt("TestProject", context);
-
-      expect(prompt).toContain("### Research Insights");
-      expect(prompt).toContain("Market analysis shows 70% CLI preference");
-    });
-
-    it("omits design/research sections from prompt when empty", () => {
-      const context = {
-        projectGoals: "Build a CLI",
-        successMetrics: "",
-        architectureConstraints: "",
-        technicalRisks: "",
-        scopeBoundaries: "",
-        targetUsers: "",
-        nonFunctionalRequirements: "",
-        designGuidelines: "",
-        researchInsights: "",
-      };
-      const prompt = generatePrompt("TestProject", context);
-
       expect(prompt).not.toContain("### Design Guidelines");
       expect(prompt).not.toContain("### Research Insights");
+      expect(prompt).not.toContain("Project Specifications (CRITICAL");
+    });
+
+    it("includes session continuity guidance", () => {
+      const prompt = generatePrompt("Test");
+      expect(prompt).toContain("previous loop");
+      expect(prompt).toContain("do NOT re-read");
+    });
+
+    it("includes write-early pressure", () => {
+      const prompt = generatePrompt("Test");
+      expect(prompt).toMatch(/write code within.*first.*minutes/i);
+    });
+
+    it("includes autonomous mode section", () => {
+      const prompt = generatePrompt("Test");
+      expect(prompt).toContain("## Autonomous Mode");
+      expect(prompt).toContain("do not ask the user questions");
+      expect(prompt).toContain("AskUserQuestion");
+    });
+
+    it("includes self-review checklist", () => {
+      const prompt = generatePrompt("Test");
+      expect(prompt).toContain("Self-Review");
+      expect(prompt).toContain("Re-read the diff");
+    });
+
+    it("references specs as on-demand, not mandatory", () => {
+      const prompt = generatePrompt("Test");
+      expect(prompt).toContain("SPECS_INDEX.md");
+      expect(prompt).toContain("PROJECT_CONTEXT.md");
+      expect(prompt).not.toContain("Always read fully");
+      expect(prompt).not.toContain("CRITICAL - READ THIS");
     });
   });
 });

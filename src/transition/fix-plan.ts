@@ -155,6 +155,32 @@ export function buildCompletedTitleMap(items: FixPlanItemWithTitle[]): Map<strin
   return map;
 }
 
+const COMPLETED_STORY_LINE = /^\s*-\s*\[[xX]\]\s*Story\s+[\d.]+:/;
+const INDENTED_DETAIL_LINE = /^\s+>/;
+
+export function collapseCompletedStories(fixPlan: string): string {
+  const lines = fixPlan.split("\n");
+  const result: string[] = [];
+  let skippingDetails = false;
+
+  for (const line of lines) {
+    if (COMPLETED_STORY_LINE.test(line)) {
+      skippingDetails = true;
+      result.push(line);
+      continue;
+    }
+
+    if (skippingDetails && INDENTED_DETAIL_LINE.test(line)) {
+      continue;
+    }
+
+    skippingDetails = false;
+    result.push(line);
+  }
+
+  return result.join("\n");
+}
+
 export function mergeFixPlanProgress(
   newFixPlan: string,
   completedIds: Set<string>,

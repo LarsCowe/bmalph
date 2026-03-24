@@ -12,7 +12,7 @@ import {
   detectTruncation,
 } from "./context.js";
 import { detectTechStack, customizeAgentMd } from "./tech-stack.js";
-import type { GeneratedFile, ProjectContext } from "./types.js";
+import type { GeneratedFile } from "./types.js";
 import type { LoadedTransitionInputs } from "./artifact-loading.js";
 
 export interface ContextOutputResult {
@@ -39,14 +39,12 @@ export async function generateContextOutputs(
   info("Generating PROJECT_CONTEXT.md...");
   const projectContextPath = join(projectDir, ".ralph/PROJECT_CONTEXT.md");
   const projectContextExisted = await exists(projectContextPath);
-  let projectContext: ProjectContext | null = null;
   let truncationWarnings: string[] = [];
 
   if (inputs.artifactContents.size > 0) {
     const { context, truncated } = extractProjectContext(inputs.artifactContents);
-    projectContext = context;
     truncationWarnings = detectTruncation(truncated);
-    const contextMd = generateProjectContextMd(projectContext, projectName);
+    const contextMd = generateProjectContextMd(context, projectName);
     await atomicWriteFile(projectContextPath, contextMd);
     generatedFiles.push({
       path: ".ralph/PROJECT_CONTEXT.md",
@@ -64,7 +62,7 @@ export async function generateContextOutputs(
     if (existingPrompt.includes("[YOUR PROJECT NAME]")) {
       prompt = existingPrompt.replace(/\[YOUR PROJECT NAME\]/g, projectName);
     } else {
-      prompt = generatePrompt(projectName, projectContext ?? undefined);
+      prompt = generatePrompt(projectName);
     }
   } catch (err) {
     if (isEnoent(err)) {
@@ -72,7 +70,7 @@ export async function generateContextOutputs(
     } else {
       warn(`Could not read existing PROMPT.md: ${formatError(err)}`);
     }
-    prompt = generatePrompt(projectName, projectContext ?? undefined);
+    prompt = generatePrompt(projectName);
   }
   await atomicWriteFile(join(projectDir, ".ralph/PROMPT.md"), prompt);
   generatedFiles.push({ path: ".ralph/PROMPT.md", action: promptExisted ? "updated" : "created" });
