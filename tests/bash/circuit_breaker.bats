@@ -3,17 +3,10 @@
 # Validates the 3-state machine (CLOSED → HALF_OPEN → OPEN),
 # threshold-based transitions, auto-recovery, and history logging.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_LIB/circuit_breaker.sh"
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
-    # Re-derive source-time bindings from per-test RALPH_DIR
-    CB_STATE_FILE="$RALPH_DIR/.circuit_breaker_state"
-    CB_HISTORY_FILE="$RALPH_DIR/.circuit_breaker_history"
+    source "$RALPH_LIB/circuit_breaker.sh"
 }
 
 teardown() {

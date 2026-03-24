@@ -2,14 +2,10 @@
 # Tests for ralph/lib/date_utils.sh
 # Validates cross-platform date formatting and parsing.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_LIB/date_utils.sh"
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
+    source "$RALPH_LIB/date_utils.sh"
 }
 
 teardown() {

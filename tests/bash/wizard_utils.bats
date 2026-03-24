@@ -2,14 +2,10 @@
 # Tests for ralph/lib/wizard_utils.sh
 # Validates display functions, interactive prompts, and selection menus.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_LIB/wizard_utils.sh"
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
+    source "$RALPH_LIB/wizard_utils.sh"
 }
 
 teardown() {

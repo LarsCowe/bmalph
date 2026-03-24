@@ -2,14 +2,10 @@
 # Tests for ralph/lib/timeout_utils.sh
 # Validates cross-platform timeout command detection and execution.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_LIB/timeout_utils.sh"
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
+    source "$RALPH_LIB/timeout_utils.sh"
     reset_timeout_detection  # Clear cache for clean tests
 }
 

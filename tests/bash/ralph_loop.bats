@@ -4,26 +4,22 @@
 # validate_allowed_tools, build_loop_context, generate_session_id,
 # check_claude_version, init_claude_session.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-
-    # Source ralph_loop.sh once per file for function definitions.
-    # Use a throwaway RALPH_DIR so the source-time mkdir succeeds.
-    RALPH_DIR="$(mktemp -d)"
-    export RALPH_DIR
-    source "$PROJECT_ROOT/ralph/ralph_loop.sh"
-    rm -rf "$RALPH_DIR"
-
-    # Disable set -e leaked by ralph_loop.sh
-    set +e
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
 
-    # Re-derive ALL RALPH_DIR-dependent paths from the per-test temp dir.
-    # ralph_loop.sh binds these at source time — we override them here.
+    # Source ralph_loop.sh to load function definitions.
+    # RALPH_DIR is already exported by _common_setup (temp dir), and the script
+    # respects it via ${RALPH_DIR:-.ralph}. Side effects: set -e, library sourcing,
+    # variable init, mkdir (in temp dir since RALPH_DIR is pre-set).
+    source "$PROJECT_ROOT/ralph/ralph_loop.sh"
+
+    # Disable set -e leaked by ralph_loop.sh so tests that call functions
+    # without `run` don't abort on intermediate non-zero exits.
+    set +e
+
+    # Re-export RALPH_DIR and re-derive path variables for test isolation.
+    export RALPH_DIR
     LOG_DIR="$RALPH_DIR/logs"
     DOCS_DIR="$RALPH_DIR/docs/generated"
     STATUS_FILE="$RALPH_DIR/status.json"
@@ -36,17 +32,8 @@ setup() {
     RALPH_SESSION_FILE="$RALPH_DIR/.ralph_session"
     RALPH_SESSION_HISTORY_FILE="$RALPH_DIR/.ralph_session_history"
     LIVE_LOG_FILE="$RALPH_DIR/live.log"
-    PROMPT_FILE="$RALPH_DIR/PROMPT.md"
-    QUALITY_GATE_RESULTS_FILE="$RALPH_DIR/.quality_gate_results"
-    REVIEW_FINDINGS_FILE="$RALPH_DIR/.review_findings.json"
-    REVIEW_PROMPT_FILE="$RALPH_DIR/REVIEW_PROMPT.md"
-    REVIEW_LAST_SHA_FILE="$RALPH_DIR/.review_last_sha"
-    RALPHRC_FILE="$RALPH_DIR/.ralphrc"
-    CB_STATE_FILE="$RALPH_DIR/.circuit_breaker_state"
-    CB_HISTORY_FILE="$RALPH_DIR/.circuit_breaker_history"
-    SESSION_FILE="$RALPH_DIR/.claude_session_id"
 
-    # Reset defaults (tests modify these — must be clean each time)
+    # Reset defaults after sourcing (sourcing captures env state in _env_ vars)
     MAX_CALLS_PER_HOUR=100
     CLAUDE_TIMEOUT_MINUTES=15
     CLAUDE_OUTPUT_FORMAT="json"

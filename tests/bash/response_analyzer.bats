@@ -2,16 +2,10 @@
 # Tests for ralph/lib/response_analyzer.sh
 # Validates JSON parsing (3 formats), text fallback, and session management.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_LIB/response_analyzer.sh"
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
-    # Re-derive source-time binding from per-test RALPH_DIR
-    SESSION_FILE="$RALPH_DIR/.claude_session_id"
+    source "$RALPH_LIB/response_analyzer.sh"
 }
 
 teardown() {

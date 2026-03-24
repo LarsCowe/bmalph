@@ -2,14 +2,10 @@
 # Tests for ralph/drivers/copilot.sh
 # Validates CLI binary, tool list, and command assembly for GitHub Copilot CLI.
 
-setup_file() {
-    load '../test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_DRIVERS/copilot.sh"
-}
-
 setup() {
+    load '../test_helper/common-setup'
     _common_setup
+    source "$RALPH_DRIVERS/copilot.sh"
 }
 
 teardown() {

@@ -2,14 +2,10 @@
 # Tests for ralph/drivers/codex.sh
 # Validates CLI binary, tool list, and command assembly for OpenAI Codex.
 
-setup_file() {
-    load '../test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_DRIVERS/codex.sh"
-}
-
 setup() {
+    load '../test_helper/common-setup'
     _common_setup
+    source "$RALPH_DRIVERS/codex.sh"
 }
 
 teardown() {

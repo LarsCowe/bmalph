@@ -1,60 +1,30 @@
 #!/usr/bin/env bash
 # Common test setup for bats tests
-#
-# Two-tier setup for performance:
-#   setup_file() → _common_setup_file   (once per file: load helpers, set paths)
-#   setup()      → _common_setup        (once per test: create temp RALPH_DIR)
-#
-# Files that don't use setup_file() can call _common_setup alone — it detects
-# whether _common_setup_file was already called and does the full init if not.
+# Load this in each test file with: load 'test_helper/common-setup'
+# Then call _common_setup in setup()
 
-# File-level setup: load helpers and set immutable project paths.
-# Call from setup_file() in each .bats file.
-_common_setup_file() {
+_common_setup() {
     local helper_dir
     helper_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    # Load bats helpers (once per file)
+    # Load bats helpers
     _load_helper "$helper_dir" "bats-support"
     _load_helper "$helper_dir" "bats-assert"
 
-    # Immutable project paths
+    # Project paths
     PROJECT_ROOT="$(cd "$helper_dir/../../.." && pwd)"
     RALPH_LIB="$PROJECT_ROOT/ralph/lib"
     RALPH_DRIVERS="$PROJECT_ROOT/ralph/drivers"
     FIXTURES_DIR="$PROJECT_ROOT/tests/bash/fixtures"
 
-    _COMMON_FILE_SETUP_DONE=true
-}
-
-# Per-test setup: create isolated temp RALPH_DIR.
-# If _common_setup_file was not called, does the full init for backward compat.
-_common_setup() {
-    if [[ "${_COMMON_FILE_SETUP_DONE:-}" != "true" ]]; then
-        # Legacy path: no setup_file() — do everything here
-        local helper_dir
-        helper_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        _load_helper "$helper_dir" "bats-support"
-        _load_helper "$helper_dir" "bats-assert"
-        PROJECT_ROOT="$(cd "$helper_dir/../../.." && pwd)"
-        RALPH_LIB="$PROJECT_ROOT/ralph/lib"
-        RALPH_DRIVERS="$PROJECT_ROOT/ralph/drivers"
-        FIXTURES_DIR="$PROJECT_ROOT/tests/bash/fixtures"
-    fi
-
-    # Per-test temp dir (BATS_TEST_TMPDIR is auto-cleaned by BATS 1.5+)
-    if [[ -n "${BATS_TEST_TMPDIR:-}" ]]; then
-        RALPH_DIR="$BATS_TEST_TMPDIR/ralph"
-    else
-        RALPH_DIR="$(mktemp -d)"
-    fi
+    # Create temp RALPH_DIR for test isolation
+    RALPH_DIR="$(mktemp -d)"
     export RALPH_DIR
     mkdir -p "$RALPH_DIR/logs"
 }
 
 _common_teardown() {
-    # BATS_TEST_TMPDIR is auto-cleaned; only manual cleanup for mktemp fallback
-    if [[ -z "${BATS_TEST_TMPDIR:-}" && -n "$RALPH_DIR" && -d "$RALPH_DIR" ]]; then
+    if [[ -n "$RALPH_DIR" && -d "$RALPH_DIR" ]]; then
         rm -rf "$RALPH_DIR"
     fi
 }

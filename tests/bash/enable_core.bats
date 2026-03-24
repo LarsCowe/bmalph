@@ -3,14 +3,10 @@
 # Validates logging, state checks, file operations, project detection,
 # template generators, and the main enable_ralph_in_directory integration.
 
-setup_file() {
-    load 'test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_LIB/enable_core.sh"
-}
-
 setup() {
+    load 'test_helper/common-setup'
     _common_setup
+    source "$RALPH_LIB/enable_core.sh"
     _ORIG_DIR="$(pwd)"
     _ORIG_PATH="$PATH"
     _WORK_DIR="$(mktemp -d)"

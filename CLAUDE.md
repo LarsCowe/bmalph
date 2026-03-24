@@ -184,6 +184,7 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 - Application language: English
 - Node 20+ LTS
 - Always run `npm run ci` locally before committing to catch formatting, lint, type, and test failures early
+- **BATS tests on Windows: use WSL2** — Windows Git Bash is 10-50x slower for bash forks. Run `wsl -- bash -c "cd /mnt/c/Users/Lars/Documents/bmalph && npm run test:bash"` or just push and let CI handle it (BATS only runs on Ubuntu in CI).
 
 `npm run ci` runs (in order):
 

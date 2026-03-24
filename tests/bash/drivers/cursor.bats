@@ -2,14 +2,10 @@
 # Tests for ralph/drivers/cursor.sh
 # Validates CLI binary, tool list, and command assembly for Cursor CLI.
 
-setup_file() {
-    load '../test_helper/common-setup'
-    _common_setup_file
-    source "$RALPH_DRIVERS/cursor.sh"
-}
-
 setup() {
+    load '../test_helper/common-setup'
     _common_setup
+    source "$RALPH_DRIVERS/cursor.sh"
 }
 
 teardown() {
