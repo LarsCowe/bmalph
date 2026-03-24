@@ -417,9 +417,9 @@ describe("specs-index", () => {
 
       const md = formatSpecsIndexMd(index);
 
-      expect(md).toContain("### Critical");
-      expect(md).toContain("### High Priority");
-      expect(md).toContain("### Low Priority");
+      expect(md).toContain("### Critical (Read When Needed for Current Story)");
+      expect(md).toContain("### High Priority (Reference as Needed)");
+      expect(md).toContain("### Low Priority (Optional)");
       expect(md).toContain("prd.md");
       expect(md).toContain("test.md");
       expect(md).toContain("notes.md");
@@ -500,6 +500,53 @@ describe("specs-index", () => {
       const md = formatSpecsIndexMd(index);
 
       expect(md).toContain("28 KB");
+    });
+
+    it("uses on-demand language in priority headings", () => {
+      const index = {
+        generatedAt: "2024-01-25T10:30:00Z",
+        totalFiles: 4,
+        totalSizeKb: 50,
+        files: [
+          {
+            path: "prd.md",
+            size: 15000,
+            type: "prd" as const,
+            priority: "critical" as const,
+            description: "PRD",
+          },
+          {
+            path: "test.md",
+            size: 8000,
+            type: "test-design" as const,
+            priority: "high" as const,
+            description: "Tests",
+          },
+          {
+            path: "ux.md",
+            size: 6000,
+            type: "ux" as const,
+            priority: "medium" as const,
+            description: "UX",
+          },
+          {
+            path: "notes.md",
+            size: 4000,
+            type: "brainstorm" as const,
+            priority: "low" as const,
+            description: "Notes",
+          },
+        ],
+      };
+
+      const md = formatSpecsIndexMd(index);
+
+      expect(md).toContain("### Critical (Read When Needed for Current Story)");
+      expect(md).toContain("### High Priority (Reference as Needed)");
+      expect(md).toContain("### Medium Priority (Reference as Needed)");
+      expect(md).toContain("### Low Priority (Optional)");
+      expect(md).not.toContain("Always Read First");
+      expect(md).not.toContain("Read for Implementation");
     });
 
     it("numbers files in reading order", () => {

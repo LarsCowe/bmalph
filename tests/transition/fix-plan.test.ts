@@ -7,6 +7,7 @@ import {
   detectRenumberedStories,
   mergeFixPlanProgress,
   buildCompletedTitleMap,
+  collapseCompletedStories,
 } from "../../src/transition/fix-plan.js";
 import type { Story, FixPlanItemWithTitle } from "../../src/transition/types.js";
 
@@ -419,6 +420,166 @@ describe("fix-plan", () => {
 
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toContain("renumbered");
+    });
+  });
+
+  describe("collapseCompletedStories", () => {
+    it("strips description/AC/spec lines from completed stories", () => {
+      const input = [
+        "### Auth",
+        "> Goal: Secure user authentication",
+        "",
+        "- [x] Story 1.1: Login form",
+        "  > As a user, I want to log in",
+        "  > AC: Given valid credentials, When I submit, Then I am logged in",
+        "  > Spec: specs/planning-artifacts/stories.md#story-1-1",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("- [x] Story 1.1: Login form");
+      expect(result).not.toContain("  > As a user");
+      expect(result).not.toContain("  > AC:");
+      expect(result).not.toContain("  > Spec:");
+    });
+
+    it("preserves all detail lines for incomplete stories", () => {
+      const input = [
+        "- [ ] Story 2.1: Dashboard",
+        "  > As an admin, I want to see metrics",
+        "  > AC: Given I am logged in, When I visit /dashboard, Then I see usage stats",
+        "  > Spec: specs/planning-artifacts/stories.md#story-2-1",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("- [ ] Story 2.1: Dashboard");
+      expect(result).toContain("  > As an admin, I want to see metrics");
+      expect(result).toContain(
+        "  > AC: Given I am logged in, When I visit /dashboard, Then I see usage stats"
+      );
+      expect(result).toContain("  > Spec: specs/planning-artifacts/stories.md#story-2-1");
+    });
+
+    it("preserves epic headings and goal descriptions", () => {
+      const input = [
+        "### Auth",
+        "> Goal: Secure user authentication",
+        "",
+        "- [x] Story 1.1: Login form",
+        "  > As a user, I want to log in",
+        "",
+        "### Analytics",
+        "> Goal: Provide usage insights",
+        "",
+        "- [ ] Story 2.1: Dashboard",
+        "  > As an admin, I want to see metrics",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("### Auth");
+      expect(result).toContain("> Goal: Secure user authentication");
+      expect(result).toContain("### Analytics");
+      expect(result).toContain("> Goal: Provide usage insights");
+    });
+
+    it("handles mixed completed and incomplete stories", () => {
+      const input = [
+        "### Auth",
+        "> Goal: Secure user authentication",
+        "",
+        "- [x] Story 1.1: Login form",
+        "  > As a user, I want to log in",
+        "  > AC: Given valid credentials, When I submit, Then I am logged in",
+        "  > Spec: specs/planning-artifacts/stories.md#story-1-1",
+        "- [ ] Story 1.2: Password reset",
+        "  > As a user, I want to reset my password",
+        "  > AC: Given I forgot my password, When I request a reset, Then I receive an email",
+        "  > Spec: specs/planning-artifacts/stories.md#story-1-2",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("- [x] Story 1.1: Login form");
+      expect(result).not.toContain("  > As a user, I want to log in");
+      expect(result).toContain("- [ ] Story 1.2: Password reset");
+      expect(result).toContain("  > As a user, I want to reset my password");
+      expect(result).toContain("  > AC: Given I forgot my password");
+      expect(result).toContain("  > Spec: specs/planning-artifacts/stories.md#story-1-2");
+    });
+
+    it("handles completed story with no detail lines", () => {
+      const input = [
+        "- [x] Story 1.1: Login form",
+        "- [ ] Story 1.2: Password reset",
+        "  > As a user, I want to reset my password",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("- [x] Story 1.1: Login form");
+      expect(result).toContain("- [ ] Story 1.2: Password reset");
+      expect(result).toContain("  > As a user, I want to reset my password");
+    });
+
+    it("preserves empty lines and section structure", () => {
+      const input = [
+        "# Ralph Fix Plan",
+        "",
+        "## Stories to Implement",
+        "",
+        "### Auth",
+        "> Goal: Secure user authentication",
+        "",
+        "- [x] Story 1.1: Login form",
+        "  > As a user, I want to log in",
+        "",
+        "## Completed",
+        "",
+        "## Notes",
+        "- Follow TDD methodology (red-green-refactor)",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("# Ralph Fix Plan");
+      expect(result).toContain("## Stories to Implement");
+      expect(result).toContain("## Completed");
+      expect(result).toContain("## Notes");
+      expect(result).toContain("- Follow TDD methodology (red-green-refactor)");
+    });
+
+    it("returns unchanged input when no completed stories exist", () => {
+      const input = [
+        "### Auth",
+        "> Goal: Secure user authentication",
+        "",
+        "- [ ] Story 1.1: Login form",
+        "  > As a user, I want to log in",
+        "  > AC: Given valid credentials, When I submit, Then I am logged in",
+        "  > Spec: specs/planning-artifacts/stories.md#story-1-1",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toBe(input);
+    });
+
+    it("handles uppercase X in checkboxes", () => {
+      const input = [
+        "- [X] Story 1.1: Login form",
+        "  > As a user, I want to log in",
+        "  > AC: Given valid credentials, When I submit, Then I am logged in",
+        "  > Spec: specs/planning-artifacts/stories.md#story-1-1",
+      ].join("\n");
+
+      const result = collapseCompletedStories(input);
+
+      expect(result).toContain("- [X] Story 1.1: Login form");
+      expect(result).not.toContain("  > As a user");
+      expect(result).not.toContain("  > AC:");
+      expect(result).not.toContain("  > Spec:");
     });
   });
 });

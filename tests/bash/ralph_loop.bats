@@ -632,6 +632,90 @@ EOF
     refute_output --partial "Changed:"
 }
 
+@test "build_loop_context includes session continuity when session_id is provided" {
+    set -e
+    run build_loop_context 2 "sess-abc123"
+    assert_success
+    assert_output --partial "Session continued"
+    assert_output --partial "do NOT re-read spec files"
+}
+
+@test "build_loop_context omits session continuity when session_id is empty" {
+    set -e
+    run build_loop_context 2 ""
+    assert_success
+    refute_output --partial "Session continued"
+}
+
+@test "build_loop_context omits session continuity when session_id is not passed" {
+    set -e
+    run build_loop_context 1
+    assert_success
+    refute_output --partial "Session continued"
+}
+
+# ===========================================================================
+# collapse_completed_stories
+# ===========================================================================
+
+@test "collapse_completed_stories strips detail lines from completed stories" {
+    set -e
+    local fp="$RALPH_DIR/@fix_plan.md"
+    cat > "$fp" << 'EOF'
+### Auth
+> Goal: Authentication features
+
+- [x] Story 1.1: Login form
+  > As a user, I want to log in.
+  > AC: Given valid creds, When submit, Then logged in
+  > Spec: specs/planning-artifacts/stories.md#story-1-1
+
+## Notes
+EOF
+    collapse_completed_stories "$fp"
+    run cat "$fp"
+    assert_output --partial "- [x] Story 1.1: Login form"
+    refute_output --partial "As a user, I want to log in."
+    refute_output --partial "AC: Given valid creds"
+    refute_output --partial "Spec: specs/"
+    assert_output --partial "### Auth"
+    assert_output --partial "> Goal: Authentication features"
+    assert_output --partial "## Notes"
+}
+
+@test "collapse_completed_stories preserves detail lines for incomplete stories" {
+    set -e
+    local fp="$RALPH_DIR/@fix_plan.md"
+    cat > "$fp" << 'EOF'
+- [ ] Story 2.1: Dashboard
+  > As a user, I want a dashboard.
+  > AC: Given logged in, When visit home, Then see dashboard
+EOF
+    collapse_completed_stories "$fp"
+    run cat "$fp"
+    assert_output --partial "- [ ] Story 2.1: Dashboard"
+    assert_output --partial "As a user, I want a dashboard."
+    assert_output --partial "AC: Given logged in"
+}
+
+@test "collapse_completed_stories is idempotent" {
+    set -e
+    local fp="$RALPH_DIR/@fix_plan.md"
+    cat > "$fp" << 'EOF'
+- [x] Story 1.1: Login form
+  > AC: criterion
+- [ ] Story 2.1: Dashboard
+  > AC: another criterion
+EOF
+    collapse_completed_stories "$fp"
+    local first_pass
+    first_pass=$(cat "$fp")
+    collapse_completed_stories "$fp"
+    local second_pass
+    second_pass=$(cat "$fp")
+    [[ "$first_pass" == "$second_pass" ]]
+}
+
 @test "build_loop_context preserves quality gate info when diff summary present" {
     _skip_if_jq_missing
 

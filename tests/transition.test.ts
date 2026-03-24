@@ -1975,9 +1975,9 @@ cargo run
       await runTransition(testDir);
 
       const prompt = await readFile(join(testDir, ".ralph/PROMPT.md"), "utf-8");
-      expect(prompt).toContain("Specs Reading Strategy");
+      expect(prompt).toContain("Specs Reference");
       expect(prompt).toContain("SPECS_INDEX.md");
-      expect(prompt).toContain("Critical");
+      expect(prompt).toContain("PROJECT_CONTEXT.md");
     });
   });
 });

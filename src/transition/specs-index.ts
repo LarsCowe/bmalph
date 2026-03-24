@@ -169,8 +169,8 @@ export function formatSpecsIndexMd(index: SpecsIndex): string {
   ];
 
   const priorityConfig: { key: Priority; heading: string }[] = [
-    { key: "critical", heading: "Critical (Always Read First)" },
-    { key: "high", heading: "High Priority (Read for Implementation)" },
+    { key: "critical", heading: "Critical (Read When Needed for Current Story)" },
+    { key: "high", heading: "High Priority (Reference as Needed)" },
     { key: "medium", heading: "Medium Priority (Reference as Needed)" },
     { key: "low", heading: "Low Priority (Optional)" },
   ];

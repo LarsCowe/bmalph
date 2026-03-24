@@ -179,12 +179,12 @@ Use `bmalph implement` (or `/bmalph-implement`) to transition from BMAD planning
 ## Dev Workflow
 
 - TDD: write tests first, then implement
+- When a test fails, analyse the root cause before changing anything. Do not take the easy route of just making the test pass — understand why it fails and fix the actual problem. A failing test is a signal, not an obstacle.
 - Tests live in `tests/<module>/` (mirrors `src/` structure), not colocated
 - Conventional Commits with SemVer
 - Application language: English
 - Node 20+ LTS
 - Always run `npm run ci` locally before committing to catch formatting, lint, type, and test failures early
-- **BATS tests on Windows: use WSL2** — Windows Git Bash is 10-50x slower for bash forks. Run `wsl -- bash -c "cd /mnt/c/Users/Lars/Documents/bmalph && npm run test:bash"` or just push and let CI handle it (BATS only runs on Ubuntu in CI).
 
 `npm run ci` runs (in order):
 

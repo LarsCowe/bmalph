@@ -248,41 +248,22 @@ export function generateProjectContextMd(context: ProjectContext, projectName: s
   return lines.join("\n");
 }
 
-export function generatePrompt(projectName: string, context?: ProjectContext): string {
-  // Build context sections if provided
-  const contextSections = context
-    ? [
-        context.projectGoals && `### Project Goals\n${context.projectGoals}`,
-        context.successMetrics && `### Success Metrics\n${context.successMetrics}`,
-        context.architectureConstraints &&
-          `### Architecture Constraints\n${context.architectureConstraints}`,
-        context.scopeBoundaries && `### Scope\n${context.scopeBoundaries}`,
-        context.technicalRisks && `### Technical Risks\n${context.technicalRisks}`,
-        context.targetUsers && `### Target Users\n${context.targetUsers}`,
-        context.nonFunctionalRequirements &&
-          `### Non-Functional Requirements\n${context.nonFunctionalRequirements}`,
-        context.designGuidelines && `### Design Guidelines\n${context.designGuidelines}`,
-        context.researchInsights && `### Research Insights\n${context.researchInsights}`,
-      ]
-        .filter(Boolean)
-        .join("\n\n")
-    : "";
-
-  const projectContextBlock = contextSections
-    ? `
-
-## Project Specifications (CRITICAL - READ THIS)
-
-${contextSections}
-`
-    : "";
-
+export function generatePrompt(projectName: string): string {
   return `# Ralph Development Instructions
 
 ## Context
 You are an autonomous AI development agent working on the ${projectName} project.
 You follow BMAD-METHOD's developer (Amelia) persona and TDD methodology.
-${projectContextBlock}
+
+## Current Objectives
+1. Read .ralph/@fix_plan.md and identify the next incomplete story
+2. Check existing codebase for related code — especially which existing files need changes to integrate your work
+3. Implement the story using TDD (red-green-refactor)
+4. Run tests after implementation
+5. Toggle the completed story checkbox in @fix_plan.md from \`- [ ]\` to \`- [x]\`
+6. Commit with descriptive conventional commit message
+7. Read specs ONLY if the story's inline acceptance criteria are insufficient
+
 ## Development Methodology (BMAD Dev Agent)
 
 For each story in @fix_plan.md:
@@ -290,30 +271,27 @@ For each story in @fix_plan.md:
 2. Write failing tests first (RED)
 3. Implement minimum code to pass tests (GREEN)
 4. Refactor while keeping tests green (REFACTOR)
-5. Toggle the completed story checkbox in @fix_plan.md from \`- [ ]\` to \`- [x]\`
+5. Toggle the completed story checkbox
 6. Commit with descriptive conventional commit message
 
-## Specs Reading Strategy
-1. Read .ralph/SPECS_INDEX.md first for a prioritized overview of all spec files
-2. Follow the reading order in SPECS_INDEX.md:
-   - **Critical**: Always read fully (PRD, architecture, stories)
-   - **High**: Read for implementation details (test design, readiness)
-   - **Medium**: Reference as needed (UX specs, sprint plans)
-   - **Low**: Optional background (brainstorming sessions)
-3. For files marked [LARGE], scan headers first and read relevant sections
+## Specs Reference (Read On Demand)
+- .ralph/SPECS_INDEX.md lists all spec files with paths and priorities
+- .ralph/PROJECT_CONTEXT.md summarizes project goals, constraints, and scope
+- Read specific specs only when the current story requires clarification
+- For files marked [LARGE] in SPECS_INDEX.md, scan headers first
 
-## Current Objectives
-1. Read .ralph/PROJECT_CONTEXT.md for project goals, constraints, and scope
-2. Read .ralph/SPECS_INDEX.md for prioritized spec file overview
-3. Study .ralph/specs/ following the reading order in SPECS_INDEX.md
-4. Use the exact spec paths listed in SPECS_INDEX.md instead of assuming a fixed subdirectory layout
-5. Prioritize planning specs first (PRD, architecture, epics/stories, test design, UX)
-6. Review implementation artifacts next (sprint plans, detailed stories) when they exist
-7. Check docs/ for project knowledge and research documents (if present)
-8. Review .ralph/@fix_plan.md for current priorities
-9. Implement the highest priority story using TDD
-10. Run tests after each implementation
-11. Update the completed story checkbox in @fix_plan.md before committing
+## Key Principles
+- Write code within the first few minutes of each loop
+- ONE story per loop - focus completely on it
+- TDD: tests first, always
+- Search the codebase before assuming something isn't implemented
+- Creating new files is often only half the task — wire them into the existing application
+- Commit working changes with descriptive messages
+
+## Session Continuity
+- If you have context from a previous loop, do NOT re-read spec files
+- Resume implementation where you left off
+- Only consult specs when you encounter ambiguity in the current story
 
 ## Progress Tracking (CRITICAL)
 - Ralph tracks progress by counting story checkboxes in @fix_plan.md
@@ -323,18 +301,37 @@ For each story in @fix_plan.md:
 - Set \`TASKS_COMPLETED_THIS_LOOP\` to the exact number of story checkboxes toggled this loop
 - Only valid values: 0 or 1
 
-## Key Principles
-- ONE story per loop - focus completely on it
-- TDD: tests first, always
-- Search the codebase before assuming something isn't implemented
-- Write comprehensive tests with clear documentation
-- Commit working changes with descriptive messages
+## Execution Guidelines
+- Before making changes: search codebase using subagents
+- After implementation: run essential tests for the modified code
+- If tests fail: fix them as part of your current work
+- Keep .ralph/@AGENT.md updated with build/run instructions
+- No placeholder implementations - build it properly
 
 ## Testing Guidelines
 - Write tests BEFORE implementation (TDD)
 - Focus on acceptance criteria from the story
 - Run the full test suite after implementation
 - Fix any regressions immediately
+
+## Autonomous Mode (CRITICAL)
+- do not ask the user questions during loop execution
+- do not use AskUserQuestion, EnterPlanMode, or ExitPlanMode during loop execution
+- make the safest reasonable assumption and continue
+- prefer small, reversible changes when requirements are ambiguous
+- surface blockers in the Ralph status block instead of starting a conversation
+
+## Self-Review Checklist (Before Reporting Status)
+
+Before writing your RALPH_STATUS block, review your own work:
+
+1. Re-read the diff of files you modified this loop — check for obvious bugs, typos, missing error handling
+2. Verify you did not introduce regressions in existing functionality
+3. Confirm your changes match the spec in .ralph/specs/ for the story you worked on
+4. Check that new functions have proper error handling and edge case coverage
+5. Ensure you did not leave TODO/FIXME/HACK comments without justification
+
+If you find issues, fix them before reporting status.
 
 ## Status Reporting (CRITICAL)
 
