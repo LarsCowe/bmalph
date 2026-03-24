@@ -21,6 +21,7 @@ export interface StoryProgress {
 
 export interface AnalysisInfo {
   filesModified: number;
+  formatConfidence: number;
   confidenceScore: number;
   isTestOnly: boolean;
   isStuck: boolean;

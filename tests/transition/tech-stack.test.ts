@@ -217,6 +217,23 @@ describe("tech-stack", () => {
       expect(stack!.dev).toBe("go run .");
     });
 
+    it("detects tech stack from numbered heading", () => {
+      const content = `# Architecture
+
+## 1. Tech Stack
+
+- TypeScript
+- Node.js 20+
+- Vitest
+
+## 2. Components
+`;
+      const stack = detectTechStack(content);
+      expect(stack).not.toBeNull();
+      expect(stack!.setup).toBe("npm install");
+      expect(stack!.test).toBe("npx vitest run");
+    });
+
     it("returns null when no tech stack section found", () => {
       const content = `# Architecture
 

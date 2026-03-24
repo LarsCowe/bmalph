@@ -37,8 +37,13 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        node-version: [20, 22]
+        include:
+          - os: ubuntu-latest
+            node-version: 22
+          - os: ubuntu-latest
+            node-version: 20
+          - os: windows-latest
+            node-version: 22
 
     steps:
       - uses: actions/checkout@v6
@@ -70,7 +75,7 @@ jobs:
 
       - name: Bash tests
         if: matrix.os == 'ubuntu-latest'
-        run: bats tests/bash/*.bats tests/bash/drivers/*.bats
+        run: npm run test:bash
 
       - name: Upload coverage to Codecov
         if: matrix.node-version == 22 && matrix.os == 'ubuntu-latest'

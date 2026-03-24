@@ -18,6 +18,7 @@ vi.mock("../../src/platform/registry.js", () => ({
 vi.mock("../../src/run/ralph-process.js", () => ({
   validateBashAvailable: vi.fn(),
   validateRalphLoop: vi.fn(),
+  validateGitRepo: vi.fn(),
   spawnRalphLoop: vi.fn(),
 }));
 

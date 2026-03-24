@@ -242,6 +242,62 @@ Scope.
       expect(ids).toContain("W6");
     });
 
+    it("accepts numbered section headers", () => {
+      const prd = `# PRD
+
+## 1. Executive Summary
+
+This is a numbered PRD with conventional section numbering.
+
+## 2. Functional Requirements
+
+- FR1: Users can create tasks
+
+## 3. Non-Functional Requirements
+
+- Performance: Page load under 2 seconds
+
+## 4. Scope
+
+- In scope: Task CRUD
+`;
+
+      const issues = validatePrd(prd);
+
+      expect(issues.find((i) => i.id === "W3")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W4")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W5")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W6")).toBeUndefined();
+    });
+
+    it("accepts sub-numbered section headers", () => {
+      const prd = `# PRD
+
+## 1.2. Goals
+
+Project goals here.
+
+## 2. Functional Requirements
+
+Reqs.
+
+## 3. Non-Functional Requirements
+
+NFRs.
+
+## 4. Scope
+
+Scope.
+`;
+
+      const issues = validatePrd(prd);
+
+      expect(issues.find((i) => i.id === "W3")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W4")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W5")).toBeUndefined();
+      expect(issues.find((i) => i.id === "W6")).toBeUndefined();
+    });
+
     it("does not detect sections with ### heading level", () => {
       const prd = `# PRD\n\n### Executive Summary\n\nSummary.\n\n### Functional Requirements\n\nReqs.\n\n### Non-Functional Requirements\n\nNFRs.\n\n### Scope\n\nScope.\n`;
 
@@ -293,6 +349,14 @@ Scope.
 
     it("accepts Starter Template Evaluation as a tech stack source", () => {
       const arch = `# Architecture\n\n## Starter Template Evaluation\n\n- Next.js starter with TypeScript and Vitest\n`;
+
+      const issues = validateArchitecture(arch);
+
+      expect(issues.find((i) => i.id === "W7")).toBeUndefined();
+    });
+
+    it("accepts numbered Tech Stack heading", () => {
+      const arch = `# Architecture\n\n## 1. Tech Stack\n\n- React\n- Node.js\n`;
 
       const issues = validateArchitecture(arch);
 

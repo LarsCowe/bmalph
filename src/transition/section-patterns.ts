@@ -1,5 +1,5 @@
 function headingPattern(expression: string): RegExp {
-  return new RegExp(`^##\\s+${expression}(?:\\s*:)?\\s*$`, "im");
+  return new RegExp(`^##\\s+(?:\\d+(?:\\.\\d+)*\\.?\\s+)?${expression}(?:\\s*:)?\\s*$`, "im");
 }
 
 export const PROJECT_GOALS_SECTION_PATTERNS = [

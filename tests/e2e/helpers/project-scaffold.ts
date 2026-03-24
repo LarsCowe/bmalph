@@ -1,4 +1,5 @@
 import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -13,6 +14,7 @@ export interface TestProject {
 export async function createTestProject(prefix = "bmalph-e2e"): Promise<TestProject> {
   const path = join(tmpdir(), `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   await mkdir(path, { recursive: true });
+  initGitRepo(path);
 
   return {
     path,
@@ -34,6 +36,16 @@ export async function createTestProject(prefix = "bmalph-e2e"): Promise<TestProj
       }
     },
   };
+}
+
+function initGitRepo(cwd: string): void {
+  execFileSync("git", ["init", "--quiet"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["config", "user.email", "test@bmalph.dev"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["config", "user.name", "bmalph-test"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["commit", "--quiet", "--allow-empty", "-m", "initial"], {
+    cwd,
+    stdio: "ignore",
+  });
 }
 
 function sleep(ms: number): Promise<void> {

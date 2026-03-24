@@ -1,5 +1,19 @@
 import chalk from "chalk";
 
+const EXIT_CODE_LABELS: ReadonlyMap<number, string> = new Map([
+  [0, "completed"],
+  [1, "error"],
+  [124, "timed out"],
+  [130, "interrupted (SIGINT)"],
+  [137, "killed (OOM or SIGKILL)"],
+  [143, "terminated (SIGTERM)"],
+]);
+
+export function formatExitReason(code: number | null): string {
+  if (code === null) return "unknown";
+  return EXIT_CODE_LABELS.get(code) ?? `error (exit ${code})`;
+}
+
 /**
  * Shared status formatting with chalk colors.
  *

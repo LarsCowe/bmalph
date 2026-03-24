@@ -76,6 +76,37 @@ export async function checkJq(projectDir: string): Promise<CheckResult> {
   };
 }
 
+export async function checkGitRepo(projectDir: string): Promise<CheckResult> {
+  const label = "git repository with commits";
+  const gitDir = await runBashCommand("git rev-parse --git-dir", { cwd: projectDir });
+  if (gitDir.exitCode !== 0) {
+    return {
+      label,
+      passed: false,
+      detail: "not a git repository",
+      hint: "Run: git init && git add -A && git commit -m 'initial commit'",
+    };
+  }
+
+  const head = await runBashCommand("git rev-parse HEAD", { cwd: projectDir });
+  if (head.exitCode !== 0) {
+    return {
+      label,
+      passed: false,
+      detail: "no commits found",
+      hint: "Run: git add -A && git commit -m 'initial commit'",
+    };
+  }
+
+  const branch = await runBashCommand("git branch --show-current", { cwd: projectDir });
+  const branchName = branch.stdout.trim();
+  return {
+    label,
+    passed: true,
+    detail: branchName ? `branch: ${branchName}` : undefined,
+  };
+}
+
 export async function checkBmadDir(projectDir: string): Promise<CheckResult> {
   return checkDir(join(projectDir, "_bmad"), "_bmad/ directory present", "Run: bmalph init");
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatStatus } from "../../src/utils/format-status.js";
+import { formatExitReason, formatStatus } from "../../src/utils/format-status.js";
 
 describe("formatStatus", () => {
   it("returns styled string for 'planning'", () => {
@@ -50,5 +50,39 @@ describe("formatStatus", () => {
   it("passes through unknown status values unchanged", () => {
     const result = formatStatus("unknown-status");
     expect(result).toBe("unknown-status");
+  });
+});
+
+describe("formatExitReason", () => {
+  it("returns completed for exit code 0", () => {
+    expect(formatExitReason(0)).toBe("completed");
+  });
+
+  it("returns error for exit code 1", () => {
+    expect(formatExitReason(1)).toBe("error");
+  });
+
+  it("returns timed out for exit code 124", () => {
+    expect(formatExitReason(124)).toBe("timed out");
+  });
+
+  it("returns interrupted for exit code 130", () => {
+    expect(formatExitReason(130)).toBe("interrupted (SIGINT)");
+  });
+
+  it("returns killed for exit code 137", () => {
+    expect(formatExitReason(137)).toBe("killed (OOM or SIGKILL)");
+  });
+
+  it("returns terminated for exit code 143", () => {
+    expect(formatExitReason(143)).toBe("terminated (SIGTERM)");
+  });
+
+  it("returns unknown for null exit code", () => {
+    expect(formatExitReason(null)).toBe("unknown");
+  });
+
+  it("returns generic label for unmapped exit code", () => {
+    expect(formatExitReason(42)).toBe("error (exit 42)");
   });
 });

@@ -136,7 +136,8 @@ teardown() {
     driver_build_command "$prompt_file" "" "session-codex-456"
 
     local args_str="${CLAUDE_CMD_ARGS[*]}"
-    [[ "$args_str" =~ "--resume session-codex-456" ]]
+    [[ "$args_str" =~ "resume session-codex-456" ]]
+    [[ ! "$args_str" =~ "--resume" ]]
 }
 
 @test "driver_build_command fails with missing prompt file" {

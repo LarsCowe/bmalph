@@ -708,11 +708,15 @@ EOF
     run jq -r '.analysis.exit_signal' "$analysis"
     assert_output "true"
 
-    # Confidence is 100 from explicit RALPH_STATUS, but git state in CWD
-    # may add +20, so check >= 100 rather than exact value
+    # Confidence is 100 from explicit RALPH_STATUS (completion signal)
     local score
     score=$(jq -r '.analysis.confidence_score' "$analysis")
     [[ "$score" -ge 100 ]]
+
+    # Format confidence is 70 for text with RALPH_STATUS block
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 70 ]]
 }
 
 @test "analyze_response respects EXIT_SIGNAL false in text" {
@@ -839,7 +843,7 @@ EOF
     assert_output "false"
 }
 
-@test "analyze_response status block EXIT_SIGNAL false sets confidence >= 80" {
+@test "analyze_response status block EXIT_SIGNAL false sets confidence 80" {
     _skip_if_xargs_broken
     local status_file="$RALPH_DIR/confidence_80.txt"
     cat > "$status_file" << 'EOF'
@@ -855,10 +859,15 @@ EOF
     run analyze_response "$status_file" 1 "$analysis"
     assert_success
 
-    # Base confidence is 80 from structured signal; git state may add +20
+    # Completion confidence is exactly 80 (git changes no longer inflate it)
     local score
     score=$(jq -r '.analysis.confidence_score' "$analysis")
-    [[ "$score" -ge 80 ]]
+    [[ "$score" -eq 80 ]]
+
+    # Format confidence is 70 for text with RALPH_STATUS block
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 70 ]]
 }
 
 @test "analyze_response status block defaults is_test_only false" {
@@ -1009,9 +1018,122 @@ EOF
     local score
     score=$(jq -r '.analysis.confidence_score' "$analysis")
     [[ "$score" -ge 100 ]]
+
+    # Format confidence is 70 for text with RALPH_STATUS block
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 70 ]]
 }
 
 # === End status block trusts structured fields ===
+
+# ===========================================================================
+# format_confidence vs completion_confidence separation (Issue #124)
+# ===========================================================================
+
+@test "analyze_response JSON path sets format_confidence 100 for structured response with result field" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+
+    # cli_object_exit_false.json has a "result" field (has_result_field=true)
+    run analyze_response "$FIXTURES_DIR/cli_object_exit_false.json" 3 "$analysis"
+    assert_success
+
+    # Format confidence is 100 for JSON with result field
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 100 ]]
+
+    # Completion confidence should NOT include format boosts (+50 or +20)
+    # cli_object_exit_false has EXIT_SIGNAL: false via embedded RALPH_STATUS
+    local score
+    score=$(jq -r '.analysis.confidence_score' "$analysis")
+    [[ "$score" -lt 50 ]]
+}
+
+@test "analyze_response JSON path sets format_confidence 80 without result field" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+
+    # flat_response_in_progress.json has no "result" field (has_result_field=false)
+    run analyze_response "$FIXTURES_DIR/flat_response_in_progress.json" 3 "$analysis"
+    assert_success
+
+    # Format confidence is 80 for JSON without result field
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 80 ]]
+
+    # Completion confidence does NOT include +50 or +20 format boosts
+    # The AI's .confidence field is 30, so that's the completion score
+    local score
+    score=$(jq -r '.analysis.confidence_score' "$analysis")
+    [[ "$score" -eq 30 ]]
+}
+
+@test "analyze_response JSON path with exit_signal true still sets format_confidence" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+
+    # flat_response.json has exit_signal=true but no "result" field
+    run analyze_response "$FIXTURES_DIR/flat_response.json" 5 "$analysis"
+    assert_success
+
+    # Format confidence is 80 (JSON without result field)
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 80 ]]
+
+    # Completion confidence is 100 when exit_signal is true
+    local score
+    score=$(jq -r '.analysis.confidence_score' "$analysis")
+    [[ "$score" -eq 100 ]]
+}
+
+@test "analyze_response JSONL path sets format_confidence 100" {
+    _skip_if_jq_missing
+    local analysis="$RALPH_DIR/.response_analysis"
+
+    run analyze_response "$FIXTURES_DIR/codex_jsonl_response.jsonl" 6 "$analysis"
+    assert_success
+
+    # JSONL always has has_result_field=true, so format_confidence is 100
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 100 ]]
+}
+
+@test "analyze_response git changes do not boost completion confidence when RALPH_STATUS present" {
+    _skip_if_xargs_broken
+    # This test verifies that the RALPH_STATUS guard prevents git file changes
+    # from inflating completion confidence. The confidence_score must be exactly 80
+    # (from EXIT_SIGNAL: false), regardless of any git state in the working tree.
+
+    local status_file="$RALPH_DIR/git_status_test.txt"
+    cat > "$status_file" << 'EOF'
+Working on story.
+
+---RALPH_STATUS---
+STATUS: IN_PROGRESS
+EXIT_SIGNAL: false
+---END_RALPH_STATUS---
+EOF
+
+    local analysis="$RALPH_DIR/.response_analysis"
+    run analyze_response "$status_file" 1 "$analysis"
+    assert_success
+
+    # Completion confidence is exactly 80 from EXIT_SIGNAL: false
+    # Git changes should NOT add +20
+    local score
+    score=$(jq -r '.analysis.confidence_score' "$analysis")
+    [[ "$score" -eq 80 ]]
+
+    # Format confidence is 70 for RALPH_STATUS block
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 70 ]]
+}
 
 @test "analyze_response persists TASKS_COMPLETED_THIS_LOOP from JSON output" {
     _skip_if_jq_missing
@@ -1093,6 +1215,11 @@ EOF
     local score
     score=$(jq -r '.analysis.confidence_score' "$analysis")
     [[ "$score" -ge 10 ]]
+
+    # Format confidence is 30 for text heuristic path (no RALPH_STATUS block)
+    local fmt
+    fmt=$(jq -r '.analysis.format_confidence' "$analysis")
+    [[ "$fmt" -eq 30 ]]
 }
 
 # ===========================================================================
@@ -1344,6 +1471,7 @@ EOF
     "loop_number": 5,
     "analysis": {
         "exit_signal": false,
+        "format_confidence": 70,
         "confidence_score": 35,
         "is_test_only": false,
         "files_modified": 3,
@@ -1354,6 +1482,10 @@ JSON
     run log_analysis_summary "$RALPH_DIR/.response_analysis"
     assert_success
     assert_output --partial "Loop #5"
+    assert_output --partial "Parse quality:"
+    assert_output --partial "70"
+    assert_output --partial "Completion:"
+    assert_output --partial "35"
     assert_output --partial "3"
 }
 

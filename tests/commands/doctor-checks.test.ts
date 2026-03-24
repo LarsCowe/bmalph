@@ -44,6 +44,7 @@ import {
   checkNodeVersion,
   checkBash,
   checkJq,
+  checkGitRepo,
   checkBmadDir,
   checkRalphLoop,
   checkRalphLib,
@@ -488,5 +489,70 @@ describe("checkConfig", () => {
     const result = await checkConfig("/projects/webapp");
 
     expect(result.detail).toBe("Invalid JSON in bmalph/config.json");
+  });
+});
+
+describe("checkGitRepo", () => {
+  it("passes when directory is a git repo with commits", async () => {
+    mockedRunBashCommand.mockResolvedValue({ exitCode: 0, stdout: "main\n", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.passed).toBe(true);
+  });
+
+  it("uses the label 'git repository with commits'", async () => {
+    mockedRunBashCommand.mockResolvedValue({ exitCode: 0, stdout: "main\n", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.label).toBe("git repository with commits");
+  });
+
+  it("includes branch name in detail on success", async () => {
+    mockedRunBashCommand
+      .mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ exitCode: 0, stdout: "feature/auth\n", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.detail).toBe("branch: feature/auth");
+  });
+
+  it("fails when directory is not a git repo", async () => {
+    mockedRunBashCommand.mockResolvedValue({ exitCode: 128, stdout: "", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.passed).toBe(false);
+  });
+
+  it("includes git init hint when not a git repo", async () => {
+    mockedRunBashCommand.mockResolvedValue({ exitCode: 128, stdout: "", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.hint).toContain("git init");
+  });
+
+  it("fails when git repo has no commits", async () => {
+    mockedRunBashCommand
+      .mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ exitCode: 128, stdout: "", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.passed).toBe(false);
+  });
+
+  it("includes commit hint when repo has no commits", async () => {
+    mockedRunBashCommand
+      .mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ exitCode: 128, stdout: "", stderr: "" });
+
+    const result = await checkGitRepo("/projects/webapp");
+
+    expect(result.hint).toContain("commit");
   });
 });

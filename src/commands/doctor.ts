@@ -5,6 +5,7 @@ import type { Platform } from "../platform/types.js";
 import {
   checkNodeVersion,
   checkBash,
+  checkGitRepo,
   checkJq,
   checkConfig,
   checkBmadDir,
@@ -116,6 +117,7 @@ export async function runDoctor(
 const CORE_CHECKS: CheckDefinition[] = [
   { id: "node-version", run: checkNodeVersion },
   { id: "bash-available", run: checkBash },
+  { id: "git-repo", run: checkGitRepo },
   { id: "jq-available", run: checkJq },
   { id: "config-valid", run: checkConfig },
   { id: "bmad-dir", run: checkBmadDir },

@@ -185,6 +185,7 @@ describe("renderer", () => {
       };
       const analysis: AnalysisInfo = {
         filesModified: 14,
+        formatConfidence: 100,
         confidenceScore: 97,
         isTestOnly: false,
         isStuck: false,
@@ -548,6 +549,7 @@ describe("renderer", () => {
     it("renders file count, confidence, and flags", () => {
       const analysis: AnalysisInfo = {
         filesModified: 3,
+        formatConfidence: 70,
         confidenceScore: 72,
         isTestOnly: false,
         isStuck: false,
@@ -561,13 +563,15 @@ describe("renderer", () => {
       const output = renderAnalysisPanel(analysis, COLS);
 
       expect(output).toContain("Files: 3");
-      expect(output).toContain("Confidence: 72%");
+      expect(output).toContain("Parse: 70%");
+      expect(output).toContain("Completion: 72%");
       expect(output).toContain("Test-only: no");
     });
 
     it("renders exit signal and permission denials", () => {
       const analysis: AnalysisInfo = {
         filesModified: 5,
+        formatConfidence: 100,
         confidenceScore: 90,
         isTestOnly: true,
         isStuck: true,
@@ -589,6 +593,7 @@ describe("renderer", () => {
     it("renders progress tracking counts and mismatch state", () => {
       const analysis: AnalysisInfo = {
         filesModified: 1,
+        formatConfidence: 30,
         confidenceScore: 65,
         isTestOnly: false,
         isStuck: false,

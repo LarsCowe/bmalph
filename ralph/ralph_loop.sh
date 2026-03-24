@@ -372,7 +372,7 @@ get_tmux_base_index() {
 # Setup tmux session with monitor
 setup_tmux_session() {
     local session_name="ralph-$(date +%s)"
-    local ralph_home="${RALPH_HOME:-$HOME/.ralph}"
+    local ralph_home="${RALPH_HOME:-$SCRIPT_DIR}"
     local project_dir="$(pwd)"
 
     initialize_runtime_context
@@ -531,6 +531,20 @@ log_status() {
     echo "[$timestamp] [$level] $message" >> "$LOG_DIR/ralph.log"
 }
 
+# Human-readable label for a process exit code
+describe_exit_code() {
+    local code=$1
+    case "$code" in
+        0)   echo "completed" ;;
+        1)   echo "error" ;;
+        124) echo "timed out" ;;
+        130) echo "interrupted (SIGINT)" ;;
+        137) echo "killed (OOM or SIGKILL)" ;;
+        143) echo "terminated (SIGTERM)" ;;
+        *)   echo "error (exit $code)" ;;
+    esac
+}
+
 # Update status JSON for external monitoring
 update_status() {
     local loop_count=$1
@@ -538,6 +552,7 @@ update_status() {
     local last_action=$3
     local status=$4
     local exit_reason=${5:-""}
+    local driver_exit_code=${6:-""}
 
     jq -n \
         --arg timestamp "$(get_iso_timestamp)" \
@@ -548,6 +563,7 @@ update_status() {
         --arg status "$status" \
         --arg exit_reason "$exit_reason" \
         --arg next_reset "$(get_next_hour_time)" \
+        --arg driver_exit_code "$driver_exit_code" \
         '{
             timestamp: $timestamp,
             loop_count: $loop_count,
@@ -556,7 +572,8 @@ update_status() {
             last_action: $last_action,
             status: $status,
             exit_reason: $exit_reason,
-            next_reset: $next_reset
+            next_reset: $next_reset,
+            driver_exit_code: (if $driver_exit_code != "" then ($driver_exit_code | tonumber) else null end)
         }' > "$STATUS_FILE"
 
     # Merge quality gate status if results exist
@@ -630,6 +647,44 @@ validate_claude_permission_mode() {
             return 1
             ;;
     esac
+}
+
+validate_git_repo() {
+    if ! command -v git &>/dev/null; then
+        log_status "ERROR" "git is not installed or not on PATH."
+        echo ""
+        echo "Ralph requires git for progress detection."
+        echo ""
+        echo "Install git:"
+        echo "  macOS:   brew install git  (or: xcode-select --install)"
+        echo "  Ubuntu:  sudo apt-get install git"
+        echo "  Windows: https://git-scm.com/downloads"
+        echo ""
+        echo "After installing, run this command again."
+        return 1
+    fi
+
+    if ! git rev-parse --git-dir &>/dev/null 2>&1; then
+        log_status "ERROR" "No git repository found in $(pwd)."
+        echo ""
+        echo "Ralph requires a git repository for progress detection."
+        echo ""
+        echo "To fix this, run:"
+        echo "  git init && git add -A && git commit -m 'initial commit'"
+        return 1
+    fi
+
+    if ! git rev-parse HEAD &>/dev/null 2>&1; then
+        log_status "ERROR" "Git repository has no commits."
+        echo ""
+        echo "Ralph requires at least one commit for progress detection."
+        echo ""
+        echo "To fix this, run:"
+        echo "  git add -A && git commit -m 'initial commit'"
+        return 1
+    fi
+
+    return 0
 }
 
 warn_if_allowed_tools_ignored() {
@@ -1293,8 +1348,79 @@ build_loop_context() {
         fi
     fi
 
+    # Add git diff summary from previous loop (last segment — truncated first if over budget)
+    if [[ -f "$RALPH_DIR/.loop_diff_summary" ]]; then
+        local diff_summary
+        diff_summary=$(head -c 150 "$RALPH_DIR/.loop_diff_summary" 2>/dev/null)
+        if [[ -n "$diff_summary" ]]; then
+            context+="${diff_summary}. "
+        fi
+    fi
+
     # Limit total length to ~500 chars
     echo "${context:0:500}"
+}
+
+# Capture a compact git diff summary after each loop iteration.
+# Writes to $RALPH_DIR/.loop_diff_summary for the next loop's build_loop_context().
+# Args: $1 = loop_start_sha (git HEAD at loop start)
+capture_loop_diff_summary() {
+    local loop_start_sha="${1:-}"
+    local summary_file="$RALPH_DIR/.loop_diff_summary"
+
+    # Clear previous summary
+    rm -f "$summary_file"
+
+    # Require git and a valid repo
+    if ! command -v git &>/dev/null || ! git rev-parse --git-dir &>/dev/null 2>&1; then
+        return 0
+    fi
+
+    local current_sha
+    current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+    local numstat_output=""
+
+    if [[ -n "$loop_start_sha" && -n "$current_sha" && "$loop_start_sha" != "$current_sha" ]]; then
+        # Commits exist: union of committed + working tree changes, deduplicated by filename
+        numstat_output=$(
+            {
+                git diff --numstat "$loop_start_sha" HEAD 2>/dev/null
+                git diff --numstat HEAD 2>/dev/null
+                git diff --numstat --cached 2>/dev/null
+            } | awk -F'\t' '!seen[$3]++'
+        )
+    else
+        # No commits: staged + unstaged only
+        numstat_output=$(
+            {
+                git diff --numstat 2>/dev/null
+                git diff --numstat --cached 2>/dev/null
+            } | awk -F'\t' '!seen[$3]++'
+        )
+    fi
+
+    [[ -z "$numstat_output" ]] && return 0
+
+    # Format: Changed: file (+add/-del), file2 (+add/-del)
+    # Skip binary files (numstat shows - - for binary)
+    # Use tab separator — numstat output is tab-delimited (handles filenames with spaces)
+    local formatted
+    formatted=$(echo "$numstat_output" | awk -F'\t' '
+        $1 != "-" {
+            if (n++) printf ", "
+            printf "%s (+%s/-%s)", $3, $1, $2
+        }
+    ')
+
+    [[ -z "$formatted" ]] && return 0
+
+    local result="Changed: ${formatted}"
+    # Self-truncate to ~150 chars (144 content + "...")
+    if [[ ${#result} -gt 147 ]]; then
+        result="${result:0:144}..."
+    fi
+
+    echo "$result" > "$summary_file"
 }
 
 # Check if a code review should run this iteration
@@ -1957,11 +2083,15 @@ get_live_stream_filter() {
 execute_claude_code() {
     local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
     local output_file="$LOG_DIR/claude_output_${timestamp}.log"
+    local stderr_file="$LOG_DIR/claude_stderr_${timestamp}.log"
     local loop_count=$1
     local calls_made=$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")
     calls_made=$((calls_made + 1))
     local fix_plan_completed_before=0
     read -r fix_plan_completed_before _ _ < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
+
+    # Clear previous diff summary to prevent stale context on early exit (#117)
+    rm -f "$RALPH_DIR/.loop_diff_summary"
 
     # Fix #141: Capture git HEAD SHA at loop start to detect commits as progress
     # Store in file for access by progress detection after Claude execution
@@ -2078,7 +2208,7 @@ execute_claude_code() {
         # read from stdin even in -p (print) mode, causing the process to hang
         set -o pipefail
         portable_timeout ${timeout_seconds}s stdbuf -oL "${LIVE_CMD_ARGS[@]}" \
-            < /dev/null 2>&1 | stdbuf -oL tee "$output_file" | stdbuf -oL jq --unbuffered -j "$jq_filter" 2>/dev/null | tee "$LIVE_LOG_FILE"
+            < /dev/null 2>"$stderr_file" | stdbuf -oL tee "$output_file" | stdbuf -oL jq --unbuffered -j "$jq_filter" 2>/dev/null | tee "$LIVE_LOG_FILE"
 
         # Capture exit codes from pipeline
         local -a pipe_status=("${PIPESTATUS[@]}")
@@ -2130,7 +2260,7 @@ execute_claude_code() {
             # stdin must be redirected from /dev/null because newer Claude CLI versions
             # read from stdin even in -p (print) mode, causing SIGTTIN suspension
             # when the process is backgrounded
-            if portable_timeout ${timeout_seconds}s "${CLAUDE_CMD_ARGS[@]}" < /dev/null > "$output_file" 2>&1 &
+            if portable_timeout ${timeout_seconds}s "${CLAUDE_CMD_ARGS[@]}" < /dev/null > "$output_file" 2>"$stderr_file" &
             then
                 :  # Continue to wait loop
             else
@@ -2145,7 +2275,7 @@ execute_claude_code() {
         # Note: Legacy mode doesn't use --allowedTools, so tool permissions
         # will be handled by Claude Code's default permission system
         if [[ "$use_modern_cli" == "false" ]]; then
-            if portable_timeout ${timeout_seconds}s $CLAUDE_CODE_CMD < "$PROMPT_FILE" > "$output_file" 2>&1 &
+            if portable_timeout ${timeout_seconds}s $CLAUDE_CODE_CMD < "$PROMPT_FILE" > "$output_file" 2>"$stderr_file" &
             then
                 :  # Continue to wait loop
             else
@@ -2203,6 +2333,9 @@ EOF
         wait $claude_pid
         exit_code=$?
     fi
+
+    # Expose the raw driver exit code to the main loop for status reporting
+    LAST_DRIVER_EXIT_CODE=$exit_code
 
     if [ $exit_code -eq 0 ]; then
         # Only increment counter on successful execution
@@ -2289,6 +2422,9 @@ EOF
             fi
         fi
 
+        # Capture diff summary for next loop's context (#117)
+        capture_loop_diff_summary "$loop_start_sha"
+
         local has_errors="false"
 
         # Two-stage error detection to avoid JSON field false positives
@@ -2339,24 +2475,50 @@ EOF
             log_status "ERROR" "🚫 Claude API 5-hour usage limit reached"
             return 2  # Special return code for API limit
         else
-            log_status "ERROR" "❌ $DRIVER_DISPLAY_NAME execution failed, check: $output_file"
+            local exit_desc
+            exit_desc=$(describe_exit_code "$exit_code")
+            log_status "ERROR" "❌ $DRIVER_DISPLAY_NAME exited: $exit_desc (code $exit_code)"
+            if [[ -f "$stderr_file" && -s "$stderr_file" ]]; then
+                log_status "ERROR" "  stderr (last 3 lines): $(tail -3 "$stderr_file")"
+                log_status "ERROR" "  full stderr log: $stderr_file"
+            fi
             return 1
         fi
     fi
 }
 
-# Cleanup function
-cleanup() {
-    log_status "INFO" "Ralph loop interrupted. Cleaning up..."
-    reset_session "manual_interrupt"
-    update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "interrupted" "stopped"
-    exit 0
+# Guard against double cleanup (EXIT fires after signal handler exits)
+_CLEANUP_DONE=false
+
+# EXIT trap — catches set -e failures and other unexpected exits
+_on_exit() {
+    local code=$?
+    [[ "$_CLEANUP_DONE" == "true" ]] && return
+    _CLEANUP_DONE=true
+    if [[ "$code" -ne 0 ]]; then
+        local desc
+        desc=$(describe_exit_code "$code")
+        log_status "ERROR" "Ralph loop exiting unexpectedly: $desc (code $code)"
+        update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "unexpected_exit" "stopped" "$desc" "$code"
+    fi
 }
 
-# Set up signal handlers
-trap cleanup SIGINT SIGTERM
+# Signal handler — preserves signal identity in exit code
+_on_signal() {
+    local sig=$1
+    log_status "INFO" "Ralph loop interrupted by $sig. Cleaning up..."
+    reset_session "manual_interrupt"
+    update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "interrupted" "stopped" "$sig"
+    _CLEANUP_DONE=true
+    [[ "$sig" == "SIGINT" ]] && exit 130
+    exit 143
+}
 
-# Global variable for loop count (needed by cleanup function)
+trap _on_exit EXIT
+trap '_on_signal SIGINT' SIGINT
+trap '_on_signal SIGTERM' SIGTERM
+
+# Global variable for loop count (needed by trap handlers)
 loop_count=0
 
 # Main loop
@@ -2455,6 +2617,11 @@ main() {
         echo "  Windows: choco install jq  (or: winget install jqlang.jq)"
         echo ""
         echo "After installing, run this command again."
+        exit 1
+    fi
+
+    # Check for git repository (required for progress detection)
+    if ! validate_git_repo; then
         exit 1
     fi
 
@@ -2602,7 +2769,12 @@ main() {
                 printf "\n"
             fi
         else
-            update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "failed" "error"
+            # Infrastructure failures (timeout, crash, OOM) intentionally bypass
+            # record_loop_result to avoid counting as agent stagnation. The circuit
+            # breaker only tracks progress during successful executions. (Issue #145)
+            local exit_desc
+            exit_desc=$(describe_exit_code "${LAST_DRIVER_EXIT_CODE:-1}")
+            update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "failed" "error" "$exit_desc" "${LAST_DRIVER_EXIT_CODE:-}"
             log_status "WARN" "Execution failed, waiting 30 seconds before retry..."
             sleep 30
         fi

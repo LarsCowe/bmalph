@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0](https://github.com/LarsCowe/bmalph/compare/v2.9.0...v2.10.0) (2026-03-23)
+
+
+### Features
+
+* **run:** add ultimate review mode for per-story code review ([33af4b9](https://github.com/LarsCowe/bmalph/commit/33af4b9e6ee63a3ea03d4dedfafd9022c5e29922))
+* **run:** prioritize HIGH/CRITICAL review findings over new stories ([e0ce427](https://github.com/LarsCowe/bmalph/commit/e0ce42791b2a89f6369ebcf3c3ac69c60fb7722b))
+
+
+### Bug Fixes
+
+* **bash:** Codex driver resume and ralph_loop.sh default path fixes ([#137](https://github.com/LarsCowe/bmalph/issues/137)) ([de8639f](https://github.com/LarsCowe/bmalph/commit/de8639f81b0118f1d0d177f7d9a4cfcd6a052afa))
+* **run:** enforce word boundaries in completion keyword matching ([8887a0f](https://github.com/LarsCowe/bmalph/commit/8887a0f36eded9e9ee19719dc449c10fdef917c5)), closes [#122](https://github.com/LarsCowe/bmalph/issues/122)
+* **run:** restore --no-review CLI flag and harden bash delta parsing ([e20e301](https://github.com/LarsCowe/bmalph/commit/e20e3015efd431c01ef838b71421577993247883))
+* **run:** trust RALPH_STATUS block over heuristic analysis ([#140](https://github.com/LarsCowe/bmalph/issues/140)) ([0838617](https://github.com/LarsCowe/bmalph/commit/0838617bdbde02f35d9f006e6e09a09e05186b62)), closes [#123](https://github.com/LarsCowe/bmalph/issues/123)
+
 ## [2.9.0](https://github.com/LarsCowe/bmalph/compare/v2.8.0...v2.9.0) (2026-03-19)
 
 

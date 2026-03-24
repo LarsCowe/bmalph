@@ -169,6 +169,24 @@ export async function validateRalphLoop(projectDir: string): Promise<void> {
   }
 }
 
+export async function validateGitRepo(projectDir: string): Promise<void> {
+  const gitDir = await runBashCommand("git rev-parse --git-dir", { cwd: projectDir });
+  if (gitDir.exitCode !== 0) {
+    throw new Error(
+      "No git repository found. Ralph requires git for progress detection.\n" +
+        "Run: git init && git add -A && git commit -m 'initial commit'"
+    );
+  }
+
+  const head = await runBashCommand("git rev-parse HEAD", { cwd: projectDir });
+  if (head.exitCode !== 0) {
+    throw new Error(
+      "Git repository has no commits. Ralph requires at least one commit for progress detection.\n" +
+        "Run: git add -A && git commit -m 'initial commit'"
+    );
+  }
+}
+
 export interface SpawnOptions {
   inheritStdio: boolean;
   reviewMode?: ReviewMode;

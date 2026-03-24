@@ -3,7 +3,12 @@ import { readConfig } from "../utils/config.js";
 import { withErrorHandling } from "../utils/errors.js";
 import { isPlatformId, getPlatform, getFullTierPlatformNames } from "../platform/registry.js";
 import { validateCursorRuntime } from "../platform/cursor-runtime-checks.js";
-import { validateBashAvailable, validateRalphLoop, spawnRalphLoop } from "../run/ralph-process.js";
+import {
+  validateBashAvailable,
+  validateRalphLoop,
+  validateGitRepo,
+  spawnRalphLoop,
+} from "../run/ralph-process.js";
 import { startRunDashboard } from "../run/run-dashboard.js";
 import { parseInterval } from "../utils/validate.js";
 import { getDashboardTerminalSupport } from "../watch/frame-writer.js";
@@ -59,7 +64,11 @@ async function executeRun(options: RunCommandOptions): Promise<void> {
     }
   }
 
-  await Promise.all([validateBashAvailable(), validateRalphLoop(projectDir)]);
+  await Promise.all([
+    validateBashAvailable(),
+    validateRalphLoop(projectDir),
+    validateGitRepo(projectDir),
+  ]);
   if (platform.id === "cursor") {
     await validateCursorRuntime(projectDir);
   }

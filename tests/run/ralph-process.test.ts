@@ -669,3 +669,66 @@ describe("spawnRalphLoop", () => {
     }
   });
 });
+
+describe("validateGitRepo", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  function createPipedMockChild(): ChildProcess {
+    const mockStdout = new EventEmitter();
+    const mockStderr = new EventEmitter();
+    return createMockChild({
+      stdout: mockStdout as unknown as ChildProcess["stdout"],
+      stderr: mockStderr as unknown as ChildProcess["stderr"],
+    });
+  }
+
+  function mockSpawnForGitCheck(gitDirExitCode: number, headExitCode = 0): void {
+    mockSpawn.mockImplementation((_cmd: string, args: string[]) => {
+      // resolveBashCommand: bash --version
+      if (args[0] === "--version") {
+        const child = createMockChild();
+        process.nextTick(() => child.emit("close", 0));
+        return child;
+      }
+
+      // runBashCommand: bash -lc "<command>"
+      const command = args[1] as string;
+      const child = createPipedMockChild();
+      if (command.includes("git rev-parse --git-dir")) {
+        process.nextTick(() => child.emit("close", gitDirExitCode));
+      } else if (command.includes("git rev-parse HEAD")) {
+        process.nextTick(() => child.emit("close", headExitCode));
+      } else {
+        process.nextTick(() => child.emit("close", 0));
+      }
+      return child;
+    });
+  }
+
+  it("resolves when directory is a git repo with commits", async () => {
+    mockSpawnForGitCheck(0, 0);
+
+    const { validateGitRepo } = await import("../../src/run/ralph-process.js");
+
+    await expect(validateGitRepo("/project")).resolves.toBeUndefined();
+  });
+
+  it("throws when directory is not a git repository", async () => {
+    mockSpawnForGitCheck(128);
+
+    const { validateGitRepo } = await import("../../src/run/ralph-process.js");
+
+    await expect(validateGitRepo("/project")).rejects.toThrow(/git repository/i);
+  });
+
+  it("throws when git repo has no commits", async () => {
+    mockSpawnForGitCheck(0, 128);
+
+    const { validateGitRepo } = await import("../../src/run/ralph-process.js");
+
+    await expect(validateGitRepo("/project")).rejects.toThrow(/commit/i);
+  });
+});

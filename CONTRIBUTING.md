@@ -89,12 +89,26 @@ npm run test:coverage
 
 ### Bash Tests
 
+**Prerequisites:**
+
+- [bats-core](https://github.com/bats-core/bats-core) must be installed
+  (`brew install bats-core` on macOS, `sudo apt-get install bats` on Ubuntu).
+
 Bundled shell assets are covered by Bats tests under `tests/bash/`.
 
+Test helpers (`bats-support`, `bats-assert`) are installed automatically by
+the script below.
+
 ```bash
+# Install bats-core test helpers (one-time setup)
+bash scripts/setup-bats.sh
+
 # Run bash/driver/response-analyzer coverage
 npm run test:bash
 ```
+
+`npm run test:bash` uses system-installed `bats` if available, falling back to `npx bats`
+when bats-core is not in PATH.
 
 ### End-to-End Tests
 

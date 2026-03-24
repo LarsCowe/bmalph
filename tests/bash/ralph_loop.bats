@@ -531,6 +531,64 @@ teardown() {
 }
 
 # ===========================================================================
+# validate_git_repo
+# ===========================================================================
+
+@test "validate_git_repo succeeds in a valid git repo with commits" {
+    local test_repo
+    test_repo="$(mktemp -d)"
+    git -C "$test_repo" init --quiet
+    git -C "$test_repo" config user.email "test@test.com"
+    git -C "$test_repo" config user.name "Test"
+    touch "$test_repo/file.txt"
+    git -C "$test_repo" add .
+    git -C "$test_repo" commit --quiet -m "initial"
+
+    cd "$test_repo"
+    run validate_git_repo
+    assert_success
+
+    rm -rf "$test_repo"
+}
+
+@test "validate_git_repo fails when not in a git repo" {
+    local test_dir
+    test_dir="$(mktemp -d)"
+
+    cd "$test_dir"
+    run validate_git_repo
+    assert_failure
+    assert_output --partial "git init"
+
+    rm -rf "$test_dir"
+}
+
+@test "validate_git_repo fails when git repo has no commits" {
+    local test_repo
+    test_repo="$(mktemp -d)"
+    git -C "$test_repo" init --quiet
+
+    cd "$test_repo"
+    run validate_git_repo
+    assert_failure
+    assert_output --partial "commit"
+
+    rm -rf "$test_repo"
+}
+
+@test "validate_git_repo fails when git is not on PATH" {
+    local test_dir
+    test_dir="$(mktemp -d)"
+
+    cd "$test_dir"
+    PATH="" run validate_git_repo
+    assert_failure
+    assert_output --partial "git"
+
+    rm -rf "$test_dir"
+}
+
+# ===========================================================================
 # build_loop_context
 # ===========================================================================
 
@@ -556,6 +614,42 @@ EOF
     assert_success
     local len=${#output}
     [[ $len -le 500 ]]
+}
+
+@test "build_loop_context includes diff summary from state file" {
+    echo "Changed: src/auth.ts (+45/-12), tests/auth.test.ts (+30/-0)" > "$RALPH_DIR/.loop_diff_summary"
+
+    run build_loop_context 3
+    assert_success
+    assert_output --partial "Changed: src/auth.ts (+45/-12)"
+}
+
+@test "build_loop_context omits diff summary when no state file" {
+    rm -f "$RALPH_DIR/.loop_diff_summary"
+
+    run build_loop_context 3
+    assert_success
+    refute_output --partial "Changed:"
+}
+
+@test "build_loop_context preserves quality gate info when diff summary present" {
+    _skip_if_jq_missing
+
+    # Quality gate failure (high priority — should survive truncation)
+    jq -n '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail"},
+        custom_gates: []
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    # Long diff summary (medium priority — truncated first if over budget)
+    printf 'Changed: %0.sa_very_long_filename_that_takes_space.ts (+100/-50), ' {1..10} > "$RALPH_DIR/.loop_diff_summary"
+
+    run build_loop_context 5
+    assert_success
+    # Quality gate info must survive — it appears before diff in the context string
+    assert_output --partial "TESTS FAILING."
 }
 
 # ===========================================================================
@@ -1123,6 +1217,38 @@ TMUX
     assert_file_exist "$RALPH_DIR/tmux.log"
     run grep -F -- "select-pane -t" "$RALPH_DIR/tmux.log"
     assert_output --partial "Cursor CLI Output"
+}
+
+@test "setup_tmux_session uses SCRIPT_DIR not HOME/.ralph for ralph_home fallback" {
+    SCRIPT_DIR="$PROJECT_ROOT/ralph"
+    PLATFORM_DRIVER="claude-code"
+    DRIVER_DISPLAY_NAME="Claude Code"
+    CLAUDE_CODE_CMD="claude"
+
+    mkdir -p "$RALPH_DIR/bin"
+    cat > "$RALPH_DIR/bin/tmux" <<'TMUX'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$RALPH_DIR/tmux.log"
+if [[ "$1" == "show-options" ]]; then
+    echo "0"
+fi
+exit 0
+TMUX
+    chmod +x "$RALPH_DIR/bin/tmux"
+    export PATH="$RALPH_DIR/bin:$PATH"
+
+    exit() {
+        return "${1:-0}"
+    }
+
+    setup_tmux_session
+
+    assert_file_exist "$RALPH_DIR/tmux.log"
+    run grep "ralph_loop.sh" "$RALPH_DIR/tmux.log"
+    assert_success
+    run grep -- "ralph_loop.sh" "$RALPH_DIR/tmux.log"
+    refute_output --partial "$HOME/.ralph"
+    assert_output --partial "$SCRIPT_DIR/ralph_loop.sh"
 }
 
 @test "load_platform_driver: fails for non-existent driver" {
@@ -2327,4 +2453,234 @@ SCRIPT
     assert_success
     refute_output --partial "TESTS FAILING"
     refute_output --partial "QG fail"
+}
+
+# ===========================================================================
+# capture_loop_diff_summary
+# ===========================================================================
+
+# Helper: init a git repo inside RALPH_DIR for diff summary tests.
+# Sets TEST_REPO_DIR and changes to it. Returns the initial commit SHA.
+_setup_diff_test_repo() {
+    TEST_REPO_DIR="$RALPH_DIR/repo"
+    mkdir -p "$TEST_REPO_DIR"
+    git -C "$TEST_REPO_DIR" init -q
+    git -C "$TEST_REPO_DIR" config user.email "test@test.com"
+    git -C "$TEST_REPO_DIR" config user.name "Test"
+    echo "initial" > "$TEST_REPO_DIR/seed.txt"
+    git -C "$TEST_REPO_DIR" add seed.txt
+    git -C "$TEST_REPO_DIR" commit -q -m "initial"
+    INITIAL_SHA=$(git -C "$TEST_REPO_DIR" rev-parse HEAD)
+    cd "$TEST_REPO_DIR"
+}
+
+@test "capture_loop_diff_summary writes diff summary when commits exist" {
+    _setup_diff_test_repo
+
+    # Make a change and commit
+    echo "updated content" > "$TEST_REPO_DIR/src_auth.ts"
+    git -C "$TEST_REPO_DIR" add src_auth.ts
+    git -C "$TEST_REPO_DIR" commit -q -m "add auth"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    [[ "$content" == *"Changed:"* ]]
+    [[ "$content" == *"src_auth.ts"* ]]
+    [[ "$content" == *"(+"*"/-"*")"* ]]
+}
+
+@test "capture_loop_diff_summary captures uncommitted changes when no commits" {
+    _setup_diff_test_repo
+    local current_sha
+    current_sha=$(git -C "$TEST_REPO_DIR" rev-parse HEAD)
+
+    # Modify a tracked file without committing
+    echo "modified" >> "$TEST_REPO_DIR/seed.txt"
+
+    run capture_loop_diff_summary "$current_sha"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    [[ "$content" == *"Changed:"* ]]
+    [[ "$content" == *"seed.txt"* ]]
+}
+
+@test "capture_loop_diff_summary clears file when no changes" {
+    _setup_diff_test_repo
+    local current_sha
+    current_sha=$(git -C "$TEST_REPO_DIR" rev-parse HEAD)
+
+    # Pre-create the file to verify it gets removed
+    echo "stale" > "$RALPH_DIR/.loop_diff_summary"
+
+    run capture_loop_diff_summary "$current_sha"
+    assert_success
+    [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
+}
+
+@test "capture_loop_diff_summary skips binary-only changes" {
+    _setup_diff_test_repo
+
+    # Add a binary file
+    printf '\x00\x01\x02\x03' > "$TEST_REPO_DIR/image.png"
+    git -C "$TEST_REPO_DIR" add image.png
+    git -C "$TEST_REPO_DIR" commit -q -m "add binary"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
+}
+
+@test "capture_loop_diff_summary deduplicates committed and working tree changes" {
+    _setup_diff_test_repo
+
+    # Commit a change to seed.txt
+    echo "committed change" >> "$TEST_REPO_DIR/seed.txt"
+    git -C "$TEST_REPO_DIR" add seed.txt
+    git -C "$TEST_REPO_DIR" commit -q -m "update seed"
+
+    # Make additional uncommitted changes to the same file
+    echo "uncommitted change" >> "$TEST_REPO_DIR/seed.txt"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    # seed.txt should appear exactly once (not duplicated)
+    local count
+    count=$(echo "$content" | grep -o "seed.txt" | wc -l)
+    [[ $count -eq 1 ]]
+}
+
+@test "capture_loop_diff_summary includes text files alongside binary files" {
+    _setup_diff_test_repo
+
+    # Add both a binary and a text file
+    printf '\x00\x01\x02' > "$TEST_REPO_DIR/image.png"
+    echo "new code" > "$TEST_REPO_DIR/app.ts"
+    git -C "$TEST_REPO_DIR" add .
+    git -C "$TEST_REPO_DIR" commit -q -m "add mixed files"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    # Text file should be present, binary should not
+    [[ "$content" == *"app.ts"* ]]
+    [[ "$content" != *"image.png"* ]]
+}
+
+@test "capture_loop_diff_summary self-truncates to 150 characters" {
+    _setup_diff_test_repo
+
+    # Create many files with long names to exceed 150 chars
+    for i in $(seq 1 20); do
+        echo "content_$i" > "$TEST_REPO_DIR/a_very_long_filename_number_${i}_that_takes_space.ts"
+    done
+    git -C "$TEST_REPO_DIR" add .
+    git -C "$TEST_REPO_DIR" commit -q -m "add many files"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    local len=${#content}
+    [[ $len -le 150 ]]
+}
+
+@test "capture_loop_diff_summary handles broken git gracefully" {
+    _mock_cli git 1
+    # Pre-create the file to verify it gets removed
+    echo "stale" > "$RALPH_DIR/.loop_diff_summary"
+
+    run capture_loop_diff_summary "abc123"
+    assert_success
+    [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
+}
+
+# ===========================================================================
+# describe_exit_code
+# ===========================================================================
+
+@test "describe_exit_code returns completed for exit 0" {
+    run describe_exit_code 0
+    assert_success
+    assert_output "completed"
+}
+
+@test "describe_exit_code returns error for exit 1" {
+    run describe_exit_code 1
+    assert_success
+    assert_output "error"
+}
+
+@test "describe_exit_code returns timed out for exit 124" {
+    run describe_exit_code 124
+    assert_success
+    assert_output "timed out"
+}
+
+@test "describe_exit_code returns interrupted for exit 130" {
+    run describe_exit_code 130
+    assert_success
+    assert_output "interrupted (SIGINT)"
+}
+
+@test "describe_exit_code returns killed for exit 137" {
+    run describe_exit_code 137
+    assert_success
+    assert_output "killed (OOM or SIGKILL)"
+}
+
+@test "describe_exit_code returns terminated for exit 143" {
+    run describe_exit_code 143
+    assert_success
+    assert_output "terminated (SIGTERM)"
+}
+
+@test "describe_exit_code returns generic label for unknown exit code" {
+    run describe_exit_code 42
+    assert_success
+    assert_output "error (exit 42)"
+}
+
+# ===========================================================================
+# update_status with driver_exit_code (6th param)
+# ===========================================================================
+
+@test "update_status includes driver_exit_code as number when 6th param provided" {
+    update_status 5 10 "failed" "error" "timed out" "124"
+    local actual
+    actual=$(jq '.driver_exit_code' "$STATUS_FILE")
+    # Re-enable set -e for assertion reliability
+    set -e
+    [[ "$actual" == "124" ]]
+}
+
+@test "update_status sets driver_exit_code to null when 6th param omitted" {
+    update_status 5 10 "completed" "success"
+    local actual
+    actual=$(jq '.driver_exit_code' "$STATUS_FILE")
+    set -e
+    [[ "$actual" == "null" ]]
+}
+
+@test "update_status sets driver_exit_code to null when only 5 params given" {
+    update_status 5 10 "failed" "error" "some_reason"
+    local actual
+    actual=$(jq '.driver_exit_code' "$STATUS_FILE")
+    set -e
+    [[ "$actual" == "null" ]]
 }
