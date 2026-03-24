@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0](https://github.com/LarsCowe/bmalph/compare/v2.10.0...v2.11.0) (2026-03-24)
+
+
+### Features
+
+* **ralph:** capture stderr and log exit reason on driver crash/timeout ([#145](https://github.com/LarsCowe/bmalph/issues/145)) ([75ffebb](https://github.com/LarsCowe/bmalph/commit/75ffebbda345b30207849a2f0fbe2e0179856766))
+* **run:** inject git diff summary into inter-loop context ([#117](https://github.com/LarsCowe/bmalph/issues/117)) ([4c0c4f4](https://github.com/LarsCowe/bmalph/commit/4c0c4f48f8405253db8eb3650ce8ea18bd2cc959))
+* **run:** inject next unchecked task into loop context ([#118](https://github.com/LarsCowe/bmalph/issues/118)) ([fb93dca](https://github.com/LarsCowe/bmalph/commit/fb93dca6ce5dda66640b4205347e84b98664a896))
+
+
+### Bug Fixes
+
+* **prompt:** restructure PROMPT.md to code-first, read-on-demand ([#147](https://github.com/LarsCowe/bmalph/issues/147)) ([77bb7f3](https://github.com/LarsCowe/bmalph/commit/77bb7f31ce4322c4b5ba2b23d19d4a39d4ea2502))
+* **ralph:** detect and warn when no git repository is initialized ([#144](https://github.com/LarsCowe/bmalph/issues/144)) ([4674441](https://github.com/LarsCowe/bmalph/commit/4674441133fdfa95ef521633bac3d86cd09e95f4))
+* **run:** separate format confidence from completion confidence ([#124](https://github.com/LarsCowe/bmalph/issues/124)) ([2f8d71a](https://github.com/LarsCowe/bmalph/commit/2f8d71aefa5f259c87fa9ebac29fe5645b315be0))
+* **transition:** match numbered section headers in preflight checks ([b78e1a8](https://github.com/LarsCowe/bmalph/commit/b78e1a85060a37d4c2aaddf707bb2269d6271626))
+
+
+### Performance
+
+* **tests:** add parallel BATS execution with --jobs ([64b306c](https://github.com/LarsCowe/bmalph/commit/64b306c5045513f9d92f393f2896a1d9200869a3))
+* **tests:** optimize BATS with setup_file and parallel execution ([49d041f](https://github.com/LarsCowe/bmalph/commit/49d041f697139a2ddd9d317f3d83d0a94f84bb00))
+
 ## [2.10.0](https://github.com/LarsCowe/bmalph/compare/v2.9.0...v2.10.0) (2026-03-23)
 
 
