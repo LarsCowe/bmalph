@@ -558,6 +558,42 @@ EOF
     [[ $len -le 500 ]]
 }
 
+@test "build_loop_context includes diff summary from state file" {
+    echo "Changed: src/auth.ts (+45/-12), tests/auth.test.ts (+30/-0)" > "$RALPH_DIR/.loop_diff_summary"
+
+    run build_loop_context 3
+    assert_success
+    assert_output --partial "Changed: src/auth.ts (+45/-12)"
+}
+
+@test "build_loop_context omits diff summary when no state file" {
+    rm -f "$RALPH_DIR/.loop_diff_summary"
+
+    run build_loop_context 3
+    assert_success
+    refute_output --partial "Changed:"
+}
+
+@test "build_loop_context preserves quality gate info when diff summary present" {
+    _skip_if_jq_missing
+
+    # Quality gate failure (high priority — should survive truncation)
+    jq -n '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail"},
+        custom_gates: []
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    # Long diff summary (medium priority — truncated first if over budget)
+    printf 'Changed: %0.sa_very_long_filename_that_takes_space.ts (+100/-50), ' {1..10} > "$RALPH_DIR/.loop_diff_summary"
+
+    run build_loop_context 5
+    assert_success
+    # Quality gate info must survive — it appears before diff in the context string
+    assert_output --partial "TESTS FAILING."
+}
+
 # ===========================================================================
 # fix-plan progress tracking enforcement
 # ===========================================================================
@@ -2359,4 +2395,159 @@ SCRIPT
     assert_success
     refute_output --partial "TESTS FAILING"
     refute_output --partial "QG fail"
+}
+
+# ===========================================================================
+# capture_loop_diff_summary
+# ===========================================================================
+
+# Helper: init a git repo inside RALPH_DIR for diff summary tests.
+# Sets TEST_REPO_DIR and changes to it. Returns the initial commit SHA.
+_setup_diff_test_repo() {
+    TEST_REPO_DIR="$RALPH_DIR/repo"
+    mkdir -p "$TEST_REPO_DIR"
+    git -C "$TEST_REPO_DIR" init -q
+    git -C "$TEST_REPO_DIR" config user.email "test@test.com"
+    git -C "$TEST_REPO_DIR" config user.name "Test"
+    echo "initial" > "$TEST_REPO_DIR/seed.txt"
+    git -C "$TEST_REPO_DIR" add seed.txt
+    git -C "$TEST_REPO_DIR" commit -q -m "initial"
+    INITIAL_SHA=$(git -C "$TEST_REPO_DIR" rev-parse HEAD)
+    cd "$TEST_REPO_DIR"
+}
+
+@test "capture_loop_diff_summary writes diff summary when commits exist" {
+    _setup_diff_test_repo
+
+    # Make a change and commit
+    echo "updated content" > "$TEST_REPO_DIR/src_auth.ts"
+    git -C "$TEST_REPO_DIR" add src_auth.ts
+    git -C "$TEST_REPO_DIR" commit -q -m "add auth"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    [[ "$content" == *"Changed:"* ]]
+    [[ "$content" == *"src_auth.ts"* ]]
+    [[ "$content" == *"(+"*"/-"*")"* ]]
+}
+
+@test "capture_loop_diff_summary captures uncommitted changes when no commits" {
+    _setup_diff_test_repo
+    local current_sha
+    current_sha=$(git -C "$TEST_REPO_DIR" rev-parse HEAD)
+
+    # Modify a tracked file without committing
+    echo "modified" >> "$TEST_REPO_DIR/seed.txt"
+
+    run capture_loop_diff_summary "$current_sha"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    [[ "$content" == *"Changed:"* ]]
+    [[ "$content" == *"seed.txt"* ]]
+}
+
+@test "capture_loop_diff_summary clears file when no changes" {
+    _setup_diff_test_repo
+    local current_sha
+    current_sha=$(git -C "$TEST_REPO_DIR" rev-parse HEAD)
+
+    # Pre-create the file to verify it gets removed
+    echo "stale" > "$RALPH_DIR/.loop_diff_summary"
+
+    run capture_loop_diff_summary "$current_sha"
+    assert_success
+    [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
+}
+
+@test "capture_loop_diff_summary skips binary-only changes" {
+    _setup_diff_test_repo
+
+    # Add a binary file
+    printf '\x00\x01\x02\x03' > "$TEST_REPO_DIR/image.png"
+    git -C "$TEST_REPO_DIR" add image.png
+    git -C "$TEST_REPO_DIR" commit -q -m "add binary"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
+}
+
+@test "capture_loop_diff_summary deduplicates committed and working tree changes" {
+    _setup_diff_test_repo
+
+    # Commit a change to seed.txt
+    echo "committed change" >> "$TEST_REPO_DIR/seed.txt"
+    git -C "$TEST_REPO_DIR" add seed.txt
+    git -C "$TEST_REPO_DIR" commit -q -m "update seed"
+
+    # Make additional uncommitted changes to the same file
+    echo "uncommitted change" >> "$TEST_REPO_DIR/seed.txt"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    # seed.txt should appear exactly once (not duplicated)
+    local count
+    count=$(echo "$content" | grep -o "seed.txt" | wc -l)
+    [[ $count -eq 1 ]]
+}
+
+@test "capture_loop_diff_summary includes text files alongside binary files" {
+    _setup_diff_test_repo
+
+    # Add both a binary and a text file
+    printf '\x00\x01\x02' > "$TEST_REPO_DIR/image.png"
+    echo "new code" > "$TEST_REPO_DIR/app.ts"
+    git -C "$TEST_REPO_DIR" add .
+    git -C "$TEST_REPO_DIR" commit -q -m "add mixed files"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    # Text file should be present, binary should not
+    [[ "$content" == *"app.ts"* ]]
+    [[ "$content" != *"image.png"* ]]
+}
+
+@test "capture_loop_diff_summary self-truncates to 150 characters" {
+    _setup_diff_test_repo
+
+    # Create many files with long names to exceed 150 chars
+    for i in $(seq 1 20); do
+        echo "content_$i" > "$TEST_REPO_DIR/a_very_long_filename_number_${i}_that_takes_space.ts"
+    done
+    git -C "$TEST_REPO_DIR" add .
+    git -C "$TEST_REPO_DIR" commit -q -m "add many files"
+
+    run capture_loop_diff_summary "$INITIAL_SHA"
+    assert_success
+    [[ -f "$RALPH_DIR/.loop_diff_summary" ]]
+
+    local content
+    content=$(cat "$RALPH_DIR/.loop_diff_summary")
+    local len=${#content}
+    [[ $len -le 150 ]]
+}
+
+@test "capture_loop_diff_summary handles broken git gracefully" {
+    _mock_cli git 1
+    # Pre-create the file to verify it gets removed
+    echo "stale" > "$RALPH_DIR/.loop_diff_summary"
+
+    run capture_loop_diff_summary "abc123"
+    assert_success
+    [[ ! -f "$RALPH_DIR/.loop_diff_summary" ]]
 }

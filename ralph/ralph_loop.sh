@@ -1293,8 +1293,79 @@ build_loop_context() {
         fi
     fi
 
+    # Add git diff summary from previous loop (last segment — truncated first if over budget)
+    if [[ -f "$RALPH_DIR/.loop_diff_summary" ]]; then
+        local diff_summary
+        diff_summary=$(head -c 150 "$RALPH_DIR/.loop_diff_summary" 2>/dev/null)
+        if [[ -n "$diff_summary" ]]; then
+            context+="${diff_summary}. "
+        fi
+    fi
+
     # Limit total length to ~500 chars
     echo "${context:0:500}"
+}
+
+# Capture a compact git diff summary after each loop iteration.
+# Writes to $RALPH_DIR/.loop_diff_summary for the next loop's build_loop_context().
+# Args: $1 = loop_start_sha (git HEAD at loop start)
+capture_loop_diff_summary() {
+    local loop_start_sha="${1:-}"
+    local summary_file="$RALPH_DIR/.loop_diff_summary"
+
+    # Clear previous summary
+    rm -f "$summary_file"
+
+    # Require git and a valid repo
+    if ! command -v git &>/dev/null || ! git rev-parse --git-dir &>/dev/null 2>&1; then
+        return 0
+    fi
+
+    local current_sha
+    current_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
+    local numstat_output=""
+
+    if [[ -n "$loop_start_sha" && -n "$current_sha" && "$loop_start_sha" != "$current_sha" ]]; then
+        # Commits exist: union of committed + working tree changes, deduplicated by filename
+        numstat_output=$(
+            {
+                git diff --numstat "$loop_start_sha" HEAD 2>/dev/null
+                git diff --numstat HEAD 2>/dev/null
+                git diff --numstat --cached 2>/dev/null
+            } | awk -F'\t' '!seen[$3]++'
+        )
+    else
+        # No commits: staged + unstaged only
+        numstat_output=$(
+            {
+                git diff --numstat 2>/dev/null
+                git diff --numstat --cached 2>/dev/null
+            } | awk -F'\t' '!seen[$3]++'
+        )
+    fi
+
+    [[ -z "$numstat_output" ]] && return 0
+
+    # Format: Changed: file (+add/-del), file2 (+add/-del)
+    # Skip binary files (numstat shows - - for binary)
+    # Use tab separator — numstat output is tab-delimited (handles filenames with spaces)
+    local formatted
+    formatted=$(echo "$numstat_output" | awk -F'\t' '
+        $1 != "-" {
+            if (n++) printf ", "
+            printf "%s (+%s/-%s)", $3, $1, $2
+        }
+    ')
+
+    [[ -z "$formatted" ]] && return 0
+
+    local result="Changed: ${formatted}"
+    # Self-truncate to ~150 chars (144 content + "...")
+    if [[ ${#result} -gt 147 ]]; then
+        result="${result:0:144}..."
+    fi
+
+    echo "$result" > "$summary_file"
 }
 
 # Check if a code review should run this iteration
@@ -1963,6 +2034,9 @@ execute_claude_code() {
     local fix_plan_completed_before=0
     read -r fix_plan_completed_before _ _ < <(count_fix_plan_checkboxes "$RALPH_DIR/@fix_plan.md")
 
+    # Clear previous diff summary to prevent stale context on early exit (#117)
+    rm -f "$RALPH_DIR/.loop_diff_summary"
+
     # Fix #141: Capture git HEAD SHA at loop start to detect commits as progress
     # Store in file for access by progress detection after Claude execution
     local loop_start_sha=""
@@ -2288,6 +2362,9 @@ EOF
                 )
             fi
         fi
+
+        # Capture diff summary for next loop's context (#117)
+        capture_loop_diff_summary "$loop_start_sha"
 
         local has_errors="false"
 
