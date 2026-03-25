@@ -23,6 +23,7 @@ _bmad-output/
 
 # Local generated workspace artifacts
 .claude/skills/
+.claude/settings.local.json
 .claude/scheduled_tasks.lock
 .cursor/
 .ralph/

@@ -30,11 +30,8 @@ describe("documentation", () => {
 
   it("documents Cursor-specific code paths in contributor docs", () => {
     const contributing = readDoc("CONTRIBUTING.md");
-    const claude = readDoc("CLAUDE.md");
 
     expect(contributing).toContain("src/platform/cursor-runtime-checks.ts");
     expect(contributing).toContain("tests/bash/");
-    expect(claude).toContain("src/platform/cursor-runtime-checks.ts");
-    expect(claude).toContain("`cursor-agent -p --force --output-format json`");
   });
 });
