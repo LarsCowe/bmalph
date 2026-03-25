@@ -22,6 +22,7 @@ CB_NO_PROGRESS_THRESHOLD=${CB_NO_PROGRESS_THRESHOLD:-3}        # Open circuit af
 CB_SAME_ERROR_THRESHOLD=${CB_SAME_ERROR_THRESHOLD:-5}          # Open circuit after N loops with same error
 CB_OUTPUT_DECLINE_THRESHOLD=${CB_OUTPUT_DECLINE_THRESHOLD:-70} # Open circuit if output declines by >70%
 CB_PERMISSION_DENIAL_THRESHOLD=${CB_PERMISSION_DENIAL_THRESHOLD:-2}  # Open circuit after N loops with permission denials (Issue #101)
+CB_READ_ONLY_TIMEOUT_THRESHOLD=${CB_READ_ONLY_TIMEOUT_THRESHOLD:-2}  # Open circuit after N consecutive read-only timeouts (#146)
 CB_COOLDOWN_MINUTES=${CB_COOLDOWN_MINUTES:-30}                      # Minutes before OPEN → HALF_OPEN auto-recovery (Issue #160)
 CB_AUTO_RESET=${CB_AUTO_RESET:-false}                               # Reset to CLOSED on startup instead of waiting for cooldown
 
@@ -52,6 +53,7 @@ init_circuit_breaker() {
                 consecutive_no_progress: 0,
                 consecutive_same_error: 0,
                 consecutive_permission_denials: 0,
+                consecutive_read_only_timeouts: 0,
                 last_progress_loop: 0,
                 total_opens: 0,
                 reason: ""
@@ -92,6 +94,7 @@ init_circuit_breaker() {
                     consecutive_no_progress: 0,
                     consecutive_same_error: 0,
                     consecutive_permission_denials: 0,
+                    consecutive_read_only_timeouts: 0,
                     last_progress_loop: 0,
                     total_opens: $total_opens,
                     reason: "Auto-reset on startup"
@@ -155,6 +158,7 @@ record_loop_result() {
     local files_changed=$2
     local has_errors=$3
     local output_length=$4
+    local was_read_only_timeout=${5:-false}
 
     init_circuit_breaker
 
@@ -163,13 +167,22 @@ record_loop_result() {
     local consecutive_no_progress=$(echo "$state_data" | jq -r '.consecutive_no_progress' | tr -d '[:space:]')
     local consecutive_same_error=$(echo "$state_data" | jq -r '.consecutive_same_error' | tr -d '[:space:]')
     local consecutive_permission_denials=$(echo "$state_data" | jq -r '.consecutive_permission_denials // 0' | tr -d '[:space:]')
+    local consecutive_read_only_timeouts=$(echo "$state_data" | jq -r '.consecutive_read_only_timeouts // 0' | tr -d '[:space:]')
     local last_progress_loop=$(echo "$state_data" | jq -r '.last_progress_loop' | tr -d '[:space:]')
 
     # Ensure integers
     consecutive_no_progress=$((consecutive_no_progress + 0))
     consecutive_same_error=$((consecutive_same_error + 0))
     consecutive_permission_denials=$((consecutive_permission_denials + 0))
+    consecutive_read_only_timeouts=$((consecutive_read_only_timeouts + 0))
     last_progress_loop=$((last_progress_loop + 0))
+
+    # Track read-only timeouts (#146)
+    if [[ "$was_read_only_timeout" == "true" ]]; then
+        consecutive_read_only_timeouts=$((consecutive_read_only_timeouts + 1))
+    else
+        consecutive_read_only_timeouts=0
+    fi
 
     # Detect progress from multiple sources:
     # 1. Files changed (git diff)
@@ -249,6 +262,9 @@ record_loop_result() {
             if [[ $consecutive_permission_denials -ge $CB_PERMISSION_DENIAL_THRESHOLD ]]; then
                 new_state="$CB_STATE_OPEN"
                 reason="Permission denied in $consecutive_permission_denials consecutive loops"
+            elif [[ $consecutive_read_only_timeouts -ge $CB_READ_ONLY_TIMEOUT_THRESHOLD ]]; then
+                new_state="$CB_STATE_OPEN"
+                reason="Read-only timeout in $consecutive_read_only_timeouts consecutive loops (agent stuck reading)"
             elif [[ $consecutive_no_progress -ge $CB_NO_PROGRESS_THRESHOLD ]]; then
                 new_state="$CB_STATE_OPEN"
                 reason="No progress detected in $consecutive_no_progress consecutive loops"
@@ -267,6 +283,9 @@ record_loop_result() {
             if [[ $consecutive_permission_denials -ge $CB_PERMISSION_DENIAL_THRESHOLD ]]; then
                 new_state="$CB_STATE_OPEN"
                 reason="Permission denied in $consecutive_permission_denials consecutive loops"
+            elif [[ $consecutive_read_only_timeouts -ge $CB_READ_ONLY_TIMEOUT_THRESHOLD ]]; then
+                new_state="$CB_STATE_OPEN"
+                reason="Read-only timeout in $consecutive_read_only_timeouts consecutive loops (agent stuck reading)"
             elif [[ "$has_progress" == "true" ]]; then
                 new_state="$CB_STATE_CLOSED"
                 reason="Progress detected, circuit recovered"
@@ -305,6 +324,7 @@ record_loop_result() {
         --argjson consecutive_no_progress "$consecutive_no_progress" \
         --argjson consecutive_same_error "$consecutive_same_error" \
         --argjson consecutive_permission_denials "$consecutive_permission_denials" \
+        --argjson consecutive_read_only_timeouts "$consecutive_read_only_timeouts" \
         --argjson last_progress_loop "$last_progress_loop" \
         --argjson total_opens "$total_opens" \
         --arg reason "$reason" \
@@ -315,6 +335,7 @@ record_loop_result() {
             consecutive_no_progress: $consecutive_no_progress,
             consecutive_same_error: $consecutive_same_error,
             consecutive_permission_denials: $consecutive_permission_denials,
+            consecutive_read_only_timeouts: $consecutive_read_only_timeouts,
             last_progress_loop: $last_progress_loop,
             total_opens: $total_opens,
             reason: $reason,
@@ -441,6 +462,7 @@ reset_circuit_breaker() {
             consecutive_no_progress: 0,
             consecutive_same_error: 0,
             consecutive_permission_denials: 0,
+            consecutive_read_only_timeouts: 0,
             last_progress_loop: 0,
             total_opens: 0,
             reason: $reason

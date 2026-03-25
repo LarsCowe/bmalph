@@ -524,3 +524,84 @@ teardown() {
     run should_halt_execution
     assert_failure
 }
+
+# ===========================================================================
+# record_loop_result — read-only timeout tracking (#146)
+# ===========================================================================
+
+@test "record_loop_result tracks consecutive_read_only_timeouts" {
+    _quiet_record 1 0 false 0 true
+
+    run jq -r '.consecutive_read_only_timeouts' "$CB_STATE_FILE"
+    assert_output "1"
+}
+
+@test "record_loop_result resets read-only counter on normal loop" {
+    _quiet_record 1 0 false 0 true
+    _quiet_record 2 5 false 500
+
+    run jq -r '.consecutive_read_only_timeouts' "$CB_STATE_FILE"
+    assert_output "0"
+}
+
+@test "read-only timeout opens circuit after threshold" {
+    CB_READ_ONLY_TIMEOUT_THRESHOLD=2
+
+    _quiet_record 1 0 false 0 true
+
+    run get_circuit_state
+    refute_output "OPEN"
+
+    run record_loop_result 2 0 false 0 true
+    assert_failure
+
+    run get_circuit_state
+    assert_output "OPEN"
+
+    run jq -r '.reason' "$CB_STATE_FILE"
+    assert_output --partial "Read-only timeout"
+}
+
+@test "read-only timeout threshold is faster than no-progress threshold" {
+    CB_READ_ONLY_TIMEOUT_THRESHOLD=2
+    CB_NO_PROGRESS_THRESHOLD=3
+
+    _quiet_record 1 0 false 0 true
+
+    run record_loop_result 2 0 false 0 true
+    assert_failure
+
+    run get_circuit_state
+    assert_output "OPEN"
+}
+
+@test "read-only timeout opens circuit from HALF_OPEN" {
+    CB_READ_ONLY_TIMEOUT_THRESHOLD=2
+    CB_NO_PROGRESS_THRESHOLD=99
+
+    _quiet_record 1 0 false 100
+    _quiet_record 2 0 false 100
+
+    run get_circuit_state
+    assert_output "HALF_OPEN"
+
+    _quiet_record 3 0 false 0 true
+    record_loop_result 4 0 false 0 true || true
+
+    run get_circuit_state
+    assert_output "OPEN"
+}
+
+@test "5th parameter defaults to false (backward compatible)" {
+    _quiet_record 1 0 false 100
+
+    run jq -r '.consecutive_read_only_timeouts // 0' "$CB_STATE_FILE"
+    assert_output "0"
+}
+
+@test "init_circuit_breaker initializes read-only counter to 0" {
+    init_circuit_breaker
+
+    run jq -r '.consecutive_read_only_timeouts // 0' "$CB_STATE_FILE"
+    assert_output "0"
+}

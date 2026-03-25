@@ -36,6 +36,11 @@ CLAUDE_TIMEOUT_MINUTES=15
 # Output format: json (structured) or text (legacy)
 CLAUDE_OUTPUT_FORMAT="json"
 
+# Write heartbeat: kill the driver if no project files are modified within
+# this many minutes. Prevents burning the full CLAUDE_TIMEOUT_MINUTES on
+# read-only exploration loops. Set to 0 to disable. (#146)
+WRITE_TIMEOUT_MINUTES=8
+
 # =============================================================================
 # TOOL PERMISSIONS
 # =============================================================================
@@ -91,6 +96,9 @@ CB_SAME_ERROR_THRESHOLD=5
 
 # Open circuit if output declines by more than N percent
 CB_OUTPUT_DECLINE_THRESHOLD=70
+
+# Open circuit after N consecutive read-only timeouts (write heartbeat kills)
+CB_READ_ONLY_TIMEOUT_THRESHOLD=2
 
 # Auto-recovery: cooldown before retry (minutes, 0 = immediate)
 CB_COOLDOWN_MINUTES=30
