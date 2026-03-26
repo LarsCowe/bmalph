@@ -24,8 +24,9 @@ export async function isDirectory(path: string): Promise<boolean> {
   try {
     const stats = await stat(path);
     return stats.isDirectory();
-  } catch {
-    return false;
+  } catch (err) {
+    if (isEnoent(err)) return false;
+    throw err;
   }
 }
 
