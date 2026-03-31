@@ -180,8 +180,11 @@ export function validateBmadConfig(data: unknown): BmadConfig {
 
   let modules: string[] | undefined;
   if (data.modules !== undefined) {
-    if (!Array.isArray(data.modules)) {
-      throw new Error("bmadConfig.modules must be an array");
+    if (
+      !Array.isArray(data.modules) ||
+      !data.modules.every((m: unknown) => typeof m === "string")
+    ) {
+      throw new Error("bmadConfig.modules must be an array of strings");
     }
     modules = data.modules;
   }

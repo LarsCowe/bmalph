@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   validateConfig,
+  validateBmadConfig,
   validateState,
   validateCircuitBreakerState,
   validateRalphSession,
@@ -104,6 +105,52 @@ describe("validateConfig", () => {
     };
     const result = validateConfig(data);
     expect(result.upstreamVersions).toEqual({ bmadCommit: "abc" });
+  });
+});
+
+describe("validateBmadConfig", () => {
+  it("accepts a valid config with all optional fields", () => {
+    const data = {
+      platform: "claude-code",
+      project_name: "my-project",
+      output_folder: "_bmad-output",
+      user_name: "alice",
+      communication_language: "en",
+      document_output_language: "en",
+      user_skill_level: "advanced",
+      planning_artifacts: "docs/planning",
+      implementation_artifacts: "docs/impl",
+      project_knowledge: "docs/knowledge",
+      modules: ["core", "extras"],
+    };
+    const result = validateBmadConfig(data);
+    expect(result).toEqual(data);
+  });
+
+  it("accepts modules as undefined", () => {
+    const result = validateBmadConfig({});
+    expect(result.modules).toBeUndefined();
+  });
+
+  it("throws when modules is not an array", () => {
+    expect(() => validateBmadConfig({ modules: "core" })).toThrow(/modules must be an array/i);
+  });
+
+  it("throws when modules contains non-string elements", () => {
+    expect(() => validateBmadConfig({ modules: [123, true] })).toThrow(
+      /modules must be an array of strings/i
+    );
+  });
+
+  it("throws when modules contains a mix of strings and non-strings", () => {
+    expect(() => validateBmadConfig({ modules: ["core", 42] })).toThrow(
+      /modules must be an array of strings/i
+    );
+  });
+
+  it("accepts an empty modules array", () => {
+    const result = validateBmadConfig({ modules: [] });
+    expect(result.modules).toEqual([]);
   });
 });
 
