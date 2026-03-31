@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   exists,
+  isDirectory,
   getFilesRecursive,
   getMarkdownFilesWithContent,
   atomicWriteFile,
@@ -36,6 +37,22 @@ describe("file-system utilities", () => {
 
     it("returns false for a non-existent path", async () => {
       expect(await exists(join(testDir, "nonexistent"))).toBe(false);
+    });
+  });
+
+  describe("isDirectory", () => {
+    it("returns true for an existing directory", async () => {
+      expect(await isDirectory(testDir)).toBe(true);
+    });
+
+    it("returns false for an existing file", async () => {
+      const filePath = join(testDir, "file.txt");
+      await writeFile(filePath, "content");
+      expect(await isDirectory(filePath)).toBe(false);
+    });
+
+    it("returns false for a non-existent path", async () => {
+      expect(await isDirectory(join(testDir, "nonexistent"))).toBe(false);
     });
   });
 
@@ -237,6 +254,24 @@ describe("exists() with mocked fs", () => {
 
     const { exists: mockedExists } = await import("../../src/utils/file-system.js");
     await expect(mockedExists("/some/path")).rejects.toThrow("permission denied");
+
+    vi.doUnmock("node:fs/promises");
+    vi.resetModules();
+  });
+});
+
+describe("isDirectory() with mocked fs", () => {
+  it("re-throws non-ENOENT errors like EACCES", async () => {
+    vi.resetModules();
+    const eaccesError = Object.assign(new Error("permission denied"), { code: "EACCES" });
+
+    vi.doMock("node:fs/promises", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:fs/promises")>();
+      return { ...actual, stat: vi.fn().mockRejectedValue(eaccesError) };
+    });
+
+    const { isDirectory: mockedIsDirectory } = await import("../../src/utils/file-system.js");
+    await expect(mockedIsDirectory("/some/path")).rejects.toThrow("permission denied");
 
     vi.doUnmock("node:fs/promises");
     vi.resetModules();
