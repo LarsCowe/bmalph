@@ -1,4 +1,4 @@
-import { join, relative, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { debug, warn } from "../utils/logger.js";
 import { isDirectory } from "../utils/file-system.js";
 import { readBmadConfig } from "../utils/config.js";
@@ -11,7 +11,7 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
     debug(`Checking config-specified artifacts dir: ${resolved}`);
 
     const projectRoot = resolve(projectDir);
-    if (!resolved.startsWith(projectRoot + "/") && resolved !== projectRoot) {
+    if (!resolved.startsWith(projectRoot + sep) && resolved !== projectRoot) {
       warn(`planning_artifacts path escapes project directory, ignoring: ${trimmed}`);
     } else if (await isDirectory(resolved)) {
       debug(`Found artifacts at: ${resolved}`);
