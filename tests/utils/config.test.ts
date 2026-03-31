@@ -162,4 +162,64 @@ platform: claude-code
     );
     warnSpy.mockRestore();
   });
+
+  it("returns null and warns for empty YAML file", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns when YAML parses to a scalar", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "just a string\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns when YAML parses to an array", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "- item1\n- item2\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns for non-string platform field", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "platform: 123\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("bmadConfig.platform must be a string")
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns for non-string project_name field", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "project_name: true\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("bmadConfig.project_name must be a string")
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("returns null and warns for non-string output_folder field", async () => {
+    await writeFile(join(testDir, "_bmad/config.yaml"), "output_folder: 42\n");
+    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await readBmadConfig(testDir);
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("bmadConfig.output_folder must be a string")
+    );
+    warnSpy.mockRestore();
+  });
 });

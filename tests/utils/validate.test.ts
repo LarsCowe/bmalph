@@ -152,6 +152,84 @@ describe("validateBmadConfig", () => {
     const result = validateBmadConfig({ modules: [] });
     expect(result.modules).toEqual([]);
   });
+
+  it("throws when data is null", () => {
+    expect(() => validateBmadConfig(null)).toThrow(/expected an object/i);
+  });
+
+  it("throws when data is undefined", () => {
+    expect(() => validateBmadConfig(undefined)).toThrow(/expected an object/i);
+  });
+
+  it("throws when data is a string", () => {
+    expect(() => validateBmadConfig("string")).toThrow(/expected an object/i);
+  });
+
+  it("throws when data is an array", () => {
+    expect(() => validateBmadConfig([1, 2])).toThrow(/expected an object/i);
+  });
+
+  it("throws when platform is not a string", () => {
+    expect(() => validateBmadConfig({ platform: 123 })).toThrow(/platform must be a string/i);
+  });
+
+  it("throws when project_name is not a string", () => {
+    expect(() => validateBmadConfig({ project_name: true })).toThrow(
+      /project_name must be a string/i
+    );
+  });
+
+  it("throws when output_folder is not a string", () => {
+    expect(() => validateBmadConfig({ output_folder: 42 })).toThrow(
+      /output_folder must be a string/i
+    );
+  });
+
+  it("throws when user_name is not a string", () => {
+    expect(() => validateBmadConfig({ user_name: [] })).toThrow(/user_name must be a string/i);
+  });
+
+  it("throws when communication_language is not a string", () => {
+    expect(() => validateBmadConfig({ communication_language: false })).toThrow(
+      /communication_language must be a string/i
+    );
+  });
+
+  it("throws when document_output_language is not a string", () => {
+    expect(() => validateBmadConfig({ document_output_language: 0 })).toThrow(
+      /document_output_language must be a string/i
+    );
+  });
+
+  it("throws when user_skill_level is not a string", () => {
+    expect(() => validateBmadConfig({ user_skill_level: {} })).toThrow(
+      /user_skill_level must be a string/i
+    );
+  });
+
+  it("throws when planning_artifacts is not a string", () => {
+    expect(() => validateBmadConfig({ planning_artifacts: 99 })).toThrow(
+      /planning_artifacts must be a string/i
+    );
+  });
+
+  it("throws when implementation_artifacts is not a string", () => {
+    expect(() => validateBmadConfig({ implementation_artifacts: null })).toThrow(
+      /implementation_artifacts must be a string/i
+    );
+  });
+
+  it("throws when project_knowledge is not a string", () => {
+    expect(() => validateBmadConfig({ project_knowledge: true })).toThrow(
+      /project_knowledge must be a string/i
+    );
+  });
+
+  it("ignores extra unknown fields in output", () => {
+    const result = validateBmadConfig({ platform: "claude-code", unknown_field: "ignored" });
+    expect(result).toEqual({ platform: "claude-code" });
+    expect(result).not.toHaveProperty("unknown_field");
+  });
 });
 
 describe("validateState", () => {
