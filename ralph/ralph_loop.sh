@@ -10,16 +10,83 @@ set -e  # Exit on any error
 # via --allowedTools flag in CLAUDE_CMD_ARGS, which is the proper approach.
 # Exporting sandbox variables without a verified sandbox would be misleading.
 
-# Source library components
+# validate_ralph_dir - Reject dangerous RALPH_DIR values (#79)
+# Accepts: ".ralph" (default), empty (becomes .ralph), absolute paths (tests)
+# Rejects: paths with ".." (traversal), non-default relative paths
+validate_ralph_dir() {
+    local dir="$1"
+    [[ "$dir" == ".ralph" || -z "$dir" ]] && return 0
+    [[ "$dir" == *".."* ]] && { echo "Error: RALPH_DIR must not contain '..': '$dir'" >&2; return 1; }
+    [[ "$dir" != /* ]] && { echo "Error: RALPH_DIR must be '.ralph' or an absolute path, got: '$dir'" >&2; return 1; }
+    return 0
+}
+
+# Validate and default RALPH_DIR BEFORE sourcing libraries that depend on it
+validate_ralph_dir "${RALPH_DIR:-}" || exit 1
+RALPH_DIR="${RALPH_DIR:-.ralph}"
+export RALPH_DIR
+
+# Source library components (RALPH_DIR must be set before this point)
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 source "$SCRIPT_DIR/lib/date_utils.sh"
 source "$SCRIPT_DIR/lib/timeout_utils.sh"
 source "$SCRIPT_DIR/lib/response_analyzer.sh"
 source "$SCRIPT_DIR/lib/circuit_breaker.sh"
+source "$SCRIPT_DIR/lib/write_heartbeat.sh"
 
 # Configuration
 # Ralph-specific files live in .ralph/ subfolder
-RALPH_DIR="${RALPH_DIR:-.ralph}"
+
+# Allowlist of known .ralphrc config keys (#76)
+# Space-delimited string (avoids declare -A scoping issues when sourced)
+RALPHRC_ALLOWED_KEYS=" PLATFORM_DRIVER PROJECT_NAME PROJECT_TYPE MAX_CALLS_PER_HOUR CLAUDE_TIMEOUT_MINUTES CLAUDE_OUTPUT_FORMAT WRITE_TIMEOUT_MINUTES ALLOWED_TOOLS CLAUDE_PERMISSION_MODE PERMISSION_DENIAL_MODE SESSION_CONTINUITY SESSION_EXPIRY_HOURS TASK_SOURCES GITHUB_TASK_LABEL BEADS_FILTER CB_NO_PROGRESS_THRESHOLD CB_SAME_ERROR_THRESHOLD CB_OUTPUT_DECLINE_THRESHOLD CB_READ_ONLY_TIMEOUT_THRESHOLD CB_COOLDOWN_MINUTES CB_AUTO_RESET TEST_COMMAND QUALITY_GATES QUALITY_GATE_MODE QUALITY_GATE_TIMEOUT QUALITY_GATE_ON_COMPLETION_ONLY REVIEW_MODE REVIEW_ENABLED REVIEW_INTERVAL CLAUDE_MIN_VERSION RALPH_VERBOSE PROMPT_FILE FIX_PLAN_FILE AGENT_FILE "
+
+# parse_ralphrc - Safely parse .ralphrc as key=value config (#76)
+# Rejects command substitution ($(), backticks). Only sets allowlisted keys.
+parse_ralphrc() {
+    local config_file="$1"
+    local line_num=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line_num=$((line_num + 1))
+        # Strip leading/trailing whitespace
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        # Reject command substitution ($() and backticks)
+        if [[ "$line" == *'$('* ]] || [[ "$line" == *'`'* ]]; then
+            log_status "WARN" ".ralphrc:$line_num: rejected (command substitution): $line"
+            continue
+        fi
+        # Match KEY=VALUE
+        if [[ "$line" =~ ^([A-Z_][A-Z0-9_]*)=(.*) ]]; then
+            local key="${BASH_REMATCH[1]}"
+            local raw_value="${BASH_REMATCH[2]}"
+            # Check allowlist
+            if [[ "$RALPHRC_ALLOWED_KEYS" != *" $key "* ]]; then
+                log_status "WARN" ".ralphrc:$line_num: unknown key ignored: $key"
+                continue
+            fi
+            # Strip outer quotes
+            local value="$raw_value"
+            if [[ "$value" =~ ^\"(.*)\"$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            elif [[ "$value" =~ ^\'(.*)\'$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            fi
+            # Handle ${VAR:-default} and ${VAR:-} (empty default)
+            if [[ "$value" =~ ^\$\{([A-Z_][A-Z0-9_]*):-([^}]*)\}$ ]]; then
+                local ref_var="${BASH_REMATCH[1]}"
+                local default_val="${BASH_REMATCH[2]}"
+                local current="${!ref_var:-}"
+                value="${current:-$default_val}"
+            fi
+            printf -v "$key" '%s' "$value"
+        else
+            log_status "WARN" ".ralphrc:$line_num: skipped (not KEY=VALUE): $line"
+        fi
+    done < "$config_file"
+}
 PROMPT_FILE="$RALPH_DIR/PROMPT.md"
 LOG_DIR="$RALPH_DIR/logs"
 DOCS_DIR="$RALPH_DIR/docs/generated"
@@ -77,6 +144,8 @@ _env_QUALITY_GATE_ON_COMPLETION_ONLY="${QUALITY_GATE_ON_COMPLETION_ONLY:-}"
 _env_REVIEW_ENABLED="${REVIEW_ENABLED:-}"
 _env_REVIEW_INTERVAL="${REVIEW_INTERVAL:-}"
 _env_REVIEW_MODE="${REVIEW_MODE:-}"
+_env_WRITE_TIMEOUT_MINUTES="${WRITE_TIMEOUT_MINUTES:-}"
+_env_CB_READ_ONLY_TIMEOUT_THRESHOLD="${CB_READ_ONLY_TIMEOUT_THRESHOLD:-}"
 
 # Now set defaults (only if not already set by environment)
 MAX_CALLS_PER_HOUR="${MAX_CALLS_PER_HOUR:-100}"
@@ -91,6 +160,7 @@ CLAUDE_ALLOWED_TOOLS="${CLAUDE_ALLOWED_TOOLS:-$DEFAULT_CLAUDE_ALLOWED_TOOLS}"
 CLAUDE_PERMISSION_MODE="${CLAUDE_PERMISSION_MODE:-bypassPermissions}"
 CLAUDE_USE_CONTINUE="${CLAUDE_USE_CONTINUE:-true}"
 PERMISSION_DENIAL_MODE="${PERMISSION_DENIAL_MODE:-$DEFAULT_PERMISSION_DENIAL_MODE}"
+WRITE_TIMEOUT_MINUTES="${WRITE_TIMEOUT_MINUTES:-8}"
 CLAUDE_SESSION_FILE="$RALPH_DIR/.claude_session_id" # Session ID persistence file
 CLAUDE_MIN_VERSION="2.0.76"              # Minimum required Claude CLI version
 
@@ -160,7 +230,7 @@ TEST_PERCENTAGE_THRESHOLD=30  # If more than 30% of recent loops are test-only, 
 # Ralph configuration file
 # bmalph installs .ralph/.ralphrc. Fall back to a project-root .ralphrc for
 # older standalone Ralph layouts.
-RALPHRC_FILE="${RALPHRC_FILE:-$RALPH_DIR/.ralphrc}"
+RALPHRC_FILE="$RALPH_DIR/.ralphrc"
 RALPHRC_LOADED=false
 
 # Platform driver (set from .ralphrc or environment)
@@ -210,9 +280,8 @@ load_ralphrc() {
         return 0
     fi
 
-    # Source config (this may override default values)
-    # shellcheck source=/dev/null
-    source "$config_file"
+    # Parse config as safe key=value pairs (#76 — no longer sourced as bash)
+    parse_ralphrc "$config_file"
 
     # Map config variable names to internal names
     if [[ -n "${ALLOWED_TOOLS:-}" ]]; then
@@ -274,6 +343,8 @@ load_ralphrc() {
     [[ -n "$_env_REVIEW_ENABLED" ]] && REVIEW_ENABLED="$_env_REVIEW_ENABLED"
     [[ -n "$_env_REVIEW_INTERVAL" ]] && REVIEW_INTERVAL="$_env_REVIEW_INTERVAL"
     [[ -n "$_env_REVIEW_MODE" ]] && REVIEW_MODE="$_env_REVIEW_MODE"
+    [[ -n "$_env_WRITE_TIMEOUT_MINUTES" ]] && WRITE_TIMEOUT_MINUTES="$_env_WRITE_TIMEOUT_MINUTES"
+    [[ -n "$_env_CB_READ_ONLY_TIMEOUT_THRESHOLD" ]] && CB_READ_ONLY_TIMEOUT_THRESHOLD="$_env_CB_READ_ONLY_TIMEOUT_THRESHOLD"
 
     normalize_claude_permission_mode
     RALPHRC_FILE="$config_file"
@@ -294,6 +365,11 @@ driver_permission_denial_help() {
 
 # Source platform driver
 load_platform_driver() {
+    # Reject path traversal in PLATFORM_DRIVER (#77)
+    if [[ "$PLATFORM_DRIVER" =~ [/] ]] || [[ "$PLATFORM_DRIVER" == *".."* ]]; then
+        log_status "ERROR" "Invalid PLATFORM_DRIVER (path traversal): $PLATFORM_DRIVER"
+        return 1
+    fi
     local driver_file="$SCRIPT_DIR/drivers/${PLATFORM_DRIVER}.sh"
     if [[ ! -f "$driver_file" ]]; then
         log_status "ERROR" "Platform driver not found: $driver_file"
@@ -1395,7 +1471,15 @@ build_loop_context() {
             local test_gate_status
             test_gate_status=$(jq -r '.test_gate.status // "skip"' "$QUALITY_GATE_RESULTS_FILE" 2>/dev/null)
             if [[ "$test_gate_status" == "fail" ]]; then
-                context+="TESTS FAILING. "
+                local test_output
+                test_output=$(jq -r '.test_gate.output // ""' "$QUALITY_GATE_RESULTS_FILE" 2>/dev/null)
+                # Sanitize: strip ANSI escapes, collapse whitespace, trim
+                test_output=$(printf '%s' "$test_output" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | tr '\n\t\r' '   ' | sed 's/  */ /g;s/^ //;s/ $//')
+                if [[ -n "$test_output" ]]; then
+                    context+="TESTS FAILING: ${test_output:0:150}. "
+                else
+                    context+="TESTS FAILING. "
+                fi
             fi
 
             local failed_gates
@@ -2151,6 +2235,18 @@ execute_claude_code() {
     # Clear previous diff summary to prevent stale context on early exit (#117)
     rm -f "$RALPH_DIR/.loop_diff_summary"
 
+    # Validate write heartbeat timeout (#146)
+    local effective_write_timeout="$WRITE_TIMEOUT_MINUTES"
+    if ! [[ "$effective_write_timeout" =~ ^[0-9]+$ ]]; then
+        log_status "WARN" "WRITE_TIMEOUT_MINUTES must be an integer, disabling write heartbeat"
+        effective_write_timeout=0
+    fi
+    if [[ "$effective_write_timeout" -gt 0 && "$effective_write_timeout" -ge "$CLAUDE_TIMEOUT_MINUTES" ]]; then
+        effective_write_timeout=$((CLAUDE_TIMEOUT_MINUTES - 2))
+        [[ $effective_write_timeout -lt 1 ]] && effective_write_timeout=0
+        log_status "WARN" "WRITE_TIMEOUT_MINUTES ($WRITE_TIMEOUT_MINUTES) >= CLAUDE_TIMEOUT_MINUTES ($CLAUDE_TIMEOUT_MINUTES), using $effective_write_timeout"
+    fi
+
     # Fix #141: Capture git HEAD SHA at loop start to detect commits as progress
     # Store in file for access by progress detection after Claude execution
     local loop_start_sha=""
@@ -2192,11 +2288,20 @@ execute_claude_code() {
         use_modern_cli=true
         log_status "INFO" "Using modern CLI mode (${CLAUDE_OUTPUT_FORMAT} output)"
 
-        # Build review findings context (separate from loop context)
+        # Build unified extra system prompt (review + heartbeat context) (#146)
+        local extra_system_prompt=""
         local review_context=""
         review_context=$(build_review_context)
         if [[ -n "$review_context" ]]; then
-            CLAUDE_CMD_ARGS+=("--append-system-prompt" "$review_context")
+            extra_system_prompt+="$review_context "
+        fi
+        # Consume heartbeat marker from previous loop's write timeout
+        if [[ -f "$RALPH_DIR/.write_heartbeat_triggered" ]]; then
+            extra_system_prompt+="PREVIOUS LOOP TIMED OUT (read-only). START WRITING CODE IMMEDIATELY. Do not re-read files you already explored. "
+            rm -f "$RALPH_DIR/.write_heartbeat_triggered"
+        fi
+        if [[ -n "$extra_system_prompt" ]]; then
+            CLAUDE_CMD_ARGS+=("--append-system-prompt" "$extra_system_prompt")
         fi
     else
         log_status "WARN" "Failed to build modern CLI command, falling back to legacy mode"
@@ -2247,6 +2352,9 @@ execute_claude_code() {
 
     if [[ "$LIVE_OUTPUT" == "true" ]]; then
         log_status "INFO" "📺 Live output mode enabled - showing $DRIVER_DISPLAY_NAME streaming..."
+        if [[ "$effective_write_timeout" -gt 0 ]]; then
+            log_status "INFO" "Write heartbeat skipped in live mode (use Ctrl+C to interrupt manually)"
+        fi
         echo -e "${PURPLE}━━━━━━━━━━━━━━━━ ${DRIVER_DISPLAY_NAME} Output ━━━━━━━━━━━━━━━━${NC}"
 
         if ! prepare_live_command_args; then
@@ -2347,6 +2455,13 @@ execute_claude_code() {
         local claude_pid=$!
         local progress_counter=0
 
+        # Start write heartbeat monitor (#146, background mode only)
+        local heartbeat_active=false
+        if [[ "$effective_write_timeout" -gt 0 ]]; then
+            start_write_heartbeat "$(pwd)" "$claude_pid" "$effective_write_timeout" 30
+            heartbeat_active=true
+        fi
+
         # Show progress while Claude Code is running
         while kill -0 $claude_pid 2>/dev/null; do
             progress_counter=$((progress_counter + 1))
@@ -2389,8 +2504,20 @@ EOF
         done
 
         # Wait for the process to finish and get exit code
-        wait $claude_pid
-        exit_code=$?
+        # Use || to prevent set -e from exiting on non-zero wait status
+        exit_code=0
+        wait $claude_pid || exit_code=$?
+
+        # Check write heartbeat (#146)
+        if [[ "$heartbeat_active" == "true" ]]; then
+            stop_write_heartbeat
+            if was_write_heartbeat_timeout; then
+                # Do NOT delete .write_heartbeat_triggered — next loop's context injection consumes it
+                LAST_DRIVER_EXIT_CODE=$exit_code
+                log_status "WARN" "Write heartbeat: no file modifications in ${effective_write_timeout}m"
+                return 4
+            fi
+        fi
     fi
 
     # Expose the raw driver exit code to the main loop for status reporting
@@ -2559,6 +2686,7 @@ _on_exit() {
     local code=$?
     [[ "$_CLEANUP_DONE" == "true" ]] && return
     _CLEANUP_DONE=true
+    stop_write_heartbeat 2>/dev/null || true
     if [[ "$code" -ne 0 ]]; then
         local desc
         desc=$(describe_exit_code "$code")
@@ -2571,6 +2699,7 @@ _on_exit() {
 _on_signal() {
     local sig=$1
     log_status "INFO" "Ralph loop interrupted by $sig. Cleaning up..."
+    stop_write_heartbeat 2>/dev/null || true
     reset_session "manual_interrupt"
     update_status "$loop_count" "$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")" "interrupted" "stopped" "$sig"
     _CLEANUP_DONE=true
@@ -2688,6 +2817,9 @@ main() {
     if ! validate_git_repo; then
         exit 1
     fi
+
+    # Clean stale heartbeat marker from previous bmalph run crash (#146)
+    rm -f "$RALPH_DIR/.write_heartbeat_triggered"
 
     # Initialize session tracking before entering the loop
     init_session_tracking
@@ -2832,6 +2964,27 @@ main() {
                 done
                 printf "\n"
             fi
+        elif [ $exec_result -eq 4 ]; then
+            # Write heartbeat timeout (#146) — count the invocation
+            local calls_made=$(cat "$CALL_COUNT_FILE" 2>/dev/null || echo "0")
+            calls_made=$((calls_made + 1))
+            echo "$calls_made" > "$CALL_COUNT_FILE"
+
+            # Clean stale response analysis from killed Claude process
+            rm -f "$RESPONSE_ANALYSIS_FILE"
+
+            # Record in circuit breaker with read-only flag
+            local circuit_result=0
+            record_loop_result "$loop_count" 0 false 0 true || circuit_result=$?
+            if [[ $circuit_result -ne 0 ]]; then
+                reset_session "read_only_circuit_breaker"
+                update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "circuit_breaker_open" "halted" "read_only_timeouts"
+                log_status "ERROR" "Circuit breaker opened after repeated read-only timeouts"
+                break
+            fi
+            update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "write_timeout" "retrying"
+            log_status "WARN" "Write heartbeat: read-only loop, retrying with write-early context"
+            sleep 5
         else
             # Infrastructure failures (timeout, crash, OOM) intentionally bypass
             # record_loop_result to avoid counting as agent stagnation. The circuit

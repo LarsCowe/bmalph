@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { readConfig } from "../utils/config.js";
 import { readState, readRalphStatus, getPhaseLabel, getPhaseInfo } from "../utils/state.js";
 import { withErrorHandling } from "../utils/errors.js";
+import { isInitialized } from "../installer/project-files.js";
 import { formatStatus } from "../utils/format-status.js";
 import { ARTIFACT_DEFINITIONS } from "../utils/artifact-definitions.js";
 import { resolveProjectPlatform } from "../platform/resolve.js";
@@ -46,7 +47,11 @@ export async function runStatus(options: StatusOptions): Promise<void> {
   // Check if project is initialized
   const config = await readConfig(projectDir);
   if (!config) {
-    console.log(chalk.red("Project not initialized. Run: bmalph init"));
+    if (await isInitialized(projectDir)) {
+      console.log(chalk.red("Config file is corrupted. Run: bmalph doctor"));
+    } else {
+      console.log(chalk.red("Project not initialized. Run: bmalph init"));
+    }
     return;
   }
 

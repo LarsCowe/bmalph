@@ -79,6 +79,32 @@ describe("status command", () => {
       expect(output).toContain("not initialized");
     });
 
+    it("shows corrupted config message when config exists but has wrong schema", async () => {
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await writeFile(join(testDir, "bmalph/config.json"), '{"invalid": true}');
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("corrupted");
+      expect(output).toContain("bmalph doctor");
+      expect(output).not.toContain("bmalph init");
+    });
+
+    it("shows corrupted config message when config contains broken JSON", async () => {
+      await mkdir(join(testDir, "bmalph"), { recursive: true });
+      await writeFile(join(testDir, "bmalph/config.json"), "{corrupt");
+
+      const { runStatus } = await import("../../src/commands/status.js");
+      await runStatus({ projectDir: testDir });
+
+      const output = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("corrupted");
+      expect(output).toContain("bmalph doctor");
+      expect(output).not.toContain("bmalph init");
+    });
+
     it("shows phase 1 status when in planning", async () => {
       await setupProject();
       await setupState({ currentPhase: 1, status: "planning" });

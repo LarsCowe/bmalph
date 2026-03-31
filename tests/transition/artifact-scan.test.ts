@@ -325,6 +325,33 @@ describe("artifact-scan", () => {
       expect(suggestNext(phases, 3)).toContain("/create-epics-stories");
     });
 
+    it("suggests implementation-readiness when architecture and epics exist but readiness is missing", () => {
+      const phases = {
+        1: [],
+        2: [{ phase: 2, name: "PRD", required: true, filename: "prd.md" }],
+        3: [
+          { phase: 3, name: "Architecture", required: true, filename: "arch.md" },
+          { phase: 3, name: "Epics & Stories", required: true, filename: "epics.md" },
+        ],
+      };
+      expect(suggestNext(phases, 3)).toContain("/implementation-readiness");
+      expect(suggestNext(phases, 3)).not.toContain("/architect");
+    });
+
+    it("suggests check-implementation-readiness skill for Codex when readiness is missing", () => {
+      const phases = {
+        1: [],
+        2: [{ phase: 2, name: "PRD", required: true, filename: "prd.md" }],
+        3: [
+          { phase: 3, name: "Architecture", required: true, filename: "arch.md" },
+          { phase: 3, name: "Epics & Stories", required: true, filename: "epics.md" },
+        ],
+      };
+      const suggestion = suggestNext(phases, 3, "codex");
+      expect(suggestion).toContain("check-implementation-readiness");
+      expect(suggestion).not.toContain("$architect");
+    });
+
     it("suggests bmalph implement when all phase 3 artifacts exist", () => {
       const phases = {
         1: [],

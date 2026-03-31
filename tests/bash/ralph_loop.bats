@@ -8,11 +8,21 @@ setup() {
     load 'test_helper/common-setup'
     _common_setup
 
+    # Save bats traps before sourcing ralph_loop.sh.
+    # The script sets its own EXIT trap (_on_exit) which overrides bats' test
+    # result detection.  We restore the original traps after sourcing.
+    _bats_exit_trap=$(trap -p EXIT)
+    _bats_err_trap=$(trap -p ERR)
+
     # Source ralph_loop.sh to load function definitions.
     # RALPH_DIR is already exported by _common_setup (temp dir), and the script
     # respects it via ${RALPH_DIR:-.ralph}. Side effects: set -e, library sourcing,
     # variable init, mkdir (in temp dir since RALPH_DIR is pre-set).
     source "$PROJECT_ROOT/ralph/ralph_loop.sh"
+
+    # Restore bats traps that ralph_loop.sh overwrote.
+    eval "${_bats_exit_trap:-trap - EXIT}"
+    eval "${_bats_err_trap:-trap - ERR}"
 
     # Disable set -e leaked by ralph_loop.sh so tests that call functions
     # without `run` don't abort on intermediate non-zero exits.
@@ -103,6 +113,172 @@ setup() {
 
 teardown() {
     _common_teardown
+}
+
+# Re-enable bats assertion checking for tests that only use `run`.
+# The global set +e (needed for direct function calls) disables assertion
+# failure detection. Call this at the top of tests that use `run` exclusively.
+_enable_assertions() {
+    set -eET
+    eval "${_bats_err_trap:-}"
+}
+
+# ===========================================================================
+# validate_ralph_dir
+# ===========================================================================
+
+@test "validate_ralph_dir accepts .ralph" {
+    _enable_assertions
+    run validate_ralph_dir ".ralph"
+    assert_success
+}
+
+@test "validate_ralph_dir accepts empty string (will default to .ralph)" {
+    _enable_assertions
+    run validate_ralph_dir ""
+    assert_success
+}
+
+@test "validate_ralph_dir accepts absolute path" {
+    _enable_assertions
+    run validate_ralph_dir "/tmp/bats-test-ralph"
+    assert_success
+}
+
+@test "validate_ralph_dir rejects path traversal" {
+    _enable_assertions
+    run validate_ralph_dir "../../etc"
+    assert_failure
+    assert_output --partial "must not contain '..'"
+}
+
+@test "validate_ralph_dir rejects relative non-default path" {
+    _enable_assertions
+    run validate_ralph_dir "foo/bar"
+    assert_failure
+    assert_output --partial "must be '.ralph' or an absolute path"
+}
+
+# ===========================================================================
+# load_platform_driver
+# ===========================================================================
+
+@test "load_platform_driver rejects path traversal" {
+    _enable_assertions
+    PLATFORM_DRIVER="../../evil"
+    run load_platform_driver
+    assert_failure
+    assert_output --partial "Invalid PLATFORM_DRIVER"
+}
+
+@test "load_platform_driver rejects slash in name" {
+    _enable_assertions
+    PLATFORM_DRIVER="foo/bar"
+    run load_platform_driver
+    assert_failure
+    assert_output --partial "Invalid PLATFORM_DRIVER"
+}
+
+@test "load_platform_driver rejects nonexistent driver" {
+    _enable_assertions
+    PLATFORM_DRIVER="nonexistent"
+    run load_platform_driver
+    assert_failure
+    assert_output --partial "not found"
+}
+
+# ===========================================================================
+# parse_ralphrc
+# ===========================================================================
+
+@test "parse_ralphrc sets known key" {
+    _enable_assertions
+    echo 'MAX_CALLS_PER_HOUR=50' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$MAX_CALLS_PER_HOUR" == "50" ]]
+}
+
+@test "parse_ralphrc handles double-quoted value" {
+    _enable_assertions
+    echo 'CLAUDE_OUTPUT_FORMAT="json"' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$CLAUDE_OUTPUT_FORMAT" == "json" ]]
+}
+
+@test "parse_ralphrc handles single-quoted value" {
+    _enable_assertions
+    echo "CLAUDE_OUTPUT_FORMAT='text'" > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$CLAUDE_OUTPUT_FORMAT" == "text" ]]
+}
+
+@test "parse_ralphrc handles \${VAR:-default} with env unset" {
+    _enable_assertions
+    unset PROJECT_NAME
+    echo 'PROJECT_NAME="${PROJECT_NAME:-my-project}"' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$PROJECT_NAME" == "my-project" ]]
+}
+
+@test "parse_ralphrc handles \${VAR:-default} with env set" {
+    _enable_assertions
+    export PROJECT_NAME="real-project"
+    echo 'PROJECT_NAME="${PROJECT_NAME:-my-project}"' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$PROJECT_NAME" == "real-project" ]]
+}
+
+@test "parse_ralphrc handles \${VAR:-} empty default" {
+    _enable_assertions
+    unset TEST_COMMAND
+    echo 'TEST_COMMAND="${TEST_COMMAND:-}"' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$TEST_COMMAND" == "" ]]
+}
+
+@test "parse_ralphrc allows semicolons in value" {
+    _enable_assertions
+    echo 'QUALITY_GATES="npm run lint;npm test"' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$QUALITY_GATES" == "npm run lint;npm test" ]]
+}
+
+@test "parse_ralphrc rejects command substitution" {
+    _enable_assertions
+    echo 'PROJECT_NAME=$(echo pwned)' > "$RALPH_DIR/test.conf"
+    MAX_CALLS_PER_HOUR=100
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    # PROJECT_NAME should not be set to the result of command substitution
+    [[ "${PROJECT_NAME:-}" != "pwned" ]]
+}
+
+@test "parse_ralphrc rejects backtick execution" {
+    _enable_assertions
+    echo 'PROJECT_NAME=`echo pwned`' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "${PROJECT_NAME:-}" != "pwned" ]]
+}
+
+@test "parse_ralphrc ignores unknown key with warning" {
+    _enable_assertions
+    echo 'UNKNOWN_KEY=foobar' > "$RALPH_DIR/test.conf"
+    run parse_ralphrc "$RALPH_DIR/test.conf"
+    assert_success
+    assert_output --partial "unknown key ignored"
+}
+
+@test "parse_ralphrc skips comments and blank lines" {
+    _enable_assertions
+    printf '# comment\n\nMAX_CALLS_PER_HOUR=42\n' > "$RALPH_DIR/test.conf"
+    parse_ralphrc "$RALPH_DIR/test.conf"
+    [[ "$MAX_CALLS_PER_HOUR" == "42" ]]
+}
+
+@test "RALPHRC_FILE env override is ignored" {
+    _enable_assertions
+    # After sourcing ralph_loop.sh, RALPHRC_FILE should be derived from RALPH_DIR
+    # not from an env var
+    [[ "$RALPHRC_FILE" == "$RALPH_DIR/.ralphrc" ]]
 }
 
 # ===========================================================================
@@ -813,13 +989,14 @@ EOF
 }
 
 @test "build_loop_context preserves quality gate info when diff summary present" {
+    _enable_assertions
     _skip_if_jq_missing
 
     # Quality gate failure (high priority — should survive truncation)
     jq -n '{
         overall_status: "fail",
         mode: "block",
-        test_gate: {status: "fail"},
+        test_gate: {status: "fail", output: "TypeError: Cannot read property user"},
         custom_gates: []
     }' > "$QUALITY_GATE_RESULTS_FILE"
 
@@ -829,7 +1006,7 @@ EOF
     run build_loop_context 5
     assert_success
     # Quality gate info must survive — it appears before diff in the context string
-    assert_output --partial "TESTS FAILING."
+    assert_output --partial "TESTS FAILING: TypeError: Cannot read property user."
 }
 
 # ===========================================================================
@@ -2581,16 +2758,18 @@ SCRIPT
 }
 
 @test "build_loop_context includes test failure info in block mode" {
+    _enable_assertions
+
     jq -n '{
         overall_status: "fail",
         mode: "block",
-        test_gate: {status: "fail"},
+        test_gate: {status: "fail", output: "FAIL src/auth.test.ts > rejects invalid token"},
         custom_gates: []
     }' > "$QUALITY_GATE_RESULTS_FILE"
 
     run build_loop_context 5
     assert_success
-    assert_output --partial "TESTS FAILING."
+    assert_output --partial "TESTS FAILING: FAIL src/auth.test.ts > rejects invalid token."
 }
 
 @test "build_loop_context omits gate failure info in warn mode" {
@@ -2633,6 +2812,124 @@ SCRIPT
     assert_success
     refute_output --partial "TESTS FAILING"
     refute_output --partial "QG fail"
+}
+
+@test "build_loop_context includes test output when available" {
+    _enable_assertions
+    _skip_if_jq_missing
+
+    jq -n '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail", output: "FAIL src/auth.test.ts:42 TypeError: Cannot read property user of undefined"},
+        custom_gates: []
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    run build_loop_context 3
+    assert_success
+    assert_output --partial "TESTS FAILING: FAIL src/auth.test.ts:42 TypeError: Cannot read property user of undefined."
+}
+
+@test "build_loop_context falls back to bare message when test output empty" {
+    _enable_assertions
+    _skip_if_jq_missing
+
+    jq -n '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail", output: ""},
+        custom_gates: []
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    run build_loop_context 3
+    assert_success
+    assert_output --partial "TESTS FAILING."
+    refute_output --partial "TESTS FAILING:"
+}
+
+@test "build_loop_context truncates long test output to 150 chars" {
+    _enable_assertions
+    _skip_if_jq_missing
+
+    # Generate output longer than 150 chars (no dots to avoid regex issues)
+    local long_output
+    long_output=$(printf 'FAIL test_%d assertion error in handler function ' {1..10})
+
+    jq -n --arg out "$long_output" '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail", output: $out},
+        custom_gates: []
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    run build_loop_context 3
+    assert_success
+    assert_output --partial "TESTS FAILING:"
+    # Extract snippet length via parameter expansion
+    local prefix="Loop #3. TESTS FAILING: "
+    local suffix=${output#"$prefix"}
+    # suffix now has the truncated output followed by ". "
+    # Remove trailing ". " to get just the snippet
+    local snippet=${suffix%". "}
+    local len=${#snippet}
+    [[ $len -le 150 ]]
+    # Also verify it was actually truncated (input was >150 chars)
+    [[ ${#long_output} -gt 150 ]]
+}
+
+@test "build_loop_context sanitizes multiline test output" {
+    _enable_assertions
+    _skip_if_jq_missing
+
+    # Output with newlines, tabs, and ANSI color codes
+    local raw_output=$'  \x1b[31mFAIL\x1b[0m src/auth.test.ts\n  ● rejects invalid token\n\n    \tTypeError: boom'
+
+    jq -n --arg out "$raw_output" '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail", output: $out},
+        custom_gates: []
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    run build_loop_context 3
+    assert_success
+    # ANSI codes stripped, whitespace collapsed to single spaces
+    assert_output --partial "TESTS FAILING: FAIL src/auth.test.ts"
+    refute_output --partial $'\x1b'
+    refute_output --partial $'\t'
+}
+
+@test "build_loop_context preserves test and custom gate info under budget pressure" {
+    _enable_assertions
+    _skip_if_jq_missing
+
+    # Long previous summary to eat into the 500-char budget
+    local long_summary
+    long_summary=$(printf 'Implemented authentication flow with JWT token validation and refresh logic for the user session management module across multiple service endpoints')
+    jq -n --arg ws "$long_summary" '{analysis: {work_summary: $ws}}' > "$RESPONSE_ANALYSIS_FILE"
+
+    # Long next task
+    cat > "$RALPH_DIR/@fix_plan.md" <<'FIXPLAN'
+- [ ] Refactor the authentication middleware to properly validate JWT tokens and handle refresh token rotation
+- [ ] Update the user session management to support concurrent sessions across devices
+FIXPLAN
+
+    # Both test gate and custom gate failing
+    jq -n '{
+        overall_status: "fail",
+        mode: "block",
+        test_gate: {status: "fail", output: "FAIL auth.test.ts:42 TypeError"},
+        custom_gates: [{command: "npm run lint", status: "fail"}]
+    }' > "$QUALITY_GATE_RESULTS_FILE"
+
+    run build_loop_context 5
+    assert_success
+    # Both quality gate markers must survive truncation
+    assert_output --partial "TESTS FAILING:"
+    assert_output --partial "QG fail:"
+    # Total must respect 500-char limit
+    local len=${#output}
+    [[ $len -le 500 ]]
 }
 
 # ===========================================================================

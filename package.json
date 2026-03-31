@@ -52,9 +52,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "exports": {
-    ".": "./dist/cli.js"
-  },
   "files": [
     "bin/",
     "dist/",

@@ -62,11 +62,11 @@ export function getPlatformEpicsStoriesHint(platform: Platform): string {
 
 export function getPlatformReadinessHint(platform: Platform): string {
   if (platform.commandDelivery.kind === "directory") {
-    return "Run /architect to generate readiness report";
+    return "Run /implementation-readiness to generate readiness report";
   }
 
   if (platform.commandDelivery.kind === "skills") {
-    return getSkillHint(platform, "architect", platform.commandDelivery.dir);
+    return getSkillHint(platform, "check-implementation-readiness", platform.commandDelivery.dir);
   }
 
   return getCommandIndexHint(platform);

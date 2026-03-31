@@ -178,11 +178,12 @@ export async function executeResetPlan(projectDir: string, plan: ResetPlan): Pro
   }
 }
 
-function removeGitignoreLines(content: string, linesToRemove: string[]): string {
+export function removeGitignoreLines(content: string, linesToRemove: string[]): string {
   const removeSet = new Set(linesToRemove);
+  const eol = content.includes("\r\n") ? "\r\n" : "\n";
   const lines = content.split(/\r?\n/);
   const filtered = lines.filter((line) => !removeSet.has(line.trim()));
-  return filtered.join("\n");
+  return filtered.join(eol);
 }
 
 export function planToDryRunActions(plan: ResetPlan): DryRunAction[] {

@@ -15,8 +15,11 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Use RALPH_DIR if set by main script, otherwise default to .ralph
-RALPH_DIR="${RALPH_DIR:-.ralph}"
+# RALPH_DIR must be set by the caller (ralph_loop.sh validates it)
+if [[ -z "${RALPH_DIR:-}" ]]; then
+    echo "Error: RALPH_DIR is not set. Source ralph_loop.sh first." >&2
+    return 1
+fi
 
 # Analysis configuration
 COMPLETION_KEYWORDS=("done" "complete" "finished" "all tasks complete" "project complete" "ready for review")

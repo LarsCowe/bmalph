@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { readConfig } from "../utils/config.js";
 import { withErrorHandling } from "../utils/errors.js";
+import { isInitialized } from "../installer/project-files.js";
 import { isPlatformId, getPlatform, getFullTierPlatformNames } from "../platform/registry.js";
 import { validateCursorRuntime } from "../platform/cursor-runtime-checks.js";
 import {
@@ -32,6 +33,9 @@ async function executeRun(options: RunCommandOptions): Promise<void> {
 
   const config = await readConfig(projectDir);
   if (!config) {
+    if (await isInitialized(projectDir)) {
+      throw new Error("Config file is corrupted. Run: bmalph doctor");
+    }
     throw new Error("Project not initialized. Run: bmalph init");
   }
 

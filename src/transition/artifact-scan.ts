@@ -126,7 +126,7 @@ export function suggestNext(
   if (!foundNames.has("Readiness Report")) {
     return platform
       ? getPlatformReadinessHint(platform)
-      : "Run /architect to generate readiness report";
+      : "Run /implementation-readiness to generate readiness report";
   }
 
   return "Run: bmalph implement";

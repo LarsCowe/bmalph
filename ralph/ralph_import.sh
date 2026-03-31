@@ -15,6 +15,12 @@ CLAUDE_CODE_CMD="claude"
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 PLATFORM_DRIVER="${PLATFORM_DRIVER:-claude-code}"
 
+# Reject path traversal in PLATFORM_DRIVER (#77)
+if [[ "$PLATFORM_DRIVER" =~ [/] ]] || [[ "$PLATFORM_DRIVER" == *".."* ]]; then
+    echo "Error: Invalid PLATFORM_DRIVER: $PLATFORM_DRIVER" >&2
+    exit 1
+fi
+
 # Source platform driver if available
 if [[ -f "$SCRIPT_DIR/drivers/${PLATFORM_DRIVER}.sh" ]]; then
     # shellcheck source=/dev/null

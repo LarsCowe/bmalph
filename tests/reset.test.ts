@@ -516,4 +516,27 @@ describe("reset", () => {
       expect(actions).toEqual([]);
     });
   });
+
+  describe("removeGitignoreLines", () => {
+    it("removes specified lines from content", async () => {
+      const { removeGitignoreLines } = await import("../src/reset.js");
+      const content = "node_modules/\n.ralph/logs/\ndist/\n";
+      const result = removeGitignoreLines(content, [".ralph/logs/"]);
+      expect(result).toBe("node_modules/\ndist/\n");
+    });
+
+    it("preserves CRLF line endings when input uses CRLF", async () => {
+      const { removeGitignoreLines } = await import("../src/reset.js");
+      const content = "node_modules/\r\n.ralph/logs/\r\ndist/\r\n";
+      const result = removeGitignoreLines(content, [".ralph/logs/"]);
+      expect(result).toBe("node_modules/\r\ndist/\r\n");
+    });
+
+    it("uses LF when input uses LF", async () => {
+      const { removeGitignoreLines } = await import("../src/reset.js");
+      const content = "node_modules/\n.ralph/logs/\ndist/\n";
+      const result = removeGitignoreLines(content, [".ralph/logs/"]);
+      expect(result).not.toContain("\r");
+    });
+  });
 });

@@ -57,6 +57,9 @@ export async function syncFixPlan(
     }
   }
 
+  const completedTitles = buildCompletedTitleMap(existingItems);
+  const newTitleMap = new Map(inputs.stories.map((story) => [story.id, story.title]));
+
   const sprintStatusSource = await resolveSprintStatusSource(projectDir, inputs);
   if (sprintStatusSource) {
     useTitleBasedMerge = false;
@@ -96,8 +99,6 @@ export async function syncFixPlan(
     const newStoryIds = new Set(inputs.stories.map((story) => story.id));
     orphanWarnings = detectOrphanedCompletedStories(existingItems, newStoryIds);
 
-    const completedTitles = buildCompletedTitleMap(existingItems);
-    const newTitleMap = new Map(inputs.stories.map((story) => [story.id, story.title]));
     const preservedIds = new Set<string>();
 
     for (const [id, title] of newTitleMap) {
@@ -108,9 +109,6 @@ export async function syncFixPlan(
 
     renumberWarnings = detectRenumberedStories(existingItems, inputs.stories, preservedIds);
   }
-
-  const completedTitles = buildCompletedTitleMap(existingItems);
-  const newTitleMap = new Map(inputs.stories.map((story) => [story.id, story.title]));
 
   info(`Generating fix plan for ${inputs.stories.length} stories...`);
   const newFixPlan = generateFixPlan(inputs.stories, undefined, inputs.planningSpecsSubpath);

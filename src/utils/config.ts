@@ -36,7 +36,13 @@ export interface BmalphConfig {
 }
 
 export async function readConfig(projectDir: string): Promise<BmalphConfig | null> {
-  const data = await readJsonFile<unknown>(join(projectDir, CONFIG_FILE));
+  let data: unknown;
+  try {
+    data = await readJsonFile<unknown>(join(projectDir, CONFIG_FILE));
+  } catch (err) {
+    warn(`Config file is corrupted, treating as missing: ${formatError(err)}`);
+    return null;
+  }
   if (data === null) return null;
   try {
     return validateConfig(data);
