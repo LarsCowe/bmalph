@@ -5,8 +5,8 @@ import { readBmadConfig } from "../utils/config.js";
 
 export async function findArtifactsDir(projectDir: string): Promise<string | null> {
   const bmadConfig = await readBmadConfig(projectDir);
-  if (bmadConfig?.planning_artifacts) {
-    const trimmed = bmadConfig.planning_artifacts.trim();
+  const trimmed = bmadConfig?.planning_artifacts?.trim();
+  if (trimmed) {
     const resolved = resolve(projectDir, trimmed);
     debug(`Checking config-specified artifacts dir: ${resolved}`);
 

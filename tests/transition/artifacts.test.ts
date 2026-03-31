@@ -126,6 +126,16 @@ describe("artifacts", () => {
       }
     });
 
+    it("ignores whitespace-only planning_artifacts value", async () => {
+      await mkdir(join(testDir, "_bmad"), { recursive: true });
+      await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: '   '\n");
+      await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+
+      const result = await findArtifactsDir(testDir);
+
+      expect(result).toBe(join(testDir, "_bmad-output/planning-artifacts"));
+    });
+
     it("returns null when config-specified path is a file", async () => {
       await mkdir(join(testDir, "_bmad"), { recursive: true });
       await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: my-file.txt\n");
