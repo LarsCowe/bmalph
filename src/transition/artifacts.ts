@@ -10,7 +10,8 @@ export async function findArtifactsDir(projectDir: string): Promise<string | nul
     const resolved = resolve(projectDir, trimmed);
     debug(`Checking config-specified artifacts dir: ${resolved}`);
 
-    if (!resolved.startsWith(resolve(projectDir))) {
+    const projectRoot = resolve(projectDir);
+    if (!resolved.startsWith(projectRoot + "/") && resolved !== projectRoot) {
       warn(`planning_artifacts path escapes project directory, ignoring: ${trimmed}`);
     } else if (await isDirectory(resolved)) {
       debug(`Found artifacts at: ${resolved}`);

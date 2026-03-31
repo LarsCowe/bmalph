@@ -107,6 +107,25 @@ describe("artifacts", () => {
       expect(result).toBe(join(testDir, "_bmad-output/planning-artifacts"));
     });
 
+    it("blocks sibling directory with matching prefix via path traversal", async () => {
+      const siblingDir = `${testDir}-evil`;
+      await mkdir(siblingDir, { recursive: true });
+      try {
+        await mkdir(join(testDir, "_bmad"), { recursive: true });
+        await writeFile(
+          join(testDir, "_bmad/config.yaml"),
+          `planning_artifacts: ../${testDir.split("/").pop()}-evil\n`
+        );
+        await mkdir(join(testDir, "_bmad-output/planning-artifacts"), { recursive: true });
+
+        const result = await findArtifactsDir(testDir);
+
+        expect(result).toBe(join(testDir, "_bmad-output/planning-artifacts"));
+      } finally {
+        await rm(siblingDir, { recursive: true, force: true });
+      }
+    });
+
     it("returns null when config-specified path is a file", async () => {
       await mkdir(join(testDir, "_bmad"), { recursive: true });
       await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: my-file.txt\n");
