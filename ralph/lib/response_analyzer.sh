@@ -721,6 +721,25 @@ parse_json_response() {
         fi
     fi
 
+    # Usage / cost / duration fields from Claude CLI result (#129)
+    # These fields are present in the top-level result object for Claude Code.
+    # For Codex/OpenCode JSONL shapes they remain at their default (null).
+    local input_tokens="null" output_tokens="null"
+    local cache_read_tokens="null" cache_creation_tokens="null"
+    local total_cost_usd="null" parse_duration_ms="null" parse_duration_api_ms="null"
+    local parse_num_turns="null"
+
+    if [[ "$response_shape" == "object" ]]; then
+        input_tokens=$(jq -j '.usage.input_tokens // null' "$output_file" 2>/dev/null || echo "null")
+        output_tokens=$(jq -j '.usage.output_tokens // null' "$output_file" 2>/dev/null || echo "null")
+        cache_read_tokens=$(jq -j '.usage.cache_read_input_tokens // null' "$output_file" 2>/dev/null || echo "null")
+        cache_creation_tokens=$(jq -j '.usage.cache_creation_input_tokens // null' "$output_file" 2>/dev/null || echo "null")
+        total_cost_usd=$(jq -j '.total_cost_usd // null' "$output_file" 2>/dev/null || echo "null")
+        parse_duration_ms=$(jq -j '.duration_ms // null' "$output_file" 2>/dev/null || echo "null")
+        parse_duration_api_ms=$(jq -j '.duration_api_ms // null' "$output_file" 2>/dev/null || echo "null")
+        parse_num_turns=$(jq -j '.num_turns // null' "$output_file" 2>/dev/null || echo "null")
+    fi
+
     local ralph_status_json=""
     if [[ -n "$result_text" ]] && ralph_status_json=$(extract_ralph_status_block_json "$result_text" 2>/dev/null); then
         local embedded_exit_signal_found
@@ -840,6 +859,14 @@ parse_json_response() {
         --argjson denied_commands "$denied_commands_json" \
         --arg tests_status "$tests_status" \
         --argjson has_result_field "$has_result_field" \
+        --argjson input_tokens "$input_tokens" \
+        --argjson output_tokens "$output_tokens" \
+        --argjson cache_read_tokens "$cache_read_tokens" \
+        --argjson cache_creation_tokens "$cache_creation_tokens" \
+        --argjson total_cost_usd "$total_cost_usd" \
+        --argjson duration_ms "$parse_duration_ms" \
+        --argjson duration_api_ms "$parse_duration_api_ms" \
+        --argjson num_turns "$parse_num_turns" \
         '{
             status: $status,
             exit_signal: $exit_signal,
@@ -858,6 +885,14 @@ parse_json_response() {
             has_permission_denials: $has_permission_denials,
             permission_denial_count: $permission_denial_count,
             denied_commands: $denied_commands,
+            input_tokens: $input_tokens,
+            output_tokens: $output_tokens,
+            cache_read_tokens: $cache_read_tokens,
+            cache_creation_tokens: $cache_creation_tokens,
+            total_cost_usd: $total_cost_usd,
+            duration_ms: $duration_ms,
+            duration_api_ms: $duration_api_ms,
+            num_turns: $num_turns,
             metadata: {
                 loop_number: $loop_number,
                 session_id: $session_id
@@ -925,6 +960,16 @@ analyze_response() {
             local has_permission_denials=$(jq -r -j '.has_permission_denials' "$json_parse_result_file" 2>/dev/null || echo "false")
             local permission_denial_count=$(jq -r -j '.permission_denial_count' "$json_parse_result_file" 2>/dev/null || echo "0")
             local denied_commands_json=$(jq -r -j '.denied_commands' "$json_parse_result_file" 2>/dev/null || echo "[]")
+
+            # Extract usage / cost / duration fields (#129)
+            local analyze_input_tokens=$(jq -j '.input_tokens // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_output_tokens=$(jq -j '.output_tokens // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_cache_read_tokens=$(jq -j '.cache_read_tokens // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_cache_creation_tokens=$(jq -j '.cache_creation_tokens // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_total_cost_usd=$(jq -j '.total_cost_usd // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_duration_ms=$(jq -j '.duration_ms // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_duration_api_ms=$(jq -j '.duration_api_ms // null' "$json_parse_result_file" 2>/dev/null || echo "null")
+            local analyze_num_turns=$(jq -j '.num_turns // null' "$json_parse_result_file" 2>/dev/null || echo "null")
 
             # Persist session ID if present (for session continuity across loop iterations)
             if [[ -n "$session_id" && "$session_id" != "null" ]]; then
@@ -1007,6 +1052,15 @@ analyze_response() {
                 --argjson permission_denial_count "$permission_denial_count" \
                 --argjson denied_commands "$denied_commands_json" \
                 --arg tests_status "$tests_status" \
+                --argjson input_tokens "${analyze_input_tokens:-null}" \
+                --argjson output_tokens "${analyze_output_tokens:-null}" \
+                --argjson cache_read_tokens "${analyze_cache_read_tokens:-null}" \
+                --argjson cache_creation_tokens "${analyze_cache_creation_tokens:-null}" \
+                --argjson total_cost_usd "${analyze_total_cost_usd:-null}" \
+                --argjson duration_ms "${analyze_duration_ms:-null}" \
+                --argjson duration_api_ms "${analyze_duration_api_ms:-null}" \
+                --argjson num_turns "${analyze_num_turns:-null}" \
+                --arg session_id "$session_id" \
                 '{
                     loop_number: $loop_number,
                     timestamp: $timestamp,
@@ -1029,7 +1083,16 @@ analyze_response() {
                         output_length: $output_length,
                         has_permission_denials: $has_permission_denials,
                         permission_denial_count: $permission_denial_count,
-                        denied_commands: $denied_commands
+                        denied_commands: $denied_commands,
+                        input_tokens: $input_tokens,
+                        output_tokens: $output_tokens,
+                        cache_read_tokens: $cache_read_tokens,
+                        cache_creation_tokens: $cache_creation_tokens,
+                        total_cost_usd: $total_cost_usd,
+                        duration_ms: $duration_ms,
+                        duration_api_ms: $duration_api_ms,
+                        num_turns: $num_turns,
+                        session_id: $session_id
                     }
                 }' > "$analysis_result_file"
             rm -f "$json_parse_result_file"

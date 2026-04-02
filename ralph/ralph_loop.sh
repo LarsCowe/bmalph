@@ -33,6 +33,7 @@ source "$SCRIPT_DIR/lib/timeout_utils.sh"
 source "$SCRIPT_DIR/lib/response_analyzer.sh"
 source "$SCRIPT_DIR/lib/circuit_breaker.sh"
 source "$SCRIPT_DIR/lib/write_heartbeat.sh"
+source "$SCRIPT_DIR/lib/metrics.sh"
 
 # Configuration
 # Ralph-specific files live in .ralph/ subfolder
@@ -2640,6 +2641,11 @@ EOF
         fi
         local output_length=$(wc -c < "$output_file" 2>/dev/null || echo 0)
 
+        # Capture raw values before quality gate mutations (#129)
+        # Use exit_signal_for_gates which was read at line ~2557 before QG block mode
+        local raw_files_changed=$files_changed
+        local raw_exit_signal="$exit_signal_for_gates"
+
         # Circuit-breaker mode: override progress signals so circuit breaker sees no-progress
         if [[ "$qg_result" == "2" ]]; then
             log_status "WARN" "Quality gate circuit-breaker: overriding progress signals"
@@ -2653,8 +2659,13 @@ EOF
 
         if [[ $circuit_result -ne 0 ]]; then
             log_status "WARN" "Circuit breaker opened - halting execution"
+            # Append metrics with circuit_breaker_trip outcome (#129)
+            append_loop_metrics "$loop_count" "$raw_files_changed" "$has_errors" "$raw_exit_signal" "circuit_breaker_trip" "${qg_result:-null}"
             return 3  # Special code for circuit breaker trip
         fi
+
+        # Append loop metrics with raw (pre-QG) values (#129)
+        append_loop_metrics "$loop_count" "$raw_files_changed" "$has_errors" "$raw_exit_signal" "success" "${qg_result:-null}"
 
         return 0
     else
@@ -2824,6 +2835,9 @@ main() {
     # Initialize session tracking before entering the loop
     init_session_tracking
 
+    # Initialize metrics run identity (#129)
+    init_metrics
+
     log_status "INFO" "Starting main loop..."
     
     while true; do
@@ -2929,6 +2943,7 @@ main() {
             break
         elif [ $exec_result -eq 2 ]; then
             # API 5-hour limit reached - handle specially
+            append_loop_metrics "$loop_count" 0 false false "api_limit"
             update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "api_limit" "paused"
             log_status "WARN" "🛑 Claude API 5-hour limit reached!"
             
@@ -2976,6 +2991,10 @@ main() {
             # Record in circuit breaker with read-only flag
             local circuit_result=0
             record_loop_result "$loop_count" 0 false 0 true || circuit_result=$?
+
+            # Append read-only timeout metrics (#129)
+            append_loop_metrics "$loop_count" 0 false false "read_only_timeout"
+
             if [[ $circuit_result -ne 0 ]]; then
                 reset_session "read_only_circuit_breaker"
                 update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "circuit_breaker_open" "halted" "read_only_timeouts"
@@ -2992,6 +3011,14 @@ main() {
             local exit_desc
             exit_desc=$(describe_exit_code "${LAST_DRIVER_EXIT_CODE:-1}")
             update_status "$loop_count" "$(cat "$CALL_COUNT_FILE")" "failed" "error" "$exit_desc" "${LAST_DRIVER_EXIT_CODE:-}"
+
+            # Clear stale response analysis from previous loop to avoid
+            # logging old usage/session data on this error record (#129)
+            rm -f "$RESPONSE_ANALYSIS_FILE"
+
+            # Append error metrics (#129)
+            append_loop_metrics "$loop_count" 0 true false "error"
+
             log_status "WARN" "Execution failed, waiting 30 seconds before retry..."
             sleep 30
         fi
@@ -3033,6 +3060,7 @@ Modern CLI Options (Phase 1.1):
 
 Files created:
     - $LOG_DIR/: All execution logs
+    - $LOG_DIR/metrics.jsonl: Per-loop performance metrics (append-only JSONL)
     - $DOCS_DIR/: Generated documentation
     - $STATUS_FILE: Current status (JSON)
     - .ralph/.ralph_session: Session lifecycle tracking

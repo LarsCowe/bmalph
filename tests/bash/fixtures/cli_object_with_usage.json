@@ -1,0 +1,21 @@
+{
+  "type": "result",
+  "result": "I've implemented the requested changes.\n\n---RALPH_STATUS---\nSTATUS: COMPLETE\nEXIT_SIGNAL: true\n---END_RALPH_STATUS---",
+  "sessionId": "session-usage-test",
+  "is_error": false,
+  "duration_ms": 142000,
+  "duration_api_ms": 138000,
+  "num_turns": 3,
+  "total_cost_usd": 0.42,
+  "usage": {
+    "input_tokens": 45000,
+    "output_tokens": 12000,
+    "cache_read_input_tokens": 30000,
+    "cache_creation_input_tokens": 5000
+  },
+  "metadata": {
+    "files_changed": 5,
+    "has_errors": false,
+    "completion_status": "complete"
+  }
+}

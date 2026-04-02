@@ -1596,3 +1596,75 @@ EOF
     assert_success
     assert_output "UNKNOWN"
 }
+
+# ===========================================================================
+# parse_json_response — usage data extraction (#129)
+# ===========================================================================
+
+@test "parse_json_response extracts usage fields from CLI result with usage data" {
+    _skip_if_xargs_broken
+    local result="$RALPH_DIR/result.json"
+    parse_json_response "$FIXTURES_DIR/cli_object_with_usage.json" "$result"
+
+    run jq '.input_tokens' "$result"
+    assert_output "45000"
+
+    run jq '.output_tokens' "$result"
+    assert_output "12000"
+
+    run jq '.cache_read_tokens' "$result"
+    assert_output "30000"
+
+    run jq '.cache_creation_tokens' "$result"
+    assert_output "5000"
+
+    run jq '.total_cost_usd' "$result"
+    assert_output "0.42"
+
+    run jq '.duration_ms' "$result"
+    assert_output "142000"
+
+    run jq '.duration_api_ms' "$result"
+    assert_output "138000"
+
+    run jq '.num_turns' "$result"
+    assert_output "3"
+}
+
+@test "parse_json_response returns null usage fields when not present" {
+    _skip_if_xargs_broken
+    local result="$RALPH_DIR/result.json"
+    parse_json_response "$FIXTURES_DIR/cli_object_response.json" "$result"
+
+    run jq '.input_tokens' "$result"
+    assert_output "null"
+
+    run jq '.total_cost_usd' "$result"
+    assert_output "null"
+
+    run jq '.duration_ms' "$result"
+    assert_output "null"
+}
+
+@test "analyze_response surfaces usage fields in analysis output" {
+    _skip_if_xargs_broken
+    local analysis="$RALPH_DIR/.response_analysis"
+
+    run analyze_response "$FIXTURES_DIR/cli_object_with_usage.json" 1 "$analysis"
+    assert_success
+
+    run jq '.analysis.input_tokens' "$analysis"
+    assert_output "45000"
+
+    run jq '.analysis.output_tokens' "$analysis"
+    assert_output "12000"
+
+    run jq '.analysis.total_cost_usd' "$analysis"
+    assert_output "0.42"
+
+    run jq '.analysis.duration_ms' "$analysis"
+    assert_output "142000"
+
+    run jq '.analysis.num_turns' "$analysis"
+    assert_output "3"
+}
