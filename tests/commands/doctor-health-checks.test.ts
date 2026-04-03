@@ -69,7 +69,7 @@ beforeEach(() => {
 
 describe("checkGitignore", () => {
   it("passes when .gitignore contains all required entries", async () => {
-    mockReadFile.mockResolvedValue("node_modules/\n.ralph/logs/\n_bmad-output/\ndist/\n");
+    mockReadFile.mockResolvedValue("node_modules/\n.ralph/logs/\n_bmad-output/\n.swarm/\ndist/\n");
 
     const result = await checkGitignore("/projects/webapp");
 

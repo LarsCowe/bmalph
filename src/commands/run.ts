@@ -13,6 +13,7 @@ import {
 import { startRunDashboard } from "../run/run-dashboard.js";
 import { parseInterval } from "../utils/validate.js";
 import { getDashboardTerminalSupport } from "../watch/frame-writer.js";
+import { SWARM_DEFAULT_WORKERS, SWARM_MAX_WORKERS } from "../utils/constants.js";
 import type { Platform, PlatformId } from "../platform/types.js";
 import type { ReviewMode } from "../run/types.js";
 
@@ -22,6 +23,7 @@ interface RunCommandOptions {
   interval?: string;
   dashboard: boolean;
   review?: boolean | string;
+  swarm?: boolean | string;
 }
 
 export async function runCommand(options: RunCommandOptions): Promise<void> {
@@ -77,6 +79,19 @@ async function executeRun(options: RunCommandOptions): Promise<void> {
     await validateCursorRuntime(projectDir);
   }
 
+  // Swarm mode: parallel workers in git worktrees
+  if (options.swarm !== undefined && options.swarm !== false) {
+    const workerCount = parseSwarmCount(options.swarm);
+    const { executeSwarmRun } = await import("../swarm/run.js");
+    await executeSwarmRun({
+      projectDir,
+      platformId: platform.id,
+      reviewMode,
+      workerCount,
+    });
+    return;
+  }
+
   const ralph = spawnRalphLoop(projectDir, platform.id, {
     inheritStdio: !useDashboard,
     reviewMode,
@@ -93,6 +108,15 @@ async function executeRun(options: RunCommandOptions): Promise<void> {
     });
     applyRalphExitCode(exitCode);
   }
+}
+
+function parseSwarmCount(value: boolean | string): number {
+  if (value === true) return SWARM_DEFAULT_WORKERS;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`Invalid swarm count: ${value}. Must be a positive integer.`);
+  }
+  return Math.min(n, SWARM_MAX_WORKERS);
 }
 
 function applyRalphExitCode(code: number | null): void {

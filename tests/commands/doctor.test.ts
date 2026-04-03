@@ -114,7 +114,7 @@ describe("doctor command", { timeout: 15000 }, () => {
       join(testDir, "CLAUDE.md"),
       "# Project\n\n## BMAD-METHOD Integration\n\nSome content"
     );
-    await writeFile(join(testDir, ".gitignore"), ".ralph/logs/\n_bmad-output/\n");
+    await writeFile(join(testDir, ".gitignore"), ".ralph/logs/\n_bmad-output/\n.swarm/\n");
   }
 
   describe("Node version check", () => {

@@ -190,6 +190,8 @@ export async function validateGitRepo(projectDir: string): Promise<void> {
 export interface SpawnOptions {
   inheritStdio: boolean;
   reviewMode?: ReviewMode;
+  /** Additional environment variables merged into the spawn env (takes precedence over defaults). */
+  env?: Record<string, string>;
 }
 
 export function spawnRalphLoop(
@@ -197,7 +199,7 @@ export function spawnRalphLoop(
   platformId: string,
   options: SpawnOptions
 ): RalphProcess {
-  const env: NodeJS.ProcessEnv = { ...process.env, PLATFORM_DRIVER: platformId };
+  const env: NodeJS.ProcessEnv = { ...process.env, ...options.env, PLATFORM_DRIVER: platformId };
   if (options.reviewMode) {
     env.REVIEW_MODE = options.reviewMode;
     if (options.reviewMode !== "off") {

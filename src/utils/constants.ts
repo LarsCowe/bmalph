@@ -74,6 +74,9 @@ export const CONFIG_FILE = "bmalph/config.json";
 /** Ralph status file path */
 export const RALPH_STATUS_FILE = ".ralph/status.json";
 
+/** Ralph fix plan file name (relative to RALPH_DIR) */
+export const RALPH_FIX_PLAN_FILE = "@fix_plan.md";
+
 // =============================================================================
 // Ralph status mapping
 // =============================================================================
@@ -98,7 +101,26 @@ export const RALPH_STATUS_MAP = {
 // =============================================================================
 
 /** Entries bmalph adds to .gitignore during init and checks during doctor */
-export const GITIGNORE_ENTRIES = [".ralph/logs/", "_bmad-output/"] as const;
+export const GITIGNORE_ENTRIES = [".ralph/logs/", "_bmad-output/", ".swarm/"] as const;
+
+// =============================================================================
+// Swarm constants
+// =============================================================================
+
+/** Swarm working directory (worktrees, lockfile) */
+export const SWARM_DIR = ".swarm";
+
+/** Default number of swarm workers */
+export const SWARM_DEFAULT_WORKERS = 2;
+
+/** Maximum allowed swarm workers */
+export const SWARM_MAX_WORKERS = 6;
+
+/** Delay between worker starts in milliseconds */
+export const SWARM_STAGGER_DELAY_MS = 5000;
+
+/** Default MAX_CALLS_PER_HOUR when not configured */
+export const SWARM_DEFAULT_RATE_LIMIT = 100;
 
 // =============================================================================
 // Dashboard constants
