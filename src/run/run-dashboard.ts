@@ -60,6 +60,15 @@ export async function startRunDashboard(options: RunDashboardOptions): Promise<v
   });
 
   return new Promise<void>((resolve) => {
+    let rawModeEnabled = false;
+
+    const restoreStdin = (): void => {
+      if (rawModeEnabled && process.stdin.isTTY && process.stdin.setRawMode) {
+        process.stdin.setRawMode(false);
+      }
+      rawModeEnabled = false;
+    };
+
     const onResize = (): void => {
       void refresh();
     };
@@ -73,6 +82,7 @@ export async function startRunDashboard(options: RunDashboardOptions): Promise<v
     };
     process.on("SIGINT", onSignal);
     process.on("SIGTERM", onSignal);
+    process.on("exit", restoreStdin);
 
     const handleKey = (data: string): void => {
       if (showingPrompt) {
@@ -116,16 +126,19 @@ export async function startRunDashboard(options: RunDashboardOptions): Promise<v
       frameWriter.cleanup();
       process.removeListener("SIGINT", onSignal);
       process.removeListener("SIGTERM", onSignal);
+      process.removeListener("exit", restoreStdin);
       process.stdout.removeListener("resize", onResize);
       if (process.stdin.isTTY) {
         process.stdin.removeListener("data", handleKey);
       }
+      restoreStdin();
       resolve();
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- setRawMode absent in pseudo-TTY
     if (process.stdin.isTTY && process.stdin.setRawMode) {
       process.stdin.setRawMode(true);
+      rawModeEnabled = true;
       process.stdin.resume();
       process.stdin.setEncoding("utf-8");
       process.stdin.on("data", handleKey);
