@@ -13,17 +13,17 @@ paths:
 
 ## Per-command flags
 
-| Command         | Flags                                                                                        |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| `init`          | `-n/--name`, `-d/--description`, `--platform <id>`, `--dry-run`                              |
-| `upgrade`       | `--dry-run`, `--force`                                                                       |
-| `doctor`        | `--json`                                                                                     |
-| `check-updates` | `--json`                                                                                     |
-| `status`        | `--json`                                                                                     |
-| `implement`     | `--force`                                                                                    |
-| `reset`         | `--dry-run`, `--force`                                                                       |
+| Command         | Flags                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `init`          | `-n/--name`, `-d/--description`, `--platform <id>`, `--dry-run`                                                 |
+| `upgrade`       | `--dry-run`, `--force`                                                                                          |
+| `doctor`        | `--json`                                                                                                        |
+| `check-updates` | `--json`                                                                                                        |
+| `status`        | `--json`                                                                                                        |
+| `implement`     | `--force`                                                                                                       |
+| `reset`         | `--dry-run`, `--force`                                                                                          |
 | `run`           | `--driver <platform>`, `--interval <ms>`, `--no-dashboard`, `--review [mode]`, `--no-review`, `--swarm [count]` |
-| `watch`         | `--interval <ms>` _(deprecated)_                                                             |
+| `watch`         | `--interval <ms>` _(deprecated)_                                                                                |
 
 ## `bmalph run` features
 

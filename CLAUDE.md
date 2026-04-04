@@ -34,18 +34,18 @@ The instructions file depends on the configured platform — see `src/platform/`
 
 ## CLI Commands
 
-| Command                | Action                                    |
-| ---------------------- | ----------------------------------------- |
-| `bmalph init`          | Install BMAD + Ralph, configure project   |
-| `bmalph upgrade`       | Update bundled assets to current version  |
-| `bmalph doctor`        | Check installation health                 |
-| `bmalph check-updates` | Check for upstream updates                |
-| `bmalph status`        | Show project installation status          |
-| `bmalph implement`     | Transition BMAD artifacts to Ralph format |
-| `bmalph run`           | Start Ralph loop with live dashboard      |
+| Command                | Action                                                       |
+| ---------------------- | ------------------------------------------------------------ |
+| `bmalph init`          | Install BMAD + Ralph, configure project                      |
+| `bmalph upgrade`       | Update bundled assets to current version                     |
+| `bmalph doctor`        | Check installation health                                    |
+| `bmalph check-updates` | Check for upstream updates                                   |
+| `bmalph status`        | Show project installation status                             |
+| `bmalph implement`     | Transition BMAD artifacts to Ralph format                    |
+| `bmalph run`           | Start Ralph loop with live dashboard                         |
 | `bmalph run --swarm N` | Run N parallel workers in git worktrees (default: 2, max: 6) |
-| `bmalph reset`         | Remove all bmalph files from the project  |
-| `bmalph watch`         | _(deprecated)_ Use `bmalph run` instead   |
+| `bmalph reset`         | Remove all bmalph files from the project                     |
+| `bmalph watch`         | _(deprecated)_ Use `bmalph run` instead                      |
 
 ## Dev Workflow
 
