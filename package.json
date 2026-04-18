@@ -62,7 +62,7 @@
     "bundled-versions.json"
   ],
   "dependencies": {
-    "@inquirer/confirm": "^5.1.9",
+    "@inquirer/confirm": "^6.0.11",
     "@inquirer/input": "^4.1.9",
     "@inquirer/select": "^4.2.0",
     "chalk": "^5.6.2",
