@@ -393,7 +393,7 @@ describe("spawnRalphLoop", () => {
     );
   });
 
-  it("uses piped stdio when inheritStdio is false", async () => {
+  it("uses ignored stdio when inheritStdio is false", async () => {
     const mockChild = createMockChild();
     mockSpawn.mockReturnValue(mockChild);
 
@@ -404,9 +404,22 @@ describe("spawnRalphLoop", () => {
       "bash",
       expect.any(Array),
       expect.objectContaining({
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["ignore", "ignore", "ignore"],
       })
     );
+  });
+
+  it("detach does not throw when stdout/stderr are null (ignore stdio mode)", async () => {
+    const mockChild = createMockChild();
+    mockSpawn.mockReturnValue(mockChild);
+
+    const { spawnRalphLoop } = await import("../../src/run/ralph-process.js");
+    const rp = spawnRalphLoop("/project", "claude-code", { inheritStdio: false });
+
+    // child.stdout and child.stderr are null when stdio is "ignore" — detach() must not throw
+    expect(() => rp.detach()).not.toThrow();
+    expect(mockChild.unref).toHaveBeenCalled();
+    expect(rp.state).toBe("detached");
   });
 
   it("tracks exit code and updates state on child exit", async () => {
