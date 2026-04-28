@@ -57,6 +57,7 @@ bmalph works with multiple AI coding assistants. Each platform gets BMAD plannin
 - Bash (WSL or Git Bash on Windows)
 - A supported AI coding platform (see table above)
 - For Ralph loop (Phase 4): Claude Code (`claude`), Codex CLI (`codex`), OpenCode (`opencode`), Copilot CLI (`copilot`), or Cursor CLI (`cursor-agent`; older `agent` installs are also supported)
+- **macOS only:** GNU coreutils (`brew install coreutils`) — provides `gtimeout`, used by Ralph to enforce timeouts on AI sessions, quality gates, and process monitoring
 
 ## Installation
 
