@@ -154,6 +154,13 @@ export function validateStories(stories: Story[], parseWarnings: string[]): Pref
   return issues;
 }
 
+// Matches a NO-GO verdict anywhere in the report, but NOT the "GO / NO-GO"
+// label itself (e.g. the standard "## GO / NO-GO Decision" heading), where
+// NO-GO is merely the second of the two listed options. Without the negative
+// lookbehind, every readiness report — including GO-ready ones that carry that
+// heading — would be flagged as NO-GO and block the transition.
+const NO_GO_VERDICT_PATTERN = /(?<!GO\s*\/\s*)\bNO[-\s]?GO\b/i;
+
 export function validateReadiness(content: string | null): PreflightIssue[] {
   if (content === null) {
     return [
@@ -165,7 +172,7 @@ export function validateReadiness(content: string | null): PreflightIssue[] {
     ];
   }
 
-  if (/NO[-\s]?GO/i.test(content)) {
+  if (NO_GO_VERDICT_PATTERN.test(content)) {
     return [
       {
         id: "E1",
