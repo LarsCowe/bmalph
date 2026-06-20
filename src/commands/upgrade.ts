@@ -4,6 +4,7 @@ import {
   isInitialized,
   copyBundledAssets,
   mergeInstructionsFile,
+  updateGitignore,
   previewUpgrade,
   getBundledVersions,
 } from "../installer.js";
@@ -63,6 +64,9 @@ async function runUpgrade(options: UpgradeOptions): Promise<void> {
 
   const result = await copyBundledAssets(projectDir, platform);
   await mergeInstructionsFile(projectDir, platform);
+  // Migrate .gitignore so installs created before a new managed entry was added
+  // (e.g. bmalph/state/) pick it up on upgrade instead of failing doctor.
+  await updateGitignore(projectDir);
 
   // Update upstreamVersions in config to match bundled versions
   const config = await readConfig(projectDir);

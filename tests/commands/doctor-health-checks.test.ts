@@ -69,7 +69,9 @@ beforeEach(() => {
 
 describe("checkGitignore", () => {
   it("passes when .gitignore contains all required entries", async () => {
-    mockReadFile.mockResolvedValue("node_modules/\n.ralph/logs/\n_bmad-output/\n.swarm/\ndist/\n");
+    mockReadFile.mockResolvedValue(
+      "node_modules/\n.ralph/logs/\n_bmad-output/\n.swarm/\nbmalph/state/\ndist/\n"
+    );
 
     const result = await checkGitignore("/projects/webapp");
 
@@ -82,6 +84,15 @@ describe("checkGitignore", () => {
     const result = await checkGitignore("/projects/webapp");
 
     expect(result.passed).toBe(false);
+  });
+
+  it("fails when bmalph/state/ (mutable runtime state) is missing from .gitignore", async () => {
+    mockReadFile.mockResolvedValue("node_modules/\n.ralph/logs/\n_bmad-output/\n.swarm/\n");
+
+    const result = await checkGitignore("/projects/webapp");
+
+    expect(result.passed).toBe(false);
+    expect(result.detail).toContain("bmalph/state/");
   });
 
   it("reports which entries are missing", async () => {

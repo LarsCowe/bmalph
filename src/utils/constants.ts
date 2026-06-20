@@ -104,7 +104,12 @@ export const RALPH_STATUS_MAP = {
 // =============================================================================
 
 /** Entries bmalph adds to .gitignore during init and checks during doctor */
-export const GITIGNORE_ENTRIES = [".ralph/logs/", "_bmad-output/", ".swarm/"] as const;
+export const GITIGNORE_ENTRIES = [
+  ".ralph/logs/",
+  "_bmad-output/",
+  ".swarm/",
+  "bmalph/state/",
+] as const;
 
 // =============================================================================
 // Swarm constants
