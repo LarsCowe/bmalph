@@ -1030,7 +1030,7 @@ describe("doctor command", { timeout: 15000 }, () => {
       const registry = buildCheckRegistry(claudeCodePlatform);
 
       expect(Array.isArray(registry)).toBe(true);
-      expect(registry.length).toBe(18);
+      expect(registry.length).toBe(19);
 
       // All checks should have required properties
       for (const check of registry) {
@@ -1052,6 +1052,7 @@ describe("doctor command", { timeout: 15000 }, () => {
         "bash-available",
         "git-repo",
         "jq-available",
+        "timeout-available",
         "config-valid",
         "bmad-dir",
         "ralph-loop",
