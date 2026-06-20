@@ -218,6 +218,17 @@ export function spawnRalphLoop(
     windowsHide: true,
   });
 
+  // When stdio is piped (dashboard / swarm mode), nothing consumes the child's
+  // stdout/stderr — the dashboards read progress from .ralph/ state files, not
+  // from the pipe. An unconsumed pipe fills its OS buffer (~64KB) and the child
+  // blocks on write() forever, so the loop hangs and its exit is never observed.
+  // Drain both streams (flowing mode, data discarded) so the child can always
+  // make progress regardless of how much it writes.
+  if (!options.inheritStdio) {
+    child.stdout?.resume();
+    child.stderr?.resume();
+  }
+
   let state: RalphProcessState = "running";
   let exitCode: number | null = null;
   let exitCallbacks: Array<(code: number | null) => void> = [];
