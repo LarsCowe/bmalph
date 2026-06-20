@@ -91,7 +91,16 @@ export function parseGitignoreLines(content: string): Set<string> {
 
 /**
  * Replace or remove a markdown section identified by a heading marker.
- * Finds the marker, then locates the next level-2 heading to determine section bounds.
+ *
+ * The section runs from its marker heading to the next heading of the same or
+ * higher level (a level-1 `#` or level-2 `##` heading). Deeper headings (`###`
+ * and below) are treated as part of the section body.
+ *
+ * Bounding by the next same-or-higher-level heading matters for correctness:
+ * the previous implementation only looked for the next `## ` heading, so a
+ * trailing top-level `# heading` — or any user content that followed the
+ * managed section — was swallowed into it and deleted when the section was
+ * removed (e.g. during `bmalph reset`).
  *
  * @param content - The full file content
  * @param marker - The section heading to find (e.g. "## BMAD-METHOD Integration")
@@ -105,10 +114,16 @@ export function replaceSection(content: string, marker: string, replacement: str
   const before = content.slice(0, sectionStart);
   const afterSection = content.slice(sectionStart);
 
-  const headingText = marker.startsWith("## ") ? marker.slice(3) : marker;
-  const headingTextEscaped = headingText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const nextHeadingMatch = afterSection.match(new RegExp(`\\n## (?!${headingTextEscaped})`));
-  const after = nextHeadingMatch ? afterSection.slice(nextHeadingMatch.index ?? 0) : "";
+  // Skip past the marker's own heading line so it is never matched as the
+  // section boundary, then find the next level-1 or level-2 heading.
+  const markerLineBreak = afterSection.indexOf("\n");
+  const afterMarkerLine = markerLineBreak === -1 ? "" : afterSection.slice(markerLineBreak);
+
+  const nextHeadingMatch = afterMarkerLine.match(/\n#{1,2} /);
+  const after =
+    nextHeadingMatch && nextHeadingMatch.index !== undefined
+      ? afterMarkerLine.slice(nextHeadingMatch.index)
+      : "";
 
   return before.trimEnd() + replacement + after;
 }
