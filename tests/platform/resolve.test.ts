@@ -93,7 +93,7 @@ describe("resolveProjectPlatform", () => {
       })
     );
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { resolveProjectPlatform } = await import("../../src/platform/resolve.js");
     const platform = await resolveProjectPlatform(testDir);
@@ -113,7 +113,7 @@ describe("resolveProjectPlatform", () => {
       })
     );
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { resolveProjectPlatform } = await import("../../src/platform/resolve.js");
     const platform = await resolveProjectPlatform(testDir);
@@ -128,7 +128,7 @@ describe("resolveProjectPlatform", () => {
     await mkdir(join(testDir, "bmalph"), { recursive: true });
     await writeFile(join(testDir, "bmalph/config.json"), "not valid json{{{");
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { resolveProjectPlatform } = await import("../../src/platform/resolve.js");
     const platform = await resolveProjectPlatform(testDir);

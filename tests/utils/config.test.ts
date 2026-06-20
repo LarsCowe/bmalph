@@ -58,7 +58,7 @@ describe("config", () => {
   it("returns null and warns when config file has invalid structure", async () => {
     await writeFile(join(testDir, "bmalph/config.json"), JSON.stringify({ garbage: true }));
 
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = await readConfig(testDir);
 
@@ -123,7 +123,7 @@ platform: claude-code
 
   it("returns null and warns for malformed YAML", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: [invalid");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
@@ -132,7 +132,7 @@ platform: claude-code
 
   it("returns null and warns for non-string planning_artifacts field", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: 123\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -143,7 +143,7 @@ platform: claude-code
 
   it("returns null and warns for boolean planning_artifacts field", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts: true\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -154,7 +154,7 @@ platform: claude-code
 
   it("returns null and warns for object planning_artifacts field", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "planning_artifacts:\n  foo: bar\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -165,7 +165,7 @@ platform: claude-code
 
   it("returns null and warns for empty YAML file", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
@@ -174,7 +174,7 @@ platform: claude-code
 
   it("returns null and warns when YAML parses to a scalar", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "just a string\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
@@ -183,7 +183,7 @@ platform: claude-code
 
   it("returns null and warns when YAML parses to an array", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "- item1\n- item2\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Error reading BMAD config"));
@@ -192,7 +192,7 @@ platform: claude-code
 
   it("returns null and warns for non-string platform field", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "platform: 123\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -203,7 +203,7 @@ platform: claude-code
 
   it("returns null and warns for non-string project_name field", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "project_name: true\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -214,7 +214,7 @@ platform: claude-code
 
   it("returns null and warns for non-string output_folder field", async () => {
     await writeFile(join(testDir, "_bmad/config.yaml"), "output_folder: 42\n");
-    const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await readBmadConfig(testDir);
     expect(result).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(

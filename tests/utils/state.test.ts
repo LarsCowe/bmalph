@@ -58,7 +58,7 @@ describe("state", () => {
         JSON.stringify({ garbage: true })
       );
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readState(testDir);
 
@@ -230,7 +230,7 @@ describe("state", () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true });
       await writeFile(join(testDir, ".ralph/status.json"), '"just a string"');
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readRalphStatus(testDir);
 
@@ -250,7 +250,7 @@ describe("state", () => {
       await mkdir(join(testDir, ".ralph"), { recursive: true });
       await writeFile(join(testDir, ".ralph/status.json"), '{"loopCount": "not-a-number"}');
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readRalphStatus(testDir);
 
@@ -278,7 +278,7 @@ describe("state", () => {
         })
       );
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readRalphStatus(testDir);
 
@@ -305,7 +305,7 @@ describe("state", () => {
         })
       );
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readRalphStatus(testDir);
 
@@ -332,7 +332,7 @@ describe("state", () => {
         })
       );
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readRalphStatus(testDir);
 
@@ -435,7 +435,7 @@ describe("state", () => {
         })
       );
 
-      const warnSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const result = await readRalphStatus(testDir);
 
