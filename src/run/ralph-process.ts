@@ -213,7 +213,7 @@ export function spawnRalphLoop(
   const child = spawn(cachedBashCommand ?? "bash", [BASH_RALPH_LOOP_PATH], {
     cwd: projectDir,
     env,
-    stdio: options.inheritStdio ? "inherit" : ["ignore", "pipe", "pipe"],
+    stdio: options.inheritStdio ? "inherit" : ["ignore", "ignore", "ignore"],
     detached: process.platform !== "win32",
     windowsHide: true,
   });
