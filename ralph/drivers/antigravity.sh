@@ -31,7 +31,8 @@ driver_supports_tool_allowlist() {
 
 driver_permission_denial_help() {
     echo "  - $DRIVER_DISPLAY_NAME uses its native permission and approval model."
-    echo "  - Use 'agy --dangerously-skip-permissions' or configure toolPermission to 'always-proceed' in settings.json to run unattended loops."
+    echo "  - Keep CLAUDE_PERMISSION_MODE=bypassPermissions in $RALPHRC_FILE for unattended loops."
+    echo "  - Alternatively, configure toolPermission to 'always-proceed' in settings.json."
 }
 
 driver_build_command() {
@@ -46,6 +47,11 @@ driver_build_command() {
         return 1
     fi
 
+    local resolved_permission_mode="${CLAUDE_PERMISSION_MODE:-bypassPermissions}"
+    if [[ "$resolved_permission_mode" == "bypassPermissions" ]]; then
+        CLAUDE_CMD_ARGS+=("--dangerously-skip-permissions")
+    fi
+
     if [[ "$CLAUDE_USE_CONTINUE" == "true" && -n "$session_id" ]]; then
         CLAUDE_CMD_ARGS+=("--conversation" "$session_id")
     fi
@@ -58,10 +64,8 @@ driver_build_command() {
 $prompt_content"
     fi
 
-    # Using --prompt since the user explicitly requested it in their prompt instructions.
-    # We could also use --print to run non-interactively if that is what Ralph needs.
-    # The prompt flag expects the string instruction.
-    CLAUDE_CMD_ARGS+=("--prompt" "$prompt_content")
+    # Using --print to run non-interactively and print the response.
+    CLAUDE_CMD_ARGS+=("--print" "$prompt_content")
 }
 
 driver_supports_sessions() {
