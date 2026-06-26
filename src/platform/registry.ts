@@ -6,6 +6,7 @@ import { cursorPlatform } from "./cursor.js";
 import { windsurfPlatform } from "./windsurf.js";
 import { copilotPlatform } from "./copilot.js";
 import { aiderPlatform } from "./aider.js";
+import { antigravityPlatform } from "./antigravity.js";
 
 const PLATFORMS: ReadonlyMap<PlatformId, Platform> = new Map([
   ["claude-code", claudeCodePlatform],
@@ -15,6 +16,7 @@ const PLATFORMS: ReadonlyMap<PlatformId, Platform> = new Map([
   ["windsurf", windsurfPlatform],
   ["copilot", copilotPlatform],
   ["aider", aiderPlatform],
+  ["antigravity", antigravityPlatform],
 ]);
 
 export function getPlatform(id: PlatformId): Platform {
