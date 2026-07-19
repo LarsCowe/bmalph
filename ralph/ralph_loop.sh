@@ -2839,7 +2839,9 @@ main() {
     init_metrics
 
     log_status "INFO" "Starting main loop..."
-    
+
+    set +e
+
     while true; do
         loop_count=$((loop_count + 1))
 
