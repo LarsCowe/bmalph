@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0](https://github.com/LarsCowe/bmalph/compare/v2.11.0...v2.12.0) (2026-04-06)
+
+
+### Features
+
+* **implement:** Updated Planning artifact detection to use `_bmad/config.yaml` first ([#138](https://github.com/LarsCowe/bmalph/issues/138)) ([c2f12ac](https://github.com/LarsCowe/bmalph/commit/c2f12ac3160263d9e510f06cb4fe7edfdd9a9827))
+* **ralph:** add write heartbeat to detect and break read-only loops ([#146](https://github.com/LarsCowe/bmalph/issues/146)) ([9d0b158](https://github.com/LarsCowe/bmalph/commit/9d0b158b37558880a3e60bc44ac02bf3a4dcdc1f))
+* **run:** append-only loop performance metrics ([#129](https://github.com/LarsCowe/bmalph/issues/129)) ([7bdebf8](https://github.com/LarsCowe/bmalph/commit/7bdebf80d2fc396135a3c237896e903a864eb7a6))
+* **run:** inject specific test failures into loop context ([#119](https://github.com/LarsCowe/bmalph/issues/119)) ([186c3ff](https://github.com/LarsCowe/bmalph/commit/186c3ff30126f68a87add4f756be3c82d04786d0))
+* **run:** swarm mode — parallel multi-agent implementation ([#155](https://github.com/LarsCowe/bmalph/issues/155)) ([d7858db](https://github.com/LarsCowe/bmalph/commit/d7858db1510dbcf76a1e6323e7d9d6deafcb169b))
+
+
+### Bug Fixes
+
+* correct readiness hint, detect corrupted config, preserve CRLF, dedupe computation ([edeaacd](https://github.com/LarsCowe/bmalph/commit/edeaacd749b77673b4b4e70c07d7b89cf1c86d1a))
+* resolve CI failures from CLAUDE.md slim-down ([526be14](https://github.com/LarsCowe/bmalph/commit/526be14fb53f421f10e977bd9858ed3d6c33236d))
+* **security:** validate RALPH_DIR, parse .ralphrc safely, check PLATFORM_DRIVER ([#76](https://github.com/LarsCowe/bmalph/issues/76), [#77](https://github.com/LarsCowe/bmalph/issues/77), [#79](https://github.com/LarsCowe/bmalph/issues/79)) ([9bc7cc1](https://github.com/LarsCowe/bmalph/commit/9bc7cc1e6ea84e24550785765d9733401d4720f1))
+
 ## [2.11.0](https://github.com/LarsCowe/bmalph/compare/v2.10.0...v2.11.0) (2026-03-24)
 
 
