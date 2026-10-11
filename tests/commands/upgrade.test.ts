@@ -10,6 +10,7 @@ vi.mock("../../src/installer.js", () => ({
   isInitialized: vi.fn(),
   copyBundledAssets: vi.fn(),
   mergeInstructionsFile: vi.fn(),
+  updateGitignore: vi.fn(),
   previewUpgrade: vi.fn(),
   getBundledVersions: vi.fn(),
 }));
@@ -134,6 +135,19 @@ describe("upgrade command", () => {
       await upgradeCommand({ force: true, projectDir: process.cwd() });
 
       expect(mergeInstructionsFile).toHaveBeenCalled();
+    });
+
+    it("migrates .gitignore so older installs pick up newly managed entries", async () => {
+      const { isInitialized, copyBundledAssets, mergeInstructionsFile, updateGitignore } =
+        await import("../../src/installer.js");
+      vi.mocked(isInitialized).mockResolvedValue(true);
+      vi.mocked(copyBundledAssets).mockResolvedValue({ updatedPaths: ["_bmad/"] });
+      vi.mocked(mergeInstructionsFile).mockResolvedValue(undefined);
+
+      const { upgradeCommand } = await import("../../src/commands/upgrade.js");
+      await upgradeCommand({ force: true, projectDir: process.cwd() });
+
+      expect(updateGitignore).toHaveBeenCalledWith(expect.any(String));
     });
 
     it("displays upgrading message", async () => {

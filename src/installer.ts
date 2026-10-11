@@ -20,6 +20,7 @@ export { generateManifests } from "./installer/bmad-assets.js";
 
 export {
   mergeInstructionsFile,
+  updateGitignore,
   isInitialized,
   previewInstall,
   previewUpgrade,
