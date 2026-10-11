@@ -1710,13 +1710,13 @@ run_review_loop() {
 
         local findings_json=""
         # Extract JSON between ---REVIEW_FINDINGS--- and ---END_REVIEW_FINDINGS--- markers
-        findings_json=$(sed -n '/---REVIEW_FINDINGS---/,/---END_REVIEW_FINDINGS---/{//!p;}' "$review_output_file" 2>/dev/null | tr -d '\n' | head -c 5000)
+        findings_json=$(sed -n '/---REVIEW_FINDINGS---/,/---END_REVIEW_FINDINGS---/{//!p;}' "$review_output_file" 2>/dev/null | tr -d '\n' | head -c 20000)
 
         # If output is JSON format, try extracting from result field first
         if [[ -z "$findings_json" ]]; then
             local raw_text
             raw_text=$(jq -r '.result // .content // ""' "$review_output_file" 2>/dev/null || cat "$review_output_file" 2>/dev/null)
-            findings_json=$(echo "$raw_text" | sed -n '/---REVIEW_FINDINGS---/,/---END_REVIEW_FINDINGS---/{//!p;}' 2>/dev/null | tr -d '\n' | head -c 5000)
+            findings_json=$(echo "$raw_text" | sed -n '/---REVIEW_FINDINGS---/,/---END_REVIEW_FINDINGS---/{//!p;}' 2>/dev/null | tr -d '\n' | head -c 20000)
         fi
 
         if [[ -n "$findings_json" ]]; then
