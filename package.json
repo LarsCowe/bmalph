@@ -25,6 +25,7 @@
     "clean": "rm -rf dist",
     "rebuild": "npm run clean && npm run build",
     "prepack": "npm run build",
+    "prepare": "[ -f tsconfig.json ] && npm run build || true",
     "prepublishOnly": "npm run lint && npm run build && npm run test:all",
     "update-bundled": "bash scripts/update-bundled.sh"
   },
