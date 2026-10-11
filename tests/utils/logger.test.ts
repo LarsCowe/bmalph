@@ -12,14 +12,17 @@ vi.mock("chalk", () => ({
 
 describe("logger", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.resetModules();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
     consoleSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
     vi.restoreAllMocks();
   });
 
@@ -100,6 +103,7 @@ describe("logger", () => {
       warn("warning should not appear");
 
       expect(consoleSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
     });
 
     it("resumes normal output when quiet is disabled", async () => {
@@ -127,13 +131,21 @@ describe("logger", () => {
   });
 
   describe("warn", () => {
-    it("outputs message with yellow color", async () => {
+    it("outputs message with yellow color to stderr", async () => {
       const { warn } = await import("../../src/utils/logger.js");
 
       warn("warning message");
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("[yellow]"));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("warning message"));
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("[yellow]"));
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("warning message"));
+    });
+
+    it("does not write warnings to stdout", async () => {
+      const { warn } = await import("../../src/utils/logger.js");
+
+      warn("warning message");
+
+      expect(consoleSpy).not.toHaveBeenCalled();
     });
   });
 });

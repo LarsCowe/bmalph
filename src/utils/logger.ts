@@ -25,5 +25,7 @@ export function info(message: string): void {
 
 export function warn(message: string): void {
   if (quiet) return;
-  console.log(chalk.yellow(message));
+  // Warnings go to stderr so they never corrupt machine-readable stdout
+  // (e.g. `--json` output or a piped value); stdout is reserved for results.
+  console.error(chalk.yellow(message));
 }
