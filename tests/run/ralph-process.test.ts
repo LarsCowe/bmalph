@@ -409,6 +409,32 @@ describe("spawnRalphLoop", () => {
     );
   });
 
+  it("drains piped stdout/stderr so the child cannot deadlock on a full pipe buffer", async () => {
+    const stdout = Object.assign(new EventEmitter(), { resume: vi.fn() });
+    const stderr = Object.assign(new EventEmitter(), { resume: vi.fn() });
+    const mockChild = createMockChild({
+      stdout,
+      stderr,
+    } as unknown as Partial<ChildProcess>);
+    mockSpawn.mockReturnValue(mockChild);
+
+    const { spawnRalphLoop } = await import("../../src/run/ralph-process.js");
+    spawnRalphLoop("/project", "claude-code", { inheritStdio: false });
+
+    expect(stdout.resume).toHaveBeenCalledTimes(1);
+    expect(stderr.resume).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not touch streams when stdio is inherited", async () => {
+    // With inherited stdio the child exposes no stdout/stderr handles; the
+    // drain step must be skipped without throwing.
+    const mockChild = createMockChild();
+    mockSpawn.mockReturnValue(mockChild);
+
+    const { spawnRalphLoop } = await import("../../src/run/ralph-process.js");
+    expect(() => spawnRalphLoop("/project", "claude-code", { inheritStdio: true })).not.toThrow();
+  });
+
   it("tracks exit code and updates state on child exit", async () => {
     const mockChild = createMockChild();
     mockSpawn.mockReturnValue(mockChild);
