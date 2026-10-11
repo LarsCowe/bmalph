@@ -76,6 +76,36 @@ export async function checkJq(projectDir: string): Promise<CheckResult> {
   };
 }
 
+export async function checkTimeout(projectDir: string): Promise<CheckResult> {
+  const label = "timeout command available";
+  // The Ralph loop wraps every agent call in `timeout`/`gtimeout`
+  // (see .ralph/lib/timeout_utils.sh). On macOS that means `gtimeout` from
+  // GNU coreutils; on Linux it is the built-in `timeout`. Without it the loop
+  // exits on its first iteration, so doctor must verify it the same way the
+  // loop resolves it: via `command -v` inside bash.
+  const probe =
+    process.platform === "darwin"
+      ? "command -v gtimeout || command -v timeout"
+      : "command -v timeout";
+  const result = await runBashCommand(probe, { cwd: projectDir });
+  const available = result.exitCode === 0;
+  const resolved = result.stdout.trim().split("/").pop();
+  return {
+    label,
+    passed: available,
+    detail: available
+      ? resolved || undefined
+      : "timeout/gtimeout not found in bash PATH",
+    hint: available
+      ? undefined
+      : process.platform === "win32"
+        ? "Install coreutils (provides timeout), e.g. via MSYS2: pacman -S coreutils"
+        : process.platform === "darwin"
+          ? "Install GNU coreutils (provides gtimeout): brew install coreutils"
+          : "Install coreutils (provides timeout): sudo apt-get install coreutils",
+  };
+}
+
 export async function checkGitRepo(projectDir: string): Promise<CheckResult> {
   const label = "git repository with commits";
   const gitDir = await runBashCommand("git rev-parse --git-dir", { cwd: projectDir });

@@ -44,6 +44,7 @@ import {
   checkNodeVersion,
   checkBash,
   checkJq,
+  checkTimeout,
   checkGitRepo,
   checkBmadDir,
   checkRalphLoop,
@@ -215,6 +216,75 @@ describe("checkJq", () => {
       expect(result.passed).toBe(false);
       expect(result.detail).toBe("jq not found in bash PATH");
       expect(result.hint).toContain("jq");
+    } finally {
+      Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+    }
+  });
+});
+
+describe("checkTimeout", () => {
+  it("uses the label 'timeout command available'", async () => {
+    mockedRunBashCommand.mockResolvedValue({
+      exitCode: 0,
+      stdout: "/usr/bin/timeout\n",
+      stderr: "",
+    });
+
+    const result = await checkTimeout("/projects/webapp");
+
+    expect(result.label).toBe("timeout command available");
+  });
+
+  it("passes and reports the resolved binary when available", async () => {
+    mockedRunBashCommand.mockResolvedValue({
+      exitCode: 0,
+      stdout: "/usr/bin/timeout\n",
+      stderr: "",
+    });
+
+    const result = await checkTimeout("/projects/webapp");
+
+    expect(result.passed).toBe(true);
+    expect(result.detail).toBe("timeout");
+    expect(result.hint).toBeUndefined();
+  });
+
+  it("probes for gtimeout first on macOS", async () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, "platform", { value: "darwin", configurable: true });
+
+    try {
+      mockedRunBashCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: "/opt/homebrew/bin/gtimeout\n",
+        stderr: "",
+      });
+
+      const result = await checkTimeout("/projects/webapp");
+
+      expect(mockedRunBashCommand).toHaveBeenCalledWith(
+        "command -v gtimeout || command -v timeout",
+        { cwd: "/projects/webapp" }
+      );
+      expect(result.passed).toBe(true);
+      expect(result.detail).toBe("gtimeout");
+    } finally {
+      Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+    }
+  });
+
+  it("fails with a coreutils hint when no timeout binary is found on macOS", async () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, "platform", { value: "darwin", configurable: true });
+
+    try {
+      mockedRunBashCommand.mockResolvedValue({ exitCode: 1, stdout: "", stderr: "" });
+
+      const result = await checkTimeout("/projects/webapp");
+
+      expect(result.passed).toBe(false);
+      expect(result.detail).toBe("timeout/gtimeout not found in bash PATH");
+      expect(result.hint).toContain("brew install coreutils");
     } finally {
       Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
     }
