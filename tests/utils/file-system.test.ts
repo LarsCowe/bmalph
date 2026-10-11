@@ -354,5 +354,57 @@ describe("isDirectory() with mocked fs", () => {
       expect(result).toContain("Replaced.");
       expect(result).not.toContain("Last content.");
     });
+
+    it("preserves a trailing top-level heading when removing the section", () => {
+      const doc = "# Project\n\n## BMAD\n\nManaged body.\n\n# My Notes\n\nKeep this.";
+      const result = replaceSection(doc, "## BMAD", "");
+
+      expect(result).not.toContain("Managed body.");
+      expect(result).toContain("# My Notes");
+      expect(result).toContain("Keep this.");
+    });
+
+    it("treats nested (### and deeper) headings as part of the section body", () => {
+      const doc = "## BMAD\n\nIntro.\n\n### Sub A\n\nDetails.\n\n## After\n\nUser section.";
+      const result = replaceSection(doc, "## BMAD", "");
+
+      // Everything in the BMAD section, including its ### subheading, is removed...
+      expect(result).not.toContain("Intro.");
+      expect(result).not.toContain("### Sub A");
+      expect(result).not.toContain("Details.");
+      // ...but the following same-level section survives.
+      expect(result).toContain("## After");
+      expect(result).toContain("User section.");
+    });
+
+    it("does not match the marker's own heading as the section boundary", () => {
+      const doc = "## BMAD\n\nold body\n\n## Other\n\nother body";
+      const result = replaceSection(doc, "## BMAD", "\n## BMAD\n\nnew body\n");
+
+      expect(result).toContain("new body");
+      expect(result).not.toContain("old body");
+      expect(result).toContain("## Other");
+      expect(result).toContain("other body");
+    });
+
+    it("preserves a trailing heading and its content on CRLF (Windows) files", () => {
+      const doc = "# Project\r\n\r\n## BMAD\r\n\r\nManaged body.\r\n\r\n# Notes\r\n\r\nKeep this.";
+      const result = replaceSection(doc, "## BMAD", "");
+
+      // The managed body is removed, but the user's trailing section survives.
+      expect(result).not.toContain("Managed body.");
+      expect(result).toContain("# Notes");
+      expect(result).toContain("Keep this.");
+    });
+
+    it("documents the limitation: headerless trailing prose is absorbed into the section", () => {
+      // Known limitation — without a heading boundary there is nothing to
+      // distinguish trailing prose from the managed section body, so it is
+      // removed. Pinned here so the behavior change is intentional, not silent.
+      const doc = "## BMAD\n\nManaged body.\n\nTrailing prose with no heading.";
+      const result = replaceSection(doc, "## BMAD", "");
+
+      expect(result).not.toContain("Trailing prose with no heading.");
+    });
   });
 });
