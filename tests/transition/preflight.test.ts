@@ -512,6 +512,28 @@ Scope.
 
       expect(issues[0]!.id).toBe("E1");
     });
+
+    it("does not flag the 'GO / NO-GO' heading on a GO-ready report", () => {
+      const content = `# Implementation Readiness Report\n\n## GO / NO-GO Decision\n\n**Decision:** GO - all requirements met.\n`;
+
+      const issues = validateReadiness(content);
+
+      expect(issues).toHaveLength(0);
+    });
+
+    it("still flags a NO-GO verdict even when the 'GO / NO-GO' heading is present", () => {
+      const content = `# Implementation Readiness Report\n\n## GO / NO-GO Decision\n\n**Decision:** NO-GO - missing test coverage.\n`;
+
+      const issues = validateReadiness(content);
+
+      expect(issues[0]!.id).toBe("E1");
+    });
+
+    it("does not flag the compact 'GO/NO-GO' label without spaces", () => {
+      const issues = validateReadiness("## GO/NO-GO\n\nDecision: GO\n");
+
+      expect(issues).toHaveLength(0);
+    });
   });
 
   describe("runPreflight", () => {
