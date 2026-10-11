@@ -14,10 +14,11 @@ const STRONG_DETECTION_MARKERS: Array<{ platform: PlatformId; markers: string[] 
   { platform: "windsurf", markers: [".windsurf"] },
   { platform: "copilot", markers: [".github/copilot-instructions.md"] },
   { platform: "aider", markers: [".aider.conf.yml"] },
+  { platform: "antigravity", markers: [".agents"] },
 ];
 
 const ROOT_INSTRUCTION_MARKERS: Array<{ marker: string; candidates: PlatformId[] }> = [
-  { marker: "AGENTS.md", candidates: ["codex", "opencode", "cursor"] },
+  { marker: "AGENTS.md", candidates: ["codex", "opencode", "cursor", "antigravity"] },
   { marker: "CLAUDE.md", candidates: ["claude-code", "cursor"] },
 ];
 

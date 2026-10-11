@@ -65,7 +65,7 @@ program
   .option("-d, --description <desc>", "Project description")
   .option(
     "--platform <id>",
-    "Target platform (claude-code, codex, opencode, cursor, windsurf, copilot, aider)"
+    "Target platform (claude-code, codex, opencode, cursor, windsurf, copilot, aider, antigravity)"
   )
   .option("--dry-run", "Preview changes without writing files")
   .action(
